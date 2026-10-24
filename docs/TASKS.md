@@ -24,16 +24,16 @@ Rules:
 - **Files:** `.gitignore`, `legacy/README.md`
 
 ### B-002: Scaffold Laravel 12 app
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Create a fresh Laravel 12 app in the repo root (PHP 8.3), without touching `legacy/` or `docs/`.
   2. Install Pest and Laravel Pint. Install Sanctum and set up API tokens.
   3. Add route `GET /api/v1/health` returning `{"status":"ok"}` and a Pest test for it.
   4. Add `.env.example` with the empty variables listed in docs/10-tech-and-structure.md.
 - **Done when:**
-  - [ ] `php artisan test` passes
-  - [ ] `./vendor/bin/pint --test` passes
-  - [ ] `php artisan serve` then `curl /api/v1/health` returns ok
+  - [x] `php artisan test` passes
+  - [x] `./vendor/bin/pint --test` passes
+  - [x] `php artisan serve` then `curl /api/v1/health` returns ok
 - **Files:** `composer.json`, `routes/api.php`, `tests/Feature/HealthTest.php`, `.env.example`
 
 ### B-003: GitHub Actions CI
