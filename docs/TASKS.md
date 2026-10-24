@@ -69,15 +69,15 @@ Rules:
 - **Files:** `database/migrations/*users*`, `app/Models/User.php`, `app/Http/Controllers/Api/V1/AuthController.php`, tests
 
 ### B-006: To-dos API
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migration, model, policy and controller for `todos` per docs/08 and docs/09.
   2. `GET /todos?date=` implements the Today list rules and the computed `overdue` flag.
   3. Done and undone endpoints.
   4. Pest tests for every rule: due today, undated, overdue, future hidden, other users' data not visible.
 - **Done when:**
-  - [ ] All tests pass
-  - [ ] A user cannot read or change another user's to-do (test proves it)
+  - [x] All tests pass
+  - [x] A user cannot read or change another user's to-do (test proves it)
 - **Files:** migration, `app/Models/Todo.php`, `TodoController.php`, tests
 
 ### B-007: Remove unused Laravel frontend defaults
