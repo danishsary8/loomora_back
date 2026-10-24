@@ -1,0 +1,715 @@
+openapi: 3.1.0
+info:
+  title: Loomora API
+  version: 1.0.0
+  description: |
+    Backend API for Loomora (docs/09-api-design.md is the design; this file is the contract).
+
+    - JSON only. Dates are `YYYY-MM-DD`, timestamps ISO 8601 UTC (`2026-10-24T03:00:00Z`).
+    - Auth: Sanctum **bearer tokens** (`Authorization: Bearer <token>`), valid 30 days.
+    - The user's local "today" is sent by the client as `?date=YYYY-MM-DD`.
+    - Rate limits: `/auth/*` public routes 10 per minute per IP; signed-in routes 120 per minute per user.
+    - Errors always use `{ "message": "...", "errors": { "field": ["..."] } }` (`errors` only on 422).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local
+tags:
+  - name: System
+    description: Health and status.
+  - name: Auth
+    description: Sign up, sign in, email verification and password reset.
+  - name: Me
+    description: The signed-in user's account.
+  - name: Todos
+    description: To-dos and the Today list.
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: The API is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+              example:
+                status: ok
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Create an account and sign in
+      description: Also sends the verification email. A mail failure does not block signup.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: Sokha
+              email: sokha@example.com
+              password: correct-horse-battery
+              timezone: Asia/Phnom_Penh
+      responses:
+        '201':
+          description: Account created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                default:
+                  $ref: '#/components/examples/TokenResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Sign in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: sokha@example.com
+              password: correct-horse-battery
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                default:
+                  $ref: '#/components/examples/TokenResponse'
+        '422':
+          description: Wrong email or password (reported on `email`), or invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                message: These credentials do not match our records.
+                errors:
+                  email: [These credentials do not match our records.]
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current token
+      description: Other devices stay signed in.
+      responses:
+        '204':
+          description: Signed out.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /auth/email/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyEmail
+      summary: Confirm an email address
+      description: |
+        Public: the link may be opened on a signed-out device. The email links to
+        `{FRONTEND_URL}/verify-email?id=&expires=&signature=`; the frontend posts those three values here.
+        Links expire after 24 hours and stop working if the email changes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, expires, signature]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                expires:
+                  type: integer
+                  description: Unix timestamp.
+                signature:
+                  type: string
+                  minLength: 64
+                  maxLength: 64
+            example:
+              id: 9f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f
+              expires: 1793001600
+              signature: 3f6c0e0b5e8a4f1d9c2b7a6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c
+      responses:
+        '200':
+          description: Email confirmed (also when it was already confirmed).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, user]
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '422':
+          description: Invalid or expired link (reported on `signature`), or missing fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/email/resend:
+    post:
+      tags: [Auth]
+      operationId: resendVerification
+      summary: Send the verification email again
+      description: Limited to 3 per 10 minutes per user. Sends nothing if already verified.
+      responses:
+        '200':
+          $ref: '#/components/responses/Message'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/password/forgot:
+    post:
+      tags: [Auth]
+      operationId: forgotPassword
+      summary: Email a password reset link
+      description: |
+        Same answer whether or not the email has an account. The email links to
+        `{FRONTEND_URL}/reset-password?token=&email=`. Links last 60 minutes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+            example:
+              email: sokha@example.com
+      responses:
+        '200':
+          $ref: '#/components/responses/Message'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/password/reset:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      summary: Set a new password with a reset token
+      description: Signs out every device (all tokens are revoked).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, email, password]
+              properties:
+                token:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+            example:
+              token: 5f2b1c...
+              email: sokha@example.com
+              password: new-password-456
+      responses:
+        '200':
+          $ref: '#/components/responses/Message'
+        '422':
+          description: Invalid, used or expired token (reported on `token`), or invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /me:
+    get:
+      tags: [Me]
+      operationId: getMe
+      summary: The signed-in user
+      responses:
+        '200':
+          description: The current user, wrapped in `data`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+              examples:
+                default:
+                  $ref: '#/components/examples/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /todos:
+    get:
+      tags: [Todos]
+      operationId: listTodayTodos
+      summary: The Today list
+      description: |
+        To-dos due on `date` (done or not), undated to-dos that are not done, and overdue
+        to-dos (due before `date`, not done). Future-dated to-dos are hidden until their day.
+        Sorted overdue first, then by due date, then by creation time.
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: The user's local date. Must be within one day of today in the user's time zone.
+          schema:
+            type: string
+            format: date
+          example: '2026-10-24'
+      responses:
+        '200':
+          description: The list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Todo'
+              example:
+                data:
+                  - id: 2b7e1a90-5c3d-4f2e-9a1b-0c8d7e6f5a4b
+                    title: Finish essay draft
+                    category: study
+                    due_date: '2026-10-20'
+                    done_at: null
+                    overdue: true
+                    old: false
+                    created_at: '2026-10-19T08:00:00Z'
+                  - id: 7c4d2e1f-0a9b-4c8d-8e7f-6a5b4c3d2e1f
+                    title: Gym
+                    category: health
+                    due_date: '2026-10-24'
+                    done_at: '2026-10-24T03:00:00Z'
+                    overdue: false
+                    old: false
+                    created_at: '2026-10-24T01:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    post:
+      tags: [Todos]
+      operationId: createTodo
+      summary: Create a to-do
+      description: At most 500 to-dos per user (reported on `title`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TodoInput'
+            example:
+              title: Read chapter 3
+              category: study
+              due_date: '2026-10-24'
+      responses:
+        '201':
+          $ref: '#/components/responses/TodoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /todos/{todo}:
+    parameters:
+      - $ref: '#/components/parameters/TodoId'
+    patch:
+      tags: [Todos]
+      operationId: updateTodo
+      summary: Edit a to-do
+      description: Send only the fields to change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                category:
+                  $ref: '#/components/schemas/Category'
+                due_date:
+                  type: [string, 'null']
+                  format: date
+            example:
+              title: Read chapter 4
+              due_date: null
+      responses:
+        '200':
+          $ref: '#/components/responses/TodoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Todos]
+      operationId: deleteTodo
+      summary: Delete a to-do
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /todos/{todo}/done:
+    parameters:
+      - $ref: '#/components/parameters/TodoId'
+    post:
+      tags: [Todos]
+      operationId: markTodoDone
+      summary: Check off a to-do
+      description: Sets `done_at`. Calling it again keeps the first completion time.
+      responses:
+        '200':
+          $ref: '#/components/responses/TodoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Todos]
+      operationId: markTodoUndone
+      summary: Undo a check-off
+      description: Clears `done_at`.
+      responses:
+        '200':
+          $ref: '#/components/responses/TodoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Sanctum personal access token from register or login. Expires after 30 days.
+
+  parameters:
+    TodoId:
+      name: todo
+      in: path
+      required: true
+      description: To-do UUID. A value that is not a UUID returns 404.
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Category:
+      type: string
+      enum: [study, work, health, life, rest, other]
+
+    RegisterRequest:
+      type: object
+      required: [name, email, password, timezone]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: Stored lower-case. Must be unique.
+        password:
+          type: string
+          minLength: 8
+        timezone:
+          type: string
+          description: IANA time zone name.
+          examples: [Asia/Phnom_Penh]
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    User:
+      type: object
+      required: [id, name, email, email_verified_at, timezone, goal, heard_from, survey_done, current_streak, longest_streak, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified_at:
+          type: [string, 'null']
+          format: date-time
+        timezone:
+          type: string
+        goal:
+          type: [string, 'null']
+          enum: [be_consistent, manage_time, finish_tasks, other, null]
+        heard_from:
+          type: [string, 'null']
+        survey_done:
+          type: boolean
+        current_streak:
+          type: integer
+          minimum: 0
+        longest_streak:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+
+    TokenResponse:
+      type: object
+      required: [token, expires_at, user]
+      description: Returned by register and login. Note the user is NOT wrapped in `data` here.
+      properties:
+        token:
+          type: string
+          description: "Send as `Authorization: Bearer <token>`."
+        expires_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+
+    TodoInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Leading and trailing spaces are trimmed.
+        category:
+          $ref: '#/components/schemas/Category'
+          description: Defaults to `other`.
+        due_date:
+          type: [string, 'null']
+          format: date
+
+    Todo:
+      type: object
+      required: [id, title, category, due_date, done_at, overdue, old, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+        due_date:
+          type: [string, 'null']
+          format: date
+        done_at:
+          type: [string, 'null']
+          format: date-time
+        overdue:
+          type: boolean
+          description: Computed. Due before the user's today and not done.
+        old:
+          type: boolean
+          description: Computed. Overdue for more than 30 days.
+        created_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    ValidationError:
+      type: object
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+  responses:
+    Message:
+      description: Done. A human-readable message.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: If an account exists for that email, we sent a reset link.
+    TodoResponse:
+      description: The to-do, wrapped in `data`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/Todo'
+    ValidationError:
+      description: Invalid input.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            message: The title field is required.
+            errors:
+              title: [The title field is required.]
+    Unauthenticated:
+      description: Missing, invalid or expired token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Unauthenticated.
+    Forbidden:
+      description: The item belongs to another user.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: This action is unauthorized.
+    NotFound:
+      description: No such item.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Not found.
+    TooManyRequests:
+      description: Rate limit hit. Retry after the `Retry-After` header.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Too Many Attempts.
+
+  examples:
+    MeResponse:
+      value:
+        data:
+          id: 9f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f
+          name: Sokha
+          email: sokha@example.com
+          email_verified_at: null
+          timezone: Asia/Phnom_Penh
+          goal: null
+          heard_from: null
+          survey_done: false
+          current_streak: 0
+          longest_streak: 0
+          created_at: '2026-10-24T03:00:00Z'
+    TokenResponse:
+      value:
+        token: 1|Xb7kQ2...
+        expires_at: '2026-11-23T03:00:00Z'
+        user:
+          id: 9f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f
+          name: Sokha
+          email: sokha@example.com
+          email_verified_at: null
+          timezone: Asia/Phnom_Penh
+          goal: null
+          heard_from: null
+          survey_done: false
+          current_streak: 0
+          longest_streak: 0
+          created_at: '2026-10-24T03:00:00Z'

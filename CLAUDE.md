@@ -17,6 +17,11 @@
 - After coding: note how it was verified (tests run, output).
 - If a task needs a secret, billing, or a destructive action, mark it `blocked` with a clear question and move to the next task.
 
+## API contract
+- `docs/openapi.yaml` is the contract between the back and front repos. Any change to an endpoint, request or response updates it in the same PR.
+- Check it with `npx @redocly/cli lint docs/openapi.yaml` (must be valid).
+- Current response shapes: register and login return `{token, expires_at, user}`; `/me` and single resources return `{data: ...}`; lists return `{data: [...]}`.
+
 ## UI
 - Mobile-first: design for 375 px wide, then tablet and desktop.
 - Neo-brutalism on cream `#F5EDE6`: thick black borders, hard offset shadows, press-down states, flat category colors. One theme only.
