@@ -12,12 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->string('email')->unique();
+            // Null for accounts created with Google.
+            $table->string('password')->nullable();
+            $table->string('google_id')->nullable()->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
+            $table->string('timezone');
+            $table->enum('goal', ['be_consistent', 'manage_time', 'finish_tasks', 'other'])->nullable();
+            $table->text('heard_from')->nullable();
+            $table->boolean('survey_done')->default(false);
+            $table->unsignedInteger('current_streak')->default(0);
+            $table->unsignedInteger('longest_streak')->default(0);
+            $table->date('last_streak_date')->nullable();
             $table->timestamps();
         });
 
@@ -29,7 +37,7 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
+            $table->foreignUuid('user_id')->nullable()->index();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');

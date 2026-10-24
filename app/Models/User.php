@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,10 +12,22 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, HasUuids, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Mirrors the column defaults so a freshly created user serialises correctly.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'survey_done' => false,
+        'current_streak' => 0,
+        'longest_streak' => 0,
+    ];
+
+    /**
+     * Only fields a user may set themselves. Streaks, google_id and
+     * verification are written by the server.
      *
      * @var list<string>
      */
@@ -23,21 +35,18 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'timezone',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
      * @var list<string>
      */
     protected $hidden = [
         'password',
-        'remember_token',
+        'google_id',
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -45,6 +54,10 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'survey_done' => 'boolean',
+            'current_streak' => 'integer',
+            'longest_streak' => 'integer',
+            'last_streak_date' => 'date',
         ];
     }
 }
