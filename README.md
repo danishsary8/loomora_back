@@ -1,25 +1,26 @@
-# Daycraft API
+# Loomora
 
-Laravel 12 API for Daycraft. It provides Sanctum bearer authentication, verified-email schedule mutations, Google OAuth, password recovery, user-owned day groups, dated checklist logs, notification settings, and optional cached prayer times.
+> Plan your day, focus on it, and see how it really went.
 
-## Run locally
+A mobile-first to-do list with a fixed weekly schedule, built as an installable web app (PWA).
 
-```bash
-composer install
-copy .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan serve --host=127.0.0.1 --port=8000
-```
+**Status:** Planning phase. No application code yet. The previous backend is kept in [`legacy/`](legacy/) for reference.
 
-Use PostgreSQL for deployed environments. SQLite is supported by the automated test configuration.
+## Docs
 
-## Quality checks
+Planning:
+- [01 Product brief](docs/01-product-brief.md)
+- [02 Feature list](docs/02-feature-list.md)
+- [03 User stories (R1)](docs/03-user-stories-r1.md)
+- [04 User flows](docs/04-user-flows.md)
+- [05 Screen map](docs/05-screen-map.md)
+- [06 Roadmap and automation](docs/06-roadmap-and-automation.md)
+- [07 Project decisions](docs/07-project-decisions.md)
 
-```bash
-php artisan test
-vendor/bin/pint --test
-composer audit
-```
+Working files:
+- [Tasks](docs/TASKS.md)
+- [Progress](docs/PROGRESS.md)
+- [Decisions](docs/DECISIONS.md)
+- [Security findings](docs/SECURITY-FINDINGS.md)
 
-See [`API.md`](API.md) for the HTTP contract, [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for architecture rules, and [`../DEPLOYMENT.md`](../DEPLOYMENT.md) for environment configuration.
+Rules for AI-assisted work: [CLAUDE.md](CLAUDE.md)
