@@ -23,6 +23,8 @@ services:
         sync: false
       - key: GOOGLE_REDIRECT_URI
         sync: false
+      - key: MAIL_MAILER
+        sync: false
       - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM_ADDRESS
