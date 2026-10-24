@@ -23,6 +23,9 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q4 (2026-10-24, B-005):** docs/09 says `docs/openapi.yaml` is "kept in sync", but no task creates it yet. Add a task for it (and should every API task update it)?
 - **Q5 (2026-10-24, B-005):** Choices to confirm: wrong password returns **422** with `errors.email` (Laravel convention, matches the error shape) rather than 401; minimum password length **8**; `/me` wraps the user in `data` (Laravel API resource default) while register/login return `{token, expires_at, user}`.
 
+- **Q8 (2026-10-25, B-008):** Real Brevo sending is untested (needs `BREVO_API_KEY` and a verified sender in Brevo). Danish: when ready, set `MAIL_MAILER=brevo`, `BREVO_API_KEY` and `MAIL_FROM_ADDRESS` (a sender verified in Brevo) on Render, then register a test account and confirm the email arrives. Also: `MAIL_MAILER` is a new env name, so `render.yaml` (in PR #7, B-004) needs it added; I'll add it there unless you prefer otherwise.
+- **Q9 (2026-10-25, B-008):** Frontend routes assumed by the email links: `{FRONTEND_URL}/verify-email?id=&expires=&signature=` (POST those three to `/auth/email/verify`) and `{FRONTEND_URL}/reset-password?token=&email=` (POST with `password` to `/auth/password/reset`). OK for the front repo? Verify links last 24 h, reset links 60 min.
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -62,3 +65,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - B-001, B-002, B-003, B-005 are merged and marked done. Good work.
 - **Q3:** Verification email and password reset are task B-008. **Q4:** `docs/openapi.yaml` is task B-009. **Q5:** Confirmed: wrong password -> 422 with `errors.email`; min password 8; keep the response shapes and document them in B-009.
 - B-004 (Docker/Render) is still open: finish it, but do not deploy.
+
+### 2026-10-25: B-008 Email verification and password reset (Brevo)
+- **Branch / PR:** `feat/B-008-email` (PR into `v2-rebuild`)
+- **What changed:** Endpoints: `POST /auth/email/verify` (public, throttle `auth`), `POST /auth/email/resend` (signed in, throttle `verification` 3 per 10 min per user, no mail if already verified), `POST /auth/password/forgot` (same answer for unknown emails), `POST /auth/password/reset` (Laravel password broker; revokes all tokens). Register now sends the verification mail (a mail failure is reported, signup still succeeds). `EmailVerification` service signs `id|email|expires` with HMAC (APP_KEY), so links expire after 24 h and die when the email changes. `VerifyEmailMail`, `ResetPasswordMail`, neo-brutalist HTML layout on cream `#F5EDE6`, all text in `lang/en/mail.php` and `lang/en/auth_flow.php`. Mail transport by env: `MAIL_MAILER=log` (local/test, added to `.env.example`) or `brevo` via `symfony/brevo-mailer` (`Mail::extend`, key from `BREVO_API_KEY`). `MAIL_FROM_ADDRESS`/`MAIL_FROM_NAME` fall back to defaults when empty. `FRONTEND_URL` is now `config('app.frontend_url')`.
+- **How it was verified:** `php artisan test` -> 31 passed (130 assertions) on sqlite and Postgres 16. `./vendor/bin/pint --test` -> passed. `gitleaks dir .` -> no leaks. Tests (with `Mail::fake()`): mail on register, register survives a mail failure, verify with the mailed link, tampered/expired/stale(email changed)/missing link rejected, resend, no resend when verified, resend throttle, resend needs auth, forgot sends a frontend link, unknown email same answer and no mail, reset works + tokens revoked + login with new password, invalid/reused/expired token rejected, password validation, both mails render with link and translated text, Brevo transport builds from config.
+- **Problems:** `Mail::fake()` also swaps the container's mail manager, so the transport test lives in its own file.
+- **Questions:** Q8 (real Brevo test, `MAIL_MAILER` in render.yaml), Q9 (frontend link paths).
