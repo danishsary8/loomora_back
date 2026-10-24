@@ -81,12 +81,12 @@ Rules:
 - **Files:** migration, `app/Models/Todo.php`, `TodoController.php`, tests
 
 ### B-007: Remove unused Laravel frontend defaults
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Remove `package.json`, `vite.config.js`, `resources/js`, `resources/css` and the `welcome` view and web route. Keep mail views and API-only routing.
   2. Make sure `php artisan test` and Pint still pass.
 - **Done when:**
-  - [ ] Tests and Pint pass; `GET /api/v1/health` still returns ok
+  - [x] Tests and Pint pass; `GET /api/v1/health` still returns ok
 - **Files:** `package.json`, `vite.config.js`, `resources/*`, `routes/web.php`
 
 ### B-008: Email verification and password reset (Brevo)

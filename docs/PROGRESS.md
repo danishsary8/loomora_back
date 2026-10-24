@@ -62,3 +62,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - B-001, B-002, B-003, B-005 are merged and marked done. Good work.
 - **Q3:** Verification email and password reset are task B-008. **Q4:** `docs/openapi.yaml` is task B-009. **Q5:** Confirmed: wrong password -> 422 with `errors.email`; min password 8; keep the response shapes and document them in B-009.
 - B-004 (Docker/Render) is still open: finish it, but do not deploy.
+
+### 2026-10-25: B-007 Remove unused Laravel frontend defaults
+- **Branch / PR:** `feat/B-007-api-only` (PR into `v2-rebuild`)
+- **What changed:** Deleted `package.json`, `vite.config.js`, `resources/js/*`, `resources/css/app.css`, `resources/views/welcome.blade.php` and the `/` web route (`routes/web.php` now only has a comment). Kept `resources/views/` (with `.gitkeep`) for the mail templates coming in B-008; Laravel's own mail views live in `vendor/`. Removed the `npm install` / `npm run build` steps from the Composer `setup` script, and `composer dev` now just runs `php artisan serve` (it used `npx concurrently` and Vite).
+- **How it was verified:** `composer validate` -> valid. `php artisan test` -> 15 passed. `./vendor/bin/pint --test` -> passed. `php artisan serve` + `curl /api/v1/health` -> `{"status":"ok"}`; `curl /` -> 404.
+- **Problems:** first serve check gave `GET /` 500 because my `routes/web.php` edit had not been applied (a chained shell command stopped early); fixed and re-checked.
+- **Questions:** none.
