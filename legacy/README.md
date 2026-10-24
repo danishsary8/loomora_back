@@ -1,3 +1,7 @@
+> **Old Daycraft code. Reference only. Do not run or import. Deleted at the end of R1.**
+
+---
+
 # Daycraft API
 
 Laravel 12 API for Daycraft. It provides Sanctum bearer authentication, verified-email schedule mutations, Google OAuth, password recovery, user-owned day groups, dated checklist logs, notification settings, and optional cached prayer times.
