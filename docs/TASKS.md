@@ -37,7 +37,7 @@ Rules:
 - **Files:** `composer.json`, `routes/api.php`, `tests/Feature/HealthTest.php`, `.env.example`
 
 ### B-003: GitHub Actions CI
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Add `.github/workflows/ci.yml`: PHP 8.3, composer install (cached), Postgres 16 service, run Pint check and `php artisan test`.
   2. Run on pull requests and pushes to `main` and `v2-rebuild`.
