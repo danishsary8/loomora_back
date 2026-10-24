@@ -13,7 +13,7 @@ Rules:
 ## Queue
 
 ### B-001: Tidy repo for the rebuild
-- **Status:** todo
+- **Status:** doing
 - **Steps:**
   1. Fix `.gitignore` so `legacy/vendor`, `legacy/node_modules`, `legacy/.env`, `legacy/storage/*.key` are ignored.
   2. Add `legacy/README.md`: "Old Daycraft code. Reference only. Do not run or import. Deleted at the end of R1."
