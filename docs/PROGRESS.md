@@ -62,3 +62,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - B-001, B-002, B-003, B-005 are merged and marked done. Good work.
 - **Q3:** Verification email and password reset are task B-008. **Q4:** `docs/openapi.yaml` is task B-009. **Q5:** Confirmed: wrong password -> 422 with `errors.email`; min password 8; keep the response shapes and document them in B-009.
 - B-004 (Docker/Render) is still open: finish it, but do not deploy.
+
+### 2026-10-25: B-009 OpenAPI contract file
+- **Branch / PR:** `feat/B-009-openapi` (PR into `v2-rebuild`). Docs only; it also documents the endpoints from PR #5 (to-dos, B-006) and PR #8 (email/password, B-008), which are still in review.
+- **What changed:** `docs/openapi.yaml` (OpenAPI 3.1): `/health`, `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/email/verify`, `/auth/email/resend`, `/auth/password/forgot`, `/auth/password/reset`, `/me`, `/todos` (GET, POST), `/todos/{todo}` (PATCH, DELETE), `/todos/{todo}/done` (POST, DELETE). Bearer auth, shared error responses (401, 403, 404, 422, 429 with `Retry-After`), request/response examples, rate limits and the documented shapes (`{token, expires_at, user}` vs `{data: user}`). CLAUDE.md: new "API contract" section (update openapi.yaml in the same PR, lint command, response shapes).
+- **How it was verified:** `npx @redocly/cli@1.34.5 lint docs/openapi.yaml` -> "Your API description is valid", 2 warnings left on purpose: server URL is localhost (no production URL yet) and `/health` has no 4xx response (it has none).
+- **Problems:** a `: ` inside a description broke YAML parsing; quoted it.
+- **Questions:** none. If PR #5 or #8 changes during review, this file needs the same change.

@@ -101,12 +101,12 @@ Rules:
 - **Files:** controllers, mail classes/templates, tests
 
 ### B-009: OpenAPI contract file
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Create `docs/openapi.yaml` for every endpoint built so far (health, auth, me, todos) with request/response examples and the error shape from docs/09.
   2. Add a short "keep in sync" note to CLAUDE.md. Document the current response shapes: login and register return `{token, expires_at, user}`; `/me` returns `{data: user}`.
 - **Done when:**
-  - [ ] The file validates with an OpenAPI linter (e.g. `npx @redocly/cli lint docs/openapi.yaml`)
+  - [x] The file validates with an OpenAPI linter (e.g. `npx @redocly/cli lint docs/openapi.yaml`)
 - **Files:** `docs/openapi.yaml`, `CLAUDE.md`
 
 ### B-010: Schedule items API
