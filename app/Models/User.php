@@ -69,4 +69,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(ScheduleItem::class);
     }
+
+    /**
+     * @return HasMany<Todo, $this>
+     */
+    public function todos(): HasMany
+    {
+        return $this->hasMany(Todo::class);
+    }
 }
