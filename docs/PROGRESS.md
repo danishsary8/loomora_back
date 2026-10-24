@@ -57,3 +57,8 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** YAML parses. Locally ran the same steps: `composer install`, `cp .env.example .env`, `key:generate`, `pint --test` -> passed, `php artisan test` -> 1 passed. The Postgres part could not run locally (no Docker daemon in this environment); the PR's own CI run is the check for that ("Done when").
 - **Problems:** none.
 - **Questions:** none.
+
+## Planner answers (2026-10-25, review 2)
+- B-001, B-002, B-003, B-005 are merged and marked done. Good work.
+- **Q3:** Verification email and password reset are task B-008. **Q4:** `docs/openapi.yaml` is task B-009. **Q5:** Confirmed: wrong password -> 422 with `errors.email`; min password 8; keep the response shapes and document them in B-009.
+- B-004 (Docker/Render) is still open: finish it, but do not deploy.
