@@ -562,6 +562,305 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /schedule/day:
+    get:
+      tags: [Schedule]
+      operationId: getScheduleDay
+      summary: Occurrences for one date
+      description: Repeats applied to the date, skips removed, overrides merged, `done` from check-ins. Sorted by start time.
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+      responses:
+        '200':
+          description: The occurrences.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [date, data]
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Occurrence'
+              example:
+                date: '2026-10-26'
+                data:
+                  - item_id: 5d0c1e2a-7b3f-4c1d-9a8e-1f2b3c4d5e6f
+                    date: '2026-10-26'
+                    title: Math class
+                    category: study
+                    start_time: '08:00'
+                    end_time: '09:30'
+                    done: false
+                    overridden: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/week:
+    get:
+      tags: [Schedule]
+      operationId: getScheduleWeek
+      summary: Occurrences for seven days
+      description: Seven consecutive days starting at `start`.
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: One entry per day.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [start, data]
+                properties:
+                  start:
+                    type: string
+                    format: date
+                  data:
+                    type: array
+                    minItems: 7
+                    maxItems: 7
+                    items:
+                      type: object
+                      required: [date, occurrences]
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        occurrences:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/Occurrence'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/now:
+    get:
+      tags: [Schedule]
+      operationId: getScheduleNow
+      summary: Now and next
+      description: |
+        `now` starts at or before `time` and ends after it (end is exclusive). `next` is the first occurrence
+        starting later that day. Either is `null` when there is none (the client shows "Free" and
+        "Nothing more today"). `date` must be within one day of the user's today.
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+        - name: time
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Time'
+      responses:
+        '200':
+          description: Now and next.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [now, next]
+                properties:
+                  now:
+                    oneOf:
+                      - $ref: '#/components/schemas/Occurrence'
+                      - type: 'null'
+                  next:
+                    oneOf:
+                      - $ref: '#/components/schemas/Occurrence'
+                      - type: 'null'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/copy-day:
+    post:
+      tags: [Schedule]
+      operationId: copyScheduleDay
+      summary: Copy one weekday to others
+      description: Every item that runs on `from_weekday` also runs on `to_weekdays`. Returns the changed items.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from_weekday, to_weekdays]
+              properties:
+                from_weekday:
+                  type: integer
+                  minimum: 0
+                  maximum: 6
+                to_weekdays:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: integer
+                    minimum: 0
+                    maximum: 6
+            example:
+              from_weekday: 0
+              to_weekdays: [1, 2]
+      responses:
+        '200':
+          description: The items that changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduleItem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/items/{item}/exceptions/{date}:
+    parameters:
+      - $ref: '#/components/parameters/ScheduleItemId'
+      - $ref: '#/components/parameters/DatePath'
+    put:
+      tags: [Schedule]
+      operationId: putScheduleException
+      summary: Skip or override one day
+      description: |
+        Replaces any earlier exception for that day. The item must occur on `date`.
+        An override needs a `title` or a time and the final times must keep start before end.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [skip, override]
+                title:
+                  type: [string, 'null']
+                  maxLength: 200
+                start_time:
+                  oneOf:
+                    - $ref: '#/components/schemas/Time'
+                    - type: 'null'
+                end_time:
+                  oneOf:
+                    - $ref: '#/components/schemas/Time'
+                    - type: 'null'
+            example:
+              type: override
+              title: Exam
+              start_time: '10:00'
+              end_time: '12:00'
+      responses:
+        '200':
+          description: The stored exception.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [item_id, date, type]
+                    properties:
+                      item_id:
+                        type: string
+                        format: uuid
+                      date:
+                        type: string
+                        format: date
+                      type:
+                        type: string
+                        enum: [skip, override]
+                      title:
+                        type: [string, 'null']
+                      start_time:
+                        type: [string, 'null']
+                      end_time:
+                        type: [string, 'null']
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Schedule]
+      operationId: deleteScheduleException
+      summary: Restore that day
+      description: Safe to repeat.
+      responses:
+        '204':
+          description: Restored.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/items/{item}/checkins/{date}:
+    parameters:
+      - $ref: '#/components/parameters/ScheduleItemId'
+      - $ref: '#/components/parameters/DatePath'
+    post:
+      tags: [Schedule]
+      operationId: checkInScheduleOccurrence
+      summary: Mark an occurrence done
+      description: The item must occur on `date` and not be skipped. `201` the first time, `200` if already done.
+      responses:
+        '200':
+          $ref: '#/components/responses/CheckinResponse'
+        '201':
+          $ref: '#/components/responses/CheckinResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Schedule]
+      operationId: undoScheduleCheckin
+      summary: Undo a check-in
+      description: Safe to repeat.
+      responses:
+        '204':
+          description: Undone.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -570,6 +869,21 @@ components:
       description: Sanctum personal access token from register or login. Expires after 30 days.
 
   parameters:
+    DateQuery:
+      name: date
+      in: query
+      required: true
+      description: The user's local date.
+      schema:
+        type: string
+        format: date
+    DatePath:
+      name: date
+      in: path
+      required: true
+      schema:
+        type: string
+        format: date
     ScheduleItemId:
       name: item
       in: path
@@ -588,6 +902,29 @@ components:
         format: uuid
 
   schemas:
+    Occurrence:
+      type: object
+      required: [item_id, date, title, category, start_time, end_time, done, overridden]
+      properties:
+        item_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        title:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+        start_time:
+          $ref: '#/components/schemas/Time'
+        end_time:
+          $ref: '#/components/schemas/Time'
+        done:
+          type: boolean
+        overridden:
+          type: boolean
+          description: True when a one-day override changed this occurrence.
     Time:
       type: string
       pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
@@ -805,6 +1142,29 @@ components:
               type: string
 
   responses:
+    CheckinResponse:
+      description: The check-in.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [item_id, date, done, done_at]
+                properties:
+                  item_id:
+                    type: string
+                    format: uuid
+                  date:
+                    type: string
+                    format: date
+                  done:
+                    type: boolean
+                  done_at:
+                    type: string
+                    format: date-time
     ScheduleItemResponse:
       description: The schedule item, wrapped in `data`.
       content:
