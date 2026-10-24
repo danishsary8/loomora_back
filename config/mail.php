@@ -70,6 +70,10 @@ return [
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
         ],
 
+        'brevo' => [
+            'transport' => 'brevo',
+        ],
+
         'log' => [
             'transport' => 'log',
             'channel' => env('MAIL_LOG_CHANNEL'),
@@ -111,8 +115,8 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+        'address' => env('MAIL_FROM_ADDRESS') ?: 'hello@example.com',
+        'name' => env('MAIL_FROM_NAME') ?: env('APP_NAME', 'Loomora'),
     ],
 
 ];
