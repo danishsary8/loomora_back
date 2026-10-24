@@ -61,6 +61,11 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Problems:** none.
 - **Questions:** none.
 
+## Planner answers (2026-10-25, review 2)
+- B-001, B-002, B-003, B-005 are merged and marked done. Good work.
+- **Q3:** Verification email and password reset are task B-008. **Q4:** `docs/openapi.yaml` is task B-009. **Q5:** Confirmed: wrong password -> 422 with `errors.email`; min password 8; keep the response shapes and document them in B-009.
+- B-004 (Docker/Render) is still open: finish it, but do not deploy.
+
 ### 2026-10-24: B-006 To-dos API
 - **Branch / PR:** `feat/B-006-todos`, stacked on `feat/B-005-auth` (needs its users/auth), PR into `v2-rebuild`.
 - **What changed:** `todos` migration (UUID id, `user_id` FK with cascade delete, `title` max 200, `category` enum of the 6 categories, nullable `due_date`/`done_at`, index on user+due_date). `Todo` model with `forToday` scope and computed `isOverdueOn`/`isOldOn` (overdue = due before today and not done; old = overdue more than 30 days). `TodoPolicy` (owner only), `TodayRequest` (date checked against the user's time zone), `StoreTodoRequest` (500 per user limit), `UpdateTodoRequest`, `TodoResource` (`overdue`, `old` flags). `TodoController` + routes: `GET /todos?date=`, `POST /todos`, `PATCH /todos/{id}`, `DELETE /todos/{id}`, `POST`/`DELETE /todos/{id}/done` (`{todo}` must be a UUID). Published `lang/en` and added the two new messages there.
