@@ -22,3 +22,12 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Legacy code (reference only)
+/legacy/vendor
+/legacy/node_modules
+/legacy/.env
+/legacy/.env.*
+!/legacy/.env.example
+!/legacy/.env.production.example
+/legacy/storage/*.key
