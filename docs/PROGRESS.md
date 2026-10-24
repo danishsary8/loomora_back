@@ -17,7 +17,7 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
-_None yet._
+- **Q1 (2026-10-24, B-003 to B-006):** These tasks need the Laravel app from B-002, which is still in review (PR #2). Branching them from `v2-rebuild` now gives no app to build or test. Should I wait for B-002 to merge (current choice), or stack the next branches on `feat/B-002-scaffold-laravel`?
 
 ## Log
 
