@@ -23,6 +23,9 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q4 (2026-10-24, B-005):** docs/09 says `docs/openapi.yaml` is "kept in sync", but no task creates it yet. Add a task for it (and should every API task update it)?
 - **Q5 (2026-10-24, B-005):** Choices to confirm: wrong password returns **422** with `errors.email` (Laravel convention, matches the error shape) rather than 401; minimum password length **8**; `/me` wraps the user in `data` (Laravel API resource default) while register/login return `{token, expires_at, user}`.
 
+- **Q12 (2026-10-25, B-011 to B-013 on hold):** B-011 (occurrences) is built directly on how `schedule_items.days` is stored (Q10), so I did not start it until Q10 is answered. B-012 (streak) needs B-006 and B-011; B-013 (import) needs to-dos, schedule items, exceptions and check-ins. I took B-014 and B-015 first since they only need B-005. Answer Q10 and the next session starts B-011.
+- **Q13 (2026-10-25, B-014):** Choices to confirm: `POST /feedback` works for guests too (docs/08 allows `user_id` null; a token links it to the account), limited to 10 per hour, message max 5000 chars; a user's feedback is deleted with the account (docs/08 rule 10 "all their rows"); Google-only accounts cannot delete yet (422) until B-015 adds Google re-auth; the feedback email is plain text with Reply-To set to the user.
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -69,3 +72,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `npx @redocly/cli@1.34.5 lint docs/openapi.yaml` -> "Your API description is valid", 2 warnings left on purpose: server URL is localhost (no production URL yet) and `/health` has no 4xx response (it has none).
 - **Problems:** a `: ` inside a description broke YAML parsing; quoted it.
 - **Questions:** none. If PR #5 or #8 changes during review, this file needs the same change.
+
+### 2026-10-25: B-014 Feedback and account endpoints
+- **Branch / PR:** `feat/B-014-feedback-account`, stacked on `feat/B-009-openapi` (PR #9) for the contract. PR into `v2-rebuild`.
+- **What changed:** `feedback` table (UUID, nullable `user_id` FK cascade, message, created_at) + `Feedback` model. `POST /feedback` (guests or signed in, throttle `feedback` 10/hour): stores the row, then emails `FEEDBACK_TO_EMAIL` (`config('services.feedback.to')`) as plain text with Reply-To; a mail failure is reported but the row stays. `PATCH /me` (name, timezone only). `POST /me/survey` (goal enum + heard_from, both optional; always sets `survey_done`). `DELETE /me` (password confirmation) -> `User::deleteWithData()` in one transaction: tokens, password reset rows, sessions, then the user (FK cascades remove feedback, and to-dos/schedule once those PRs land). Messages in `lang/en/account.php`. `docs/openapi.yaml` updated.
+- **How it was verified:** `php artisan test` -> 29 passed (147 assertions) on sqlite and Postgres 16. `./vendor/bin/pint --test` -> passed. Redocly lint -> valid. The "no rows behind" test walks every table in the schema and checks no `user_id`, `tokenable_id` or `email` still points at the deleted user, while another user's token and feedback survive.
+- **Problems:** the plain-text feedback email HTML-escaped `<`, `&` and quotes; switched the text template to raw output and added a test with `&` and quotes.
+- **Questions:** Q12 (B-011 to B-013 hold), Q13.
