@@ -108,3 +108,13 @@ _Questions that need the planner or Danish. Includes any place where code and do
   - **Q16:** A schedule check-in counts on the occurrence `date`, not on the day it was tapped (a late check-in for yesterday counts for yesterday). To-dos count on the `done_at` local day. OK?
   - **Q17:** Overdue to-dos do not make older days "planned"; only a to-do whose `due_date` is that day does. Undated to-dos never plan a day. OK?
   - **Q18:** The look-back is capped at 400 days, so a current streak is at most 401; `longest_streak` is kept separately and never lowered.
+
+### 2026-10-24: B-013 Guest data import
+- **Branch / PR:** `feat/B-013-import` (PR into `v2-rebuild`). **Stacked on B-012 (`feat/B-012-streak`, PR #14)**, which sits on B-011 (#13), B-010 (#10) and includes B-006 (#5). Merge those first.
+- **What changed:** `POST /import` with `ImportRequest` (all validation and ownership/limit checks before any write), `ImportService` (one `DB::transaction`), `ImportController`, `lang/en/import.php`. Payload: `todos`, `schedule_items`, `exceptions`, `checkins`, every row with its client UUID (`exceptions`/`checkins` point at `schedule_item_id`). Response `{data: {todos|schedule_items|exceptions|checkins: {created, skipped}}}`. Existing rows (same id, or same item+day for exceptions/check-ins) are left untouched and counted as skipped, so a repeat creates nothing and never overwrites newer server edits. Streak is recomputed once after the import. `docs/openapi.yaml` has `/import`.
+- **How it was verified:** `pint --test` passed; `php artisan test` -> 133 passed (572 assertions) on sqlite and on local Postgres 16; openapi lint valid. 32 new tests: success with ids kept, visible via normal endpoints, partial/empty payload, starts_on default, streak recompute, repeat import (no duplicates, no overwrite, same-day exception/check-in skipped), invalid rows write nothing (every row kind), duplicate ids/days, forced mid-write failure rolls everything back, limits (500 to-dos / 100 items counting existing, payload cap), other users' ids refused for all four kinds, items of other users, `user_id` from client ignored.
+- **Problems:** none.
+- **Questions:**
+  - **Q19:** On a repeat import an existing row is skipped, not updated ("server copy wins"). OK, or should the import update rows the user already has?
+  - **Q20:** Imported exceptions and check-ins are not required to fall on a date the item occurs (guest data may predate later edits to `days`); they only need a valid date and an item. Should they be?
+  - **Q21:** The whole import is refused (422) if it would pass 500 to-dos or 100 items, rather than importing part. Payload caps: 5000 exceptions, 10000 check-ins.
