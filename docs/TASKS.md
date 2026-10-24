@@ -46,7 +46,7 @@ Rules:
 - **Files:** `.github/workflows/ci.yml`
 
 ### B-004: Dockerfile and Render blueprint
-- **Status:** blocked (see PROGRESS Q2)
+- **Status:** review
 - **Steps:**
   1. Add a production `Dockerfile` (PHP 8.3 + Apache or php-fpm + nginx) that runs migrations on start with `php artisan migrate --force` and fails loudly if they fail.
   2. Add `render.yaml` for a service named `loomora-api` (free plan, Docker, health check `/api/v1/health`), listing env variable NAMES only.

@@ -23,7 +23,7 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q4 (2026-10-24, B-005):** docs/09 says `docs/openapi.yaml` is "kept in sync", but no task creates it yet. Add a task for it (and should every API task update it)?
 - **Q5 (2026-10-24, B-005):** Choices to confirm: wrong password returns **422** with `errors.email` (Laravel convention, matches the error shape) rather than 401; minimum password length **8**; `/me` wraps the user in `data` (Laravel API resource default) while register/login return `{token, expires_at, user}`.
 
-- **Q2 (2026-10-24, B-004):** `docker build .` cannot finish in this cloud session: the network policy returns 403 for `deb.debian.org`, so `apt-get install libpq-dev` (needed for `pdo_pgsql`) fails. Danish: please add `deb.debian.org` under Allowed domains in this environment's network settings (https://code.claude.com/docs/en/cloud-environments#network-access), or say if a `docker build` job in CI is preferred as the check instead. Work is saved on `feat/B-004-docker-render`; no PR until the build is proven.
+- ~~**Q2**~~ Worked around 2026-10-25: the image is now built and smoke-tested by a `docker` job in CI (GitHub runners can reach `deb.debian.org`). Allowing `deb.debian.org` here is still useful for local builds. Original question: (2026-10-24, B-004) `docker build .` cannot finish in this cloud session: the network policy returns 403 for `deb.debian.org`, so `apt-get install libpq-dev` (needed for `pdo_pgsql`) fails. Danish: please add `deb.debian.org` under Allowed domains in this environment's network settings (https://code.claude.com/docs/en/cloud-environments#network-access), or say if a `docker build` job in CI is preferred as the check instead. Work is saved on `feat/B-004-docker-render`; no PR until the build is proven.
 
 ## Log
 
@@ -65,9 +65,16 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q3:** Verification email and password reset are task B-008. **Q4:** `docs/openapi.yaml` is task B-009. **Q5:** Confirmed: wrong password -> 422 with `errors.email`; min password 8; keep the response shapes and document them in B-009.
 - B-004 (Docker/Render) is still open: finish it, but do not deploy.
 
-### 2026-10-24: B-004 Dockerfile and Render blueprint (blocked)
+### 2026-10-24: B-004 Dockerfile and Render blueprint (first attempt, blocked)
 - **Branch / PR:** `feat/B-004-docker-render` (pushed, no PR yet)
 - **What changed:** `Dockerfile` (composer stage + `php:8.3-apache`, `pdo_pgsql`, `opcache`, docroot `public/`). `docker/entrypoint.sh`: binds Render's `$PORT`, caches config/routes, runs `php artisan migrate --force` with 3 attempts (Neon wakes slowly), then exits 1 with a FATAL line if all fail. `render.yaml`: `loomora-api`, free plan, Docker, health check `/api/v1/health`, 11 env names from docs/10 with `sync: false` (no values). `.dockerignore` excludes `.env`, `vendor`, `legacy`, `docs`, `tests`.
 - **How it was verified:** `render.yaml` checked against docs/10: all 11 names, no values. Composer stage of the build succeeds. The apt stage cannot run here (see Q2), so `docker build .` is NOT verified.
 - **Problems:** Docker Hub returned 429 (rate limit); images were pulled from `mirror.gcr.io` and tagged locally. A local-only Dockerfile copy with the sandbox proxy CA was used for testing; it is not committed.
 - **Questions:** Q2.
+
+### 2026-10-25: B-004 Dockerfile and Render blueprint (finished)
+- **Branch / PR:** `feat/B-004-docker-render` (PR into `v2-rebuild`)
+- **What changed:** Added a `docker` job to `.github/workflows/ci.yml`: builds the image, starts it against a Postgres 16 service and waits for `GET /api/v1/health`, then starts it with a wrong `DB_URL` and checks it exits non-zero with the `FATAL: migrations failed` line. Dockerfile, entrypoint, `render.yaml`, `.dockerignore` unchanged from the first attempt. Nothing deployed.
+- **How it was verified:** Locally: `config:cache` and `route:cache` succeed; ran the entrypoint script (Apache paths pointed at temp files) against Postgres 16 -> config and routes cached, all 5 migrations DONE, then the server command ran; with a wrong `DB_URL` -> 3 attempts, `FATAL: migrations failed after 3 attempts, refusing to start`, server command never ran; `$PORT` rewrite gives `Listen 10000` / `<VirtualHost *:10000>`. `docker build .` itself runs in CI (this session's network blocks the Debian mirror), so the PR's `docker` job is the "Done when" check.
+- **Problems:** none new.
+- **Questions:** none.
