@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ScheduleItem extends Model
 {
@@ -48,6 +49,22 @@ class ScheduleItem extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return HasMany<ScheduleException, $this>
+     */
+    public function exceptions(): HasMany
+    {
+        return $this->hasMany(ScheduleException::class);
+    }
+
+    /**
+     * @return HasMany<ScheduleCheckin, $this>
+     */
+    public function checkins(): HasMany
+    {
+        return $this->hasMany(ScheduleCheckin::class);
     }
 
     /** Stored as HH:MM:SS; the API speaks HH:MM. */

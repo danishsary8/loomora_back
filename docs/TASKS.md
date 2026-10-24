@@ -119,7 +119,7 @@ Rules:
 - **Files:** migrations, `ScheduleItem` model, controller, requests, resources, tests
 
 ### B-011: Schedule occurrences, exceptions, check-ins, now/next
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Build `ScheduleService` that returns occurrences for a date or a week (docs/08 rule 4), applying skip and override exceptions.
   2. Endpoints: `GET /schedule/day`, `/schedule/week`, `/schedule/now`, exceptions PUT/DELETE, check-ins POST/DELETE, `copy-day`.

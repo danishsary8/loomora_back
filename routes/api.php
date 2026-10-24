@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ScheduleCheckinController;
+use App\Http\Controllers\Api\V1\ScheduleController;
+use App\Http\Controllers\Api\V1\ScheduleExceptionController;
 use App\Http\Controllers\Api\V1\ScheduleItemController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,5 +23,15 @@ Route::prefix('v1')->group(function () {
         Route::post('schedule/items', [ScheduleItemController::class, 'store'])->name('schedule.items.store');
         Route::patch('schedule/items/{item}', [ScheduleItemController::class, 'update'])->name('schedule.items.update');
         Route::delete('schedule/items/{item}', [ScheduleItemController::class, 'destroy'])->name('schedule.items.destroy');
+
+        Route::get('schedule/day', [ScheduleController::class, 'day'])->name('schedule.day');
+        Route::get('schedule/week', [ScheduleController::class, 'week'])->name('schedule.week');
+        Route::get('schedule/now', [ScheduleController::class, 'now'])->name('schedule.now');
+        Route::post('schedule/copy-day', [ScheduleController::class, 'copyDay'])->name('schedule.copy-day');
+
+        Route::put('schedule/items/{item}/exceptions/{date}', [ScheduleExceptionController::class, 'put'])->name('schedule.exceptions.put');
+        Route::delete('schedule/items/{item}/exceptions/{date}', [ScheduleExceptionController::class, 'destroy'])->name('schedule.exceptions.destroy');
+        Route::post('schedule/items/{item}/checkins/{date}', [ScheduleCheckinController::class, 'store'])->name('schedule.checkins.store');
+        Route::delete('schedule/items/{item}/checkins/{date}', [ScheduleCheckinController::class, 'destroy'])->name('schedule.checkins.destroy');
     });
 });
