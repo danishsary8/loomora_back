@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
 use App\Services\ScheduleService;
+use App\Services\StreakService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +18,7 @@ class ScheduleCheckinController extends Controller
     use ValidatesPathDate;
 
     /** Marks one occurrence done (docs/08 rule 7). Idempotent. */
-    public function store(ScheduleItem $item, string $date, ScheduleService $schedule): JsonResponse
+    public function store(ScheduleItem $item, string $date, ScheduleService $schedule, StreakService $streak): JsonResponse
     {
         Gate::authorize('manage', $item);
         $this->assertValidDate($date);
@@ -28,6 +29,7 @@ class ScheduleCheckinController extends Controller
         }
 
         $checkin = $item->checkins()->firstOrCreate(['date' => $date], ['done_at' => now()]);
+        $streak->recompute($item->user);
 
         return response()->json(['data' => [
             'item_id' => $item->id,
@@ -38,12 +40,13 @@ class ScheduleCheckinController extends Controller
     }
 
     /** Undo. Safe to repeat. */
-    public function destroy(ScheduleItem $item, string $date): Response
+    public function destroy(ScheduleItem $item, string $date, StreakService $streak): Response
     {
         Gate::authorize('manage', $item);
         $this->assertValidDate($date);
 
         $item->checkins()->where('date', $date)->delete();
+        $streak->recompute($item->user);
 
         return response()->noContent();
     }

@@ -98,3 +98,13 @@ _Questions that need the planner or Danish. Includes any place where code and do
   - **Q13:** `copy-day` is read as: every item that runs on `from_weekday` also runs on `to_weekdays` (edits the repeat definitions, no new rows). Is that the intended meaning?
   - **Q14:** Exceptions and check-ins are only allowed on dates where the item actually occurs (else 422). Check-ins on future dates are allowed. Should future check-ins be refused?
   - **Q15:** `/schedule/now` rejects a `date` more than 1 day from the user's today (docs/09 "checked against the user's time zone"). `/day` and `/week` accept any date.
+
+### 2026-10-24: B-012 Streak API
+- **Branch / PR:** `feat/B-012-streak` (PR into `v2-rebuild`). **Stacked on B-011 (`feat/B-011-schedule-occurrences`, PR #13, which sits on B-010) and merges B-006 (`feat/B-006-todos`, PR #5)**, because it needs to-dos and the schedule. Merge #5 and #10 to #13 first; this diff then shrinks to B-012. Merge conflicts in `routes/api.php`, `User.php`, `PROGRESS.md` were resolved by keeping both sides.
+- **What changed:** `StreakService` (rule 8): walks back from yesterday, a counted day adds 1, a planned day with no check-off breaks, an empty day is skipped, today is never judged and adds 1 once counted. Counted = a to-do `done_at` on that local day (user time zone) or a schedule check-in with that `date`. Planned = a to-do due that day or a (non-skipped) schedule occurrence. Stores `current_streak`, `longest_streak` (never lowered), `last_streak_date`. `GET /streak?date=` returns `{data: {current_streak, longest_streak, today_counted}}`. Recomputed on to-do done/undone and on schedule check-in/undo (using the server's local "today" for the user). `docs/openapi.yaml` has `/streak`.
+- **How it was verified:** `pint --test` passed; `php artisan test` -> 101 passed (421 assertions) on sqlite and on local Postgres 16; openapi lint valid. 23 new tests: zero, today counted, consecutive days, today not judged, undated to-do, schedule check-in, planned-day break, skipped empty days, schedule planned day, skip exception, other users ignored, time zones (UTC+7 midnight edge both ways, UTC-7), stored values, longest kept, endpoint, hooks on to-do and schedule check-off/undo, `/me`.
+- **Problems:** none.
+- **Questions:**
+  - **Q16:** A schedule check-in counts on the occurrence `date`, not on the day it was tapped (a late check-in for yesterday counts for yesterday). To-dos count on the `done_at` local day. OK?
+  - **Q17:** Overdue to-dos do not make older days "planned"; only a to-do whose `due_date` is that day does. Undated to-dos never plan a day. OK?
+  - **Q18:** The look-back is capped at 400 days, so a current streak is at most 401; `longest_streak` is kept separately and never lowered.

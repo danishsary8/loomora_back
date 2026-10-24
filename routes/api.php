@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\ScheduleCheckinController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleExceptionController;
 use App\Http\Controllers\Api\V1\ScheduleItemController;
+use App\Http\Controllers\Api\V1\StreakController;
 use App\Http\Controllers\Api\V1\TodoController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,8 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'throttle:api'])->whereUuid(['item', 'todo'])->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('me', [AuthController::class, 'me'])->name('me');
+
+        Route::get('streak', [StreakController::class, 'show'])->name('streak');
 
         Route::get('todos', [TodoController::class, 'index'])->name('todos.index');
         Route::post('todos', [TodoController::class, 'store'])->name('todos.store');

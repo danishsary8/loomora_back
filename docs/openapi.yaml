@@ -27,6 +27,8 @@ tags:
     description: To-dos and the Today list.
   - name: Schedule
     description: The fixed weekly schedule.
+  - name: Streak
+    description: Days in a row with something checked off.
 security:
   - bearerAuth: []
 
@@ -858,6 +860,48 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /streak:
+    get:
+      tags: [Streak]
+      operationId: getStreak
+      summary: Current and longest streak
+      description: |
+        Recomputes the streak (docs/08 rule 8) and stores it on the user. `date` is the user's local today and
+        must be within one day of it in their time zone. Today is never judged: it only adds 1 once something
+        is checked off (`today_counted`). Checking off or undoing a to-do or schedule occurrence also recomputes it.
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+      responses:
+        '200':
+          description: The streak.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [current_streak, longest_streak, today_counted]
+                    properties:
+                      current_streak:
+                        type: integer
+                        minimum: 0
+                      longest_streak:
+                        type: integer
+                        minimum: 0
+                      today_counted:
+                        type: boolean
+              example:
+                data:
+                  current_streak: 4
+                  longest_streak: 9
+                  today_counted: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '422':
           $ref: '#/components/responses/ValidationError'
 

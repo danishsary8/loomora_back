@@ -129,7 +129,7 @@ Rules:
 - **Files:** `app/Services/ScheduleService.php`, controllers, tests
 
 ### B-012: Streak API
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. `StreakService` per docs/08 rule 8 (skip empty days, today is never judged, lazy recompute on check-off and `GET /streak`). Update users.current_streak, longest_streak, last_streak_date.
   2. Hook it into to-do and schedule check-offs. Pest tests for every rule, including time zones.
