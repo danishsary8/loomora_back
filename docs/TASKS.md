@@ -13,14 +13,14 @@ Rules:
 ## Queue
 
 ### B-001: Tidy repo for the rebuild
-- **Status:** doing
+- **Status:** review
 - **Steps:**
   1. Fix `.gitignore` so `legacy/vendor`, `legacy/node_modules`, `legacy/.env`, `legacy/storage/*.key` are ignored.
   2. Add `legacy/README.md`: "Old Daycraft code. Reference only. Do not run or import. Deleted at the end of R1."
   3. Do not copy the legacy mail-diagnostic or mail-test endpoints anywhere.
 - **Done when:**
-  - [ ] `git status` is clean after the change and no secrets are tracked
-  - [ ] `legacy/README.md` exists
+  - [x] `git status` is clean after the change and no secrets are tracked
+  - [x] `legacy/README.md` exists
 - **Files:** `.gitignore`, `legacy/README.md`
 
 ### B-002: Scaffold Laravel 12 app
