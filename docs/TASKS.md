@@ -46,14 +46,14 @@ Rules:
 - **Files:** `.github/workflows/ci.yml`
 
 ### B-004: Dockerfile and Render blueprint
-- **Status:** todo
+- **Status:** blocked (see PROGRESS Q2)
 - **Steps:**
   1. Add a production `Dockerfile` (PHP 8.3 + Apache or php-fpm + nginx) that runs migrations on start with `php artisan migrate --force` and fails loudly if they fail.
   2. Add `render.yaml` for a service named `loomora-api` (free plan, Docker, health check `/api/v1/health`), listing env variable NAMES only.
   3. Do not deploy. Do not add secrets.
 - **Done when:**
   - [ ] `docker build .` succeeds
-  - [ ] `render.yaml` lists all variables from docs/10 with no values
+  - [x] `render.yaml` lists all variables from docs/10 with no values
 - **Files:** `Dockerfile`, `render.yaml`, `.dockerignore`
 
 ### B-005: Users table and email/password auth
