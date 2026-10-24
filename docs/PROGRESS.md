@@ -23,6 +23,8 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q4 (2026-10-24, B-005):** docs/09 says `docs/openapi.yaml` is "kept in sync", but no task creates it yet. Add a task for it (and should every API task update it)?
 - **Q5 (2026-10-24, B-005):** Choices to confirm: wrong password returns **422** with `errors.email` (Laravel convention, matches the error shape) rather than 401; minimum password length **8**; `/me` wraps the user in `data` (Laravel API resource default) while register/login return `{token, expires_at, user}`.
 
+- **Q14 (2026-10-25, B-015):** Choices to confirm: (a) `GET /auth/google/redirect` also accepts an optional `timezone` (not in docs/09), because a new account needs one; without it the account starts on `UTC`; (b) Google sign-in and sign-up both link `google_id` to an existing account with the same email and mark the email verified, only when Google says the email is verified; (c) frontend route assumed: `{FRONTEND_URL}/auth/google/callback?code=` or `?error=` (`account_not_found`, `account_already_exists`, `email_not_verified`, `google_failed`); (d) stateless OAuth: the intent rides in an encrypted state that expires after 10 minutes (no session/cookie, since API and frontend are on different domains). Real login needs Render secrets (separate step, per the task).
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -69,3 +71,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `npx @redocly/cli@1.34.5 lint docs/openapi.yaml` -> "Your API description is valid", 2 warnings left on purpose: server URL is localhost (no production URL yet) and `/health` has no 4xx response (it has none).
 - **Problems:** a `: ` inside a description broke YAML parsing; quoted it.
 - **Questions:** none. If PR #5 or #8 changes during review, this file needs the same change.
+
+### 2026-10-25: B-015 Google sign-in (code only)
+- **Branch / PR:** `feat/B-015-google`, stacked on `feat/B-009-openapi` (PR #9) for the contract. PR into `v2-rebuild`.
+- **What changed:** `laravel/socialite` added; `config/services.php` `google` block (env names only). `GoogleAuthController`: `GET /auth/google/redirect?intent=sign_in|sign_up` (stateless, encrypted expiring state, scopes openid/email/profile), `GET /auth/google/callback` (errors `account_not_found` / `account_already_exists` per intent, plus `email_not_verified` and `google_failed`; links `google_id`, marks email verified, creates Google-only users with no password), redirect to the frontend with a 64-char one-time code stored hashed in the cache for 5 minutes; `POST /auth/google/exchange` (code -> `{token, expires_at, user}`, single use via `Cache::pull`). No logging of tokens or codes. Routes under the `auth` throttle. `config('app.frontend_url')` added (also added in PR #8; trivial conflict for whichever merges second). Messages in `lang/en/google.php`. `docs/openapi.yaml` updated.
+- **How it was verified:** `php artisan test` -> 28 passed (149 assertions) on sqlite and Postgres 16, with a mocked Socialite provider. `./vendor/bin/pint --test` -> passed. Redocly lint -> valid (2 new warnings: the two Google redirect endpoints have no 2xx, they only redirect). `grep` shows no logging calls in the controller. Tests: redirect builds a Google URL with client id and encrypted intent/time zone; intent validation; sign-up creates a Google-only verified user; sign-up when account exists; sign-in when none exists; sign-in links an existing email account (case-insensitive) and verifies it; lookup by google_id when email changed; unverified Google email refused; bad/expired/forged state and Google `error` fail safely; Google token failure fails safely; exchange works once; expired/unknown/short code rejected; Google-only user cannot use password login.
+- **Problems:** none.
+- **Questions:** Q14.
