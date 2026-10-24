@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -9,6 +10,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware('throttle:auth')->prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register'])->name('auth.register');
         Route::post('login', [AuthController::class, 'login'])->name('auth.login');
+        Route::get('google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+        Route::get('google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+        Route::post('google/exchange', [GoogleAuthController::class, 'exchange'])->name('auth.google.exchange');
     });
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {

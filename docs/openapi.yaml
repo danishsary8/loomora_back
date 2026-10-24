@@ -121,6 +121,90 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /auth/google/redirect:
+    get:
+      tags: [Auth]
+      operationId: googleRedirect
+      summary: Start Google sign-in
+      description: |
+        Open this URL in the browser (full page, not fetch). Redirects to Google, then back to
+        `/auth/google/callback`. `timezone` is used only when a new account is created (default `UTC`).
+      security: []
+      parameters:
+        - name: intent
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [sign_in, sign_up]
+        - name: timezone
+          in: query
+          required: false
+          schema:
+            type: string
+          example: Asia/Phnom_Penh
+      responses:
+        '302':
+          description: Redirect to Google.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/google/callback:
+    get:
+      tags: [Auth]
+      operationId: googleCallback
+      summary: Google returns here
+      description: |
+        Called by Google, not by the app. Always redirects to `{FRONTEND_URL}/auth/google/callback` with either
+        `?code=<one-time code>` or `?error=` one of `account_not_found` (sign_in, no account),
+        `account_already_exists` (sign_up, account exists), `email_not_verified`, `google_failed`.
+      security: []
+      responses:
+        '302':
+          description: Redirect to the frontend with `code` or `error`.
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/google/exchange:
+    post:
+      tags: [Auth]
+      operationId: googleExchange
+      summary: Trade the one-time code for a token
+      description: The code works once and expires after 5 minutes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 64
+                  maxLength: 64
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                default:
+                  $ref: '#/components/examples/TokenResponse'
+        '422':
+          description: Invalid, used or expired code (reported on `code`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /auth/logout:
     post:
       tags: [Auth]
