@@ -57,15 +57,15 @@ Rules:
 - **Files:** `Dockerfile`, `render.yaml`, `.dockerignore`
 
 ### B-005: Users table and email/password auth
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migration and model for `users` exactly as in docs/08-data-model.md (UUID id).
   2. Endpoints: register, login, logout, me (docs/09). Sanctum bearer tokens, 30-day expiry.
   3. Form requests for validation, API resources for output, rate limits on auth routes.
   4. Pest tests: register, login, wrong password, me, logout.
 - **Done when:**
-  - [ ] `php artisan test` passes with the new tests
-  - [ ] No endpoint accepts `user_id` from the client
+  - [x] `php artisan test` passes with the new tests
+  - [x] No endpoint accepts `user_id` from the client
 - **Files:** `database/migrations/*users*`, `app/Models/User.php`, `app/Http/Controllers/Api/V1/AuthController.php`, tests
 
 ### B-006: To-dos API
