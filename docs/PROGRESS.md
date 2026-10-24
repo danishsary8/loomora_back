@@ -23,6 +23,9 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q4 (2026-10-24, B-005):** docs/09 says `docs/openapi.yaml` is "kept in sync", but no task creates it yet. Add a task for it (and should every API task update it)?
 - **Q5 (2026-10-24, B-005):** Choices to confirm: wrong password returns **422** with `errors.email` (Laravel convention, matches the error shape) rather than 401; minimum password length **8**; `/me` wraps the user in `data` (Laravel API resource default) while register/login return `{token, expires_at, user}`.
 
+- **Q10 (2026-10-25, B-010):** docs/08 says `schedule_items.days` is `smallint[]`. I used `jsonb` (an array of 0 to 6) because Laravel has no portable array column and local tests run on sqlite. Same data and API shape; B-011 can still filter by weekday in PHP or with `jsonb` operators. OK, or switch to a real Postgres array (tests would then need Postgres everywhere)?
+- **Q11 (2026-10-25, B-010):** Choices to confirm: `category` optional (defaults to `other`, same as to-dos); `starts_on` optional (defaults to today in the user's time zone); `ends_on` must be on or after `starts_on`; `end_time` must be later on the same day (no items crossing midnight); another user's item -> 403.
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -69,3 +72,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `npx @redocly/cli@1.34.5 lint docs/openapi.yaml` -> "Your API description is valid", 2 warnings left on purpose: server URL is localhost (no production URL yet) and `/health` has no 4xx response (it has none).
 - **Problems:** a `: ` inside a description broke YAML parsing; quoted it.
 - **Questions:** none. If PR #5 or #8 changes during review, this file needs the same change.
+
+### 2026-10-25: B-010 Schedule items API
+- **Branch / PR:** `feat/B-010-schedule-items`, stacked on `feat/B-009-openapi` (PR #9) so the contract is updated in the same PR (CLAUDE.md rule). PR into `v2-rebuild`.
+- **What changed:** `schedule_items` migration (UUID id, `user_id` FK cascade, `title` max 200, `category` enum, `start_time`/`end_time` time, `days` jsonb, `starts_on`, nullable `ends_on`). `ScheduleItem` model + factory, `User::scheduleItems()`. `ScheduleItemPolicy` (owner only). `StoreScheduleItemRequest` / `UpdateScheduleItemRequest` sharing rules: HH:MM times, start < end, days non-empty, distinct, 0 to 6, `ends_on` >= `starts_on`, 100 per user; edits are checked against stored values. `ScheduleItemResource` (times as HH:MM, days sorted). Routes: `GET`/`POST /schedule/items`, `PATCH`/`DELETE /schedule/items/{item}` (`{item}` must be a UUID). Messages in `lang/en/schedule.php`. `docs/openapi.yaml` updated (paths, `Time`, `Weekdays`, `ScheduleItem` schemas).
+- **How it was verified:** `php artisan test` -> 30 passed (144 assertions) on sqlite and Postgres 16. `./vendor/bin/pint --test` -> passed. Redocly lint -> valid (same 2 expected warnings). Mutation check: policy always-allow makes the ownership test fail. Tests: create for several days, defaults (starts_on in user time zone across the UTC date line, category), explicit dates, start >= end rejected, validation of days/times/title/category/dates, `user_id` ignored, 100 limit, list only mine in time order, edit all repeats (checked against stored times), delete, 404 unknown/malformed id, 403 on another user's item, 401 without token, cascade on account delete.
+- **Problems:** none.
+- **Questions:** Q10, Q11.

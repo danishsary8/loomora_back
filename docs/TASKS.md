@@ -110,12 +110,12 @@ Rules:
 - **Files:** `docs/openapi.yaml`, `CLAUDE.md`
 
 ### B-010: Schedule items API
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migrations, models, policies, controllers for `schedule_items` per docs/08 and docs/09 (create, list, edit all repeats, delete all repeats). Validate start < end, days non-empty, limit 100 per user.
   2. Pest tests including cross-user access denied.
 - **Done when:**
-  - [ ] Tests and Pint pass
+  - [x] Tests and Pint pass
 - **Files:** migrations, `ScheduleItem` model, controller, requests, resources, tests
 
 ### B-011: Schedule occurrences, exceptions, check-ins, now/next
