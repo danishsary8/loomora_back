@@ -25,6 +25,12 @@ tags:
     description: The signed-in user's account.
   - name: Todos
     description: To-dos and the Today list.
+  - name: Schedule
+    description: The fixed weekly schedule.
+  - name: Import
+    description: Moving guest data into an account.
+  - name: Streak
+    description: Days in a row with something checked off.
 security:
   - bearerAuth: []
 
@@ -536,6 +542,567 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /schedule/items:
+    get:
+      tags: [Schedule]
+      operationId: listScheduleItems
+      summary: The repeat definitions
+      description: All of the user's schedule items, ordered by start time.
+      responses:
+        '200':
+          description: The items.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduleItem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [Schedule]
+      operationId: createScheduleItem
+      summary: Create a schedule item
+      description: |
+        One item covers every ticked weekday. `start_time` must be before `end_time`.
+        At most 100 items per user (reported on `title`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleItemInput'
+            example:
+              title: Math class
+              category: study
+              start_time: '08:00'
+              end_time: '09:30'
+              days: [0, 2, 4]
+      responses:
+        '201':
+          $ref: '#/components/responses/ScheduleItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/items/{item}:
+    parameters:
+      - $ref: '#/components/parameters/ScheduleItemId'
+    patch:
+      tags: [Schedule]
+      operationId: updateScheduleItem
+      summary: Edit all repeats
+      description: Send only the fields to change. Times and dates are checked against the stored values.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                category:
+                  $ref: '#/components/schemas/Category'
+                start_time:
+                  $ref: '#/components/schemas/Time'
+                end_time:
+                  $ref: '#/components/schemas/Time'
+                days:
+                  $ref: '#/components/schemas/Weekdays'
+                starts_on:
+                  type: string
+                  format: date
+                ends_on:
+                  type: [string, 'null']
+                  format: date
+            example:
+              days: [5, 6]
+      responses:
+        '200':
+          $ref: '#/components/responses/ScheduleItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Schedule]
+      operationId: deleteScheduleItem
+      summary: Delete all repeats
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /schedule/day:
+    get:
+      tags: [Schedule]
+      operationId: getScheduleDay
+      summary: Occurrences for one date
+      description: Repeats applied to the date, skips removed, overrides merged, `done` from check-ins. Sorted by start time.
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+      responses:
+        '200':
+          description: The occurrences.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [date, data]
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Occurrence'
+              example:
+                date: '2026-10-26'
+                data:
+                  - item_id: 5d0c1e2a-7b3f-4c1d-9a8e-1f2b3c4d5e6f
+                    date: '2026-10-26'
+                    title: Math class
+                    category: study
+                    start_time: '08:00'
+                    end_time: '09:30'
+                    done: false
+                    overridden: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/week:
+    get:
+      tags: [Schedule]
+      operationId: getScheduleWeek
+      summary: Occurrences for seven days
+      description: Seven consecutive days starting at `start`.
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: One entry per day.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [start, data]
+                properties:
+                  start:
+                    type: string
+                    format: date
+                  data:
+                    type: array
+                    minItems: 7
+                    maxItems: 7
+                    items:
+                      type: object
+                      required: [date, occurrences]
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        occurrences:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/Occurrence'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/now:
+    get:
+      tags: [Schedule]
+      operationId: getScheduleNow
+      summary: Now and next
+      description: |
+        `now` starts at or before `time` and ends after it (end is exclusive). `next` is the first occurrence
+        starting later that day. Either is `null` when there is none (the client shows "Free" and
+        "Nothing more today"). `date` must be within one day of the user's today.
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+        - name: time
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Time'
+      responses:
+        '200':
+          description: Now and next.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [now, next]
+                properties:
+                  now:
+                    oneOf:
+                      - $ref: '#/components/schemas/Occurrence'
+                      - type: 'null'
+                  next:
+                    oneOf:
+                      - $ref: '#/components/schemas/Occurrence'
+                      - type: 'null'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/copy-day:
+    post:
+      tags: [Schedule]
+      operationId: copyScheduleDay
+      summary: Copy one weekday to others
+      description: Every item that runs on `from_weekday` also runs on `to_weekdays`. Returns the changed items.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from_weekday, to_weekdays]
+              properties:
+                from_weekday:
+                  type: integer
+                  minimum: 0
+                  maximum: 6
+                to_weekdays:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: integer
+                    minimum: 0
+                    maximum: 6
+            example:
+              from_weekday: 0
+              to_weekdays: [1, 2]
+      responses:
+        '200':
+          description: The items that changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduleItem'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/items/{item}/exceptions/{date}:
+    parameters:
+      - $ref: '#/components/parameters/ScheduleItemId'
+      - $ref: '#/components/parameters/DatePath'
+    put:
+      tags: [Schedule]
+      operationId: putScheduleException
+      summary: Skip or override one day
+      description: |
+        Replaces any earlier exception for that day. The item must occur on `date`.
+        An override needs a `title` or a time and the final times must keep start before end.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [skip, override]
+                title:
+                  type: [string, 'null']
+                  maxLength: 200
+                start_time:
+                  oneOf:
+                    - $ref: '#/components/schemas/Time'
+                    - type: 'null'
+                end_time:
+                  oneOf:
+                    - $ref: '#/components/schemas/Time'
+                    - type: 'null'
+            example:
+              type: override
+              title: Exam
+              start_time: '10:00'
+              end_time: '12:00'
+      responses:
+        '200':
+          description: The stored exception.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [item_id, date, type]
+                    properties:
+                      item_id:
+                        type: string
+                        format: uuid
+                      date:
+                        type: string
+                        format: date
+                      type:
+                        type: string
+                        enum: [skip, override]
+                      title:
+                        type: [string, 'null']
+                      start_time:
+                        type: [string, 'null']
+                      end_time:
+                        type: [string, 'null']
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Schedule]
+      operationId: deleteScheduleException
+      summary: Restore that day
+      description: Safe to repeat.
+      responses:
+        '204':
+          description: Restored.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /schedule/items/{item}/checkins/{date}:
+    parameters:
+      - $ref: '#/components/parameters/ScheduleItemId'
+      - $ref: '#/components/parameters/DatePath'
+    post:
+      tags: [Schedule]
+      operationId: checkInScheduleOccurrence
+      summary: Mark an occurrence done
+      description: The item must occur on `date` and not be skipped. `201` the first time, `200` if already done.
+      responses:
+        '200':
+          $ref: '#/components/responses/CheckinResponse'
+        '201':
+          $ref: '#/components/responses/CheckinResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Schedule]
+      operationId: undoScheduleCheckin
+      summary: Undo a check-in
+      description: Safe to repeat.
+      responses:
+        '204':
+          description: Undone.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /streak:
+    get:
+      tags: [Streak]
+      operationId: getStreak
+      summary: Current and longest streak
+      description: |
+        Recomputes the streak (docs/08 rule 8) and stores it on the user. `date` is the user's local today and
+        must be within one day of it in their time zone. Today is never judged: it only adds 1 once something
+        is checked off (`today_counted`). Checking off or undoing a to-do or schedule occurrence also recomputes it.
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+      responses:
+        '200':
+          description: The streak.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [current_streak, longest_streak, today_counted]
+                    properties:
+                      current_streak:
+                        type: integer
+                        minimum: 0
+                      longest_streak:
+                        type: integer
+                        minimum: 0
+                      today_counted:
+                        type: boolean
+              example:
+                data:
+                  current_streak: 4
+                  longest_streak: 9
+                  today_counted: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /import:
+    post:
+      tags: [Import]
+      operationId: importGuestData
+      summary: Import guest data
+      description: |
+        Moves a guest's local data into the account in one transaction (docs/08 rule 9). Every row carries the
+        UUID the client gave it. Nothing is written if any row is invalid (422 with the row in the error key,
+        for example `todos.1.title`). Safe to send again: rows the user already has (same id, or the same item
+        and day for exceptions and check-ins) are left untouched and counted as `skipped`. An id that belongs
+        to another account is a 422. Limits: 500 to-dos and 100 schedule items per user in total, 5000 exceptions
+        and 10000 check-ins per call. Exceptions and check-ins must point at an item in the payload or one the user has.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                todos:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, title]
+                    properties:
+                      id: {type: string, format: uuid}
+                      title: {type: string, minLength: 1, maxLength: 200}
+                      category: {$ref: '#/components/schemas/Category'}
+                      due_date: {type: [string, 'null'], format: date}
+                      done_at: {type: [string, 'null'], format: date-time}
+                      created_at: {type: [string, 'null'], format: date-time}
+                schedule_items:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, title, start_time, end_time, days]
+                    properties:
+                      id: {type: string, format: uuid}
+                      title: {type: string, minLength: 1, maxLength: 200}
+                      category: {$ref: '#/components/schemas/Category'}
+                      start_time: {$ref: '#/components/schemas/Time'}
+                      end_time: {$ref: '#/components/schemas/Time'}
+                      days: {$ref: '#/components/schemas/Weekdays'}
+                      starts_on: {type: string, format: date}
+                      ends_on: {type: [string, 'null'], format: date}
+                      created_at: {type: [string, 'null'], format: date-time}
+                exceptions:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, schedule_item_id, date, type]
+                    properties:
+                      id: {type: string, format: uuid}
+                      schedule_item_id: {type: string, format: uuid}
+                      date: {type: string, format: date}
+                      type: {type: string, enum: [skip, override]}
+                      title: {type: [string, 'null']}
+                      start_time: {oneOf: [{$ref: '#/components/schemas/Time'}, {type: 'null'}]}
+                      end_time: {oneOf: [{$ref: '#/components/schemas/Time'}, {type: 'null'}]}
+                checkins:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, schedule_item_id, date]
+                    properties:
+                      id: {type: string, format: uuid}
+                      schedule_item_id: {type: string, format: uuid}
+                      date: {type: string, format: date}
+                      done_at: {type: [string, 'null'], format: date-time}
+            example:
+              todos:
+                - id: 3b9a6c1e-2d4f-4a8b-9c0d-1e2f3a4b5c6d
+                  title: Buy pens
+                  category: life
+                  due_date: '2026-10-26'
+              schedule_items:
+                - id: 5d0c1e2a-7b3f-4c1d-9a8e-1f2b3c4d5e6f
+                  title: Math class
+                  category: study
+                  start_time: '08:00'
+                  end_time: '09:30'
+                  days: [0, 2]
+              exceptions: []
+              checkins: []
+      responses:
+        '200':
+          description: What was created and what was already there.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [todos, schedule_items, exceptions, checkins]
+                    properties:
+                      todos: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      schedule_items: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      exceptions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      checkins: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+              example:
+                data:
+                  todos: {created: 1, skipped: 0}
+                  schedule_items: {created: 1, skipped: 0}
+                  exceptions: {created: 0, skipped: 0}
+                  checkins: {created: 0, skipped: 0}
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -544,6 +1111,29 @@ components:
       description: Sanctum personal access token from register or login. Expires after 30 days.
 
   parameters:
+    DateQuery:
+      name: date
+      in: query
+      required: true
+      description: The user's local date.
+      schema:
+        type: string
+        format: date
+    DatePath:
+      name: date
+      in: path
+      required: true
+      schema:
+        type: string
+        format: date
+    ScheduleItemId:
+      name: item
+      in: path
+      required: true
+      description: Schedule item UUID. A value that is not a UUID returns 404.
+      schema:
+        type: string
+        format: uuid
     TodoId:
       name: todo
       in: path
@@ -554,6 +1144,99 @@ components:
         format: uuid
 
   schemas:
+    Occurrence:
+      type: object
+      required: [item_id, date, title, category, start_time, end_time, done, overridden]
+      properties:
+        item_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        title:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+        start_time:
+          $ref: '#/components/schemas/Time'
+        end_time:
+          $ref: '#/components/schemas/Time'
+        done:
+          type: boolean
+        overridden:
+          type: boolean
+          description: True when a one-day override changed this occurrence.
+    Time:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+      description: Local time, `HH:MM` (24 h).
+      examples: ['08:00']
+
+    Weekdays:
+      type: array
+      minItems: 1
+      maxItems: 7
+      uniqueItems: true
+      description: Weekdays the item repeats on. 0 = Monday ... 6 = Sunday.
+      items:
+        type: integer
+        minimum: 0
+        maximum: 6
+
+    ScheduleItemInput:
+      type: object
+      required: [title, start_time, end_time, days]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        category:
+          $ref: '#/components/schemas/Category'
+          description: Defaults to `other`.
+        start_time:
+          $ref: '#/components/schemas/Time'
+        end_time:
+          $ref: '#/components/schemas/Time'
+        days:
+          $ref: '#/components/schemas/Weekdays'
+        starts_on:
+          type: string
+          format: date
+          description: Defaults to today in the user's time zone.
+        ends_on:
+          type: [string, 'null']
+          format: date
+          description: Must be on or after `starts_on`.
+
+    ScheduleItem:
+      type: object
+      required: [id, title, category, start_time, end_time, days, starts_on, ends_on, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+        start_time:
+          $ref: '#/components/schemas/Time'
+        end_time:
+          $ref: '#/components/schemas/Time'
+        days:
+          $ref: '#/components/schemas/Weekdays'
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: [string, 'null']
+          format: date
+        created_at:
+          type: string
+          format: date-time
+
     Category:
       type: string
       enum: [study, work, health, life, rest, other]
@@ -701,6 +1384,50 @@ components:
               type: string
 
   responses:
+    CheckinResponse:
+      description: The check-in.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [item_id, date, done, done_at]
+                properties:
+                  item_id:
+                    type: string
+                    format: uuid
+                  date:
+                    type: string
+                    format: date
+                  done:
+                    type: boolean
+                  done_at:
+                    type: string
+                    format: date-time
+    ScheduleItemResponse:
+      description: The schedule item, wrapped in `data`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/ScheduleItem'
+          example:
+            data:
+              id: 4e2a1b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b
+              title: Math class
+              category: study
+              start_time: '08:00'
+              end_time: '09:30'
+              days: [0, 2, 4]
+              starts_on: '2026-10-25'
+              ends_on: null
+              created_at: '2026-10-24T23:30:00Z'
     Message:
       description: Done. A human-readable message.
       content:
