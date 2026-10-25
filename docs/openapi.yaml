@@ -42,10 +42,18 @@ paths:
       tags: [System]
       operationId: getHealth
       summary: Health check
+      description: Public and cheap. With `deep=1` it also checks the database connection.
       security: []
+      parameters:
+        - name: deep
+          in: query
+          required: false
+          description: Set to `1` to also check the database.
+          schema:
+            type: boolean
       responses:
         '200':
-          description: The API is up.
+          description: The API is up (and, with `deep=1`, the database answers).
           content:
             application/json:
               schema:
@@ -55,8 +63,29 @@ paths:
                   status:
                     type: string
                     const: ok
+                  database:
+                    type: string
+                    const: ok
+                    description: Only present with `deep=1`.
               example:
                 status: ok
+        '503':
+          description: Only with `deep=1`. The database does not answer. No error details are returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, database]
+                properties:
+                  status:
+                    type: string
+                    const: error
+                  database:
+                    type: string
+                    const: down
+              example:
+                status: error
+                database: down
 
   /auth/register:
     post:
