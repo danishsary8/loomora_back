@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Todo;
 
+use App\Http\Requests\Concerns\TrimsTitle;
 use App\Models\Todo;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -9,6 +10,8 @@ use Illuminate\Validation\Validator;
 
 class StoreTodoRequest extends FormRequest
 {
+    use TrimsTitle;
+
     /**
      * @return array<string, mixed>
      */
@@ -30,12 +33,5 @@ class StoreTodoRequest extends FormRequest
                 }
             },
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if (is_string($this->input('title'))) {
-            $this->merge(['title' => trim($this->input('title'))]);
-        }
     }
 }
