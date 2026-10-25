@@ -175,3 +175,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 ## Planner review (2026-10-25)
 - B-004 to B-014 reviewed and merged (B-015 pending a conflict). Code is clean: no debug leftovers, no client-supplied `user_id`, tests green in CI. Good work.
 - Gap found: CORS is not configured, so a browser on Vercel cannot call the API. Added B-016. Also added B-017 (static analysis) and B-018 (README and DEPLOY.md).
+
+### 2026-10-25: B-018 README and deployment guide
+- **Branch / PR:** `feat/B-018-readme-deploy` (PR into `v2-rebuild`)
+- **What changed:** `README.md` rewritten for the API: what Loomora is, stack table, run locally without Docker (SQLite or Postgres) and with Docker (Postgres container + image), how to run tests/Pint/PHPStan/Redocly, environment variable table (12 names from `render.yaml` + `APP_DEBUG`, meaning only, no values), links to `docs/openapi.yaml` and `docs/DEPLOY.md`, docs 08-10 added to the doc list. New `docs/DEPLOY.md`: click-by-click Neon (US region, direct connection, no `-pooler`), Brevo (verified sender, API key), Google (same client ID, new secret, delete old secret, redirect `https://<api-host>/api/v1/auth/google/callback`), Render (Blueprint from `render.yaml`, generating `APP_KEY`, every env var, no `APP_DEBUG`), first-deploy checks (logs, health, `?deep=1`, register + email, Google, CORS) and free-plan notes.
+- **How it was verified:** a script checked that all 12 `render.yaml` names appear in both README and DEPLOY.md, and that `.env.example` has no name missing from `render.yaml` (besides local-only APP_NAME/APP_ENV/APP_DEBUG/LOG_*). Confirmed Laravel accepts Neon's `postgresql://...?sslmode=` URL form (connected to local Postgres 16 with that scheme). `php artisan test` -> 175 passed on sqlite and Postgres; Pint passed (docs-only change).
+- **Problems:** none. The README mentions `./vendor/bin/phpstan`, which arrives with B-017 (PR #17).
+- **Questions:** none.
