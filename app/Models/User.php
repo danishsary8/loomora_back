@@ -87,4 +87,20 @@ class User extends Authenticatable
             $this->delete();
         });
     }
+
+    /**
+     * @return HasMany<ScheduleItem, $this>
+     */
+    public function scheduleItems(): HasMany
+    {
+        return $this->hasMany(ScheduleItem::class);
+    }
+
+    /**
+     * @return HasMany<Todo, $this>
+     */
+    public function todos(): HasMany
+    {
+        return $this->hasMany(Todo::class);
+    }
 }

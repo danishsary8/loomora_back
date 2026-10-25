@@ -2,7 +2,14 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\FeedbackController;
+use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\ScheduleCheckinController;
+use App\Http\Controllers\Api\V1\ScheduleController;
+use App\Http\Controllers\Api\V1\ScheduleExceptionController;
+use App\Http\Controllers\Api\V1\ScheduleItemController;
+use App\Http\Controllers\Api\V1\StreakController;
+use App\Http\Controllers\Api\V1\TodoController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -15,11 +22,37 @@ Route::prefix('v1')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->name('auth.login');
     });
 
-    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:api'])->whereUuid(['item', 'todo'])->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('me', [AuthController::class, 'me'])->name('me');
         Route::patch('me', [MeController::class, 'update'])->name('me.update');
         Route::post('me/survey', [MeController::class, 'survey'])->name('me.survey');
         Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
+
+        Route::post('import', [ImportController::class, 'store'])->name('import');
+
+        Route::get('streak', [StreakController::class, 'show'])->name('streak');
+
+        Route::get('todos', [TodoController::class, 'index'])->name('todos.index');
+        Route::post('todos', [TodoController::class, 'store'])->name('todos.store');
+        Route::patch('todos/{todo}', [TodoController::class, 'update'])->name('todos.update');
+        Route::delete('todos/{todo}', [TodoController::class, 'destroy'])->name('todos.destroy');
+        Route::post('todos/{todo}/done', [TodoController::class, 'markDone'])->name('todos.done');
+        Route::delete('todos/{todo}/done', [TodoController::class, 'markUndone'])->name('todos.undone');
+
+        Route::get('schedule/items', [ScheduleItemController::class, 'index'])->name('schedule.items.index');
+        Route::post('schedule/items', [ScheduleItemController::class, 'store'])->name('schedule.items.store');
+        Route::patch('schedule/items/{item}', [ScheduleItemController::class, 'update'])->name('schedule.items.update');
+        Route::delete('schedule/items/{item}', [ScheduleItemController::class, 'destroy'])->name('schedule.items.destroy');
+
+        Route::get('schedule/day', [ScheduleController::class, 'day'])->name('schedule.day');
+        Route::get('schedule/week', [ScheduleController::class, 'week'])->name('schedule.week');
+        Route::get('schedule/now', [ScheduleController::class, 'now'])->name('schedule.now');
+        Route::post('schedule/copy-day', [ScheduleController::class, 'copyDay'])->name('schedule.copy-day');
+
+        Route::put('schedule/items/{item}/exceptions/{date}', [ScheduleExceptionController::class, 'put'])->name('schedule.exceptions.put');
+        Route::delete('schedule/items/{item}/exceptions/{date}', [ScheduleExceptionController::class, 'destroy'])->name('schedule.exceptions.destroy');
+        Route::post('schedule/items/{item}/checkins/{date}', [ScheduleCheckinController::class, 'store'])->name('schedule.checkins.store');
+        Route::delete('schedule/items/{item}/checkins/{date}', [ScheduleCheckinController::class, 'destroy'])->name('schedule.checkins.destroy');
     });
 });
