@@ -175,12 +175,12 @@ Rules:
 - **Files:** `config/cors.php`, `bootstrap/app.php`, middleware, tests
 
 ### B-017: Static analysis and unused-code check
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Add Larastan (PHPStan) at a sensible level and fix all findings. Remove unused code, imports, classes, translations and config the tool or a manual pass finds.
   2. Add it to CI.
 - **Done when:**
-  - [ ] CI runs Pint, PHPStan and tests green
+  - [x] CI runs Pint, PHPStan and tests green
 - **Files:** `phpstan.neon`, `composer.json`, `.github/workflows/ci.yml`, various
 
 ### B-018: README and deployment guide

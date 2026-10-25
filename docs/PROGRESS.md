@@ -175,3 +175,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 ## Planner review (2026-10-25)
 - B-004 to B-014 reviewed and merged (B-015 pending a conflict). Code is clean: no debug leftovers, no client-supplied `user_id`, tests green in CI. Good work.
 - Gap found: CORS is not configured, so a browser on Vercel cannot call the API. Added B-016. Also added B-017 (static analysis) and B-018 (README and DEPLOY.md).
+
+### 2026-10-25: B-017 Static analysis and unused-code check
+- **Branch / PR:** `feat/B-017-larastan` (PR into `v2-rebuild`)
+- **What changed:** `larastan/larastan` ^3 (PHPStan 2) dev dependency; `phpstan.neon` at level 6 over `app`, `bootstrap/app.php`, `config`, `database`, `routes`. CI runs PHPStan after Pint. Fixes for every finding: typed `@property` docblocks on all models (date casts now Carbon), generic `HasFactory`, `@return array<int, Closure>` on FormRequest `after()` hooks, generic `ImportService::fill()` and `setAttribute()` for id/created_at, `User` narrowing before `associate()`, a typed `GoogleProvider` helper for `stateless()`, typed import payload before `collect()`, removed unnecessary nullsafe calls. Unused code: removed `lang/en/pagination.php` and `lang/en/passwords.php` (no references; framework defaults remain); no unused custom translation keys; policies look unreferenced to grep but are auto-discovered.
+- **How it was verified:** CI: Pint, PHPStan (0 errors) and tests (175) green, Docker job green. Locally: Pint passed, 175 tests on sqlite and Postgres 16. First CI run found 487 errors (about 440 from Pest closures, 47 in app code); second run 12; third run 0.
+- **Problems:** this session cannot download new packages from GitHub anymore ("Could not authenticate against github.com"), so Larastan was added with `composer require --dev --no-install` and PHPStan only ran in CI. Pest tests are excluded from analysis because `$this` inside a Pest closure is the test case, which PHPStan cannot see; they still run as tests.
+- **Questions:** none.
