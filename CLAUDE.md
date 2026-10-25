@@ -31,3 +31,9 @@
 ## Safety
 - Never commit secrets. Keep `.env.example` up to date with empty values.
 - Never force-push. Never delete data, branches, or files that hold data.
+
+## Clean code (always)
+- Remove unused code in every task: imports, variables, functions, files, dead branches, commented-out code, unused dependencies.
+- Small functions with clear names, one responsibility each. No duplicated logic: extract it.
+- No debug logs, no leftover TODOs. Prefer deleting code to keeping it "just in case".
+- Run the linter and the unused-code check (`npm run lint` / Pint) before every PR, and say in the PR that you did.
