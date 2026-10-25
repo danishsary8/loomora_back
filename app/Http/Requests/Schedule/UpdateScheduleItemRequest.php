@@ -25,6 +25,9 @@ class UpdateScheduleItemRequest extends FormRequest
         return $rules;
     }
 
+    /**
+     * @return array<int, \Closure>
+     */
     public function after(): array
     {
         return [

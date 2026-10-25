@@ -108,10 +108,10 @@ class ScheduleService
         return [
             'item_id' => $item->id,
             'date' => $date,
-            'title' => $exception?->title ?? $item->title,
+            'title' => $exception->title ?? $item->title,
             'category' => $item->category,
-            'start_time' => ScheduleItem::hhmm($exception?->start_time ?? $item->start_time),
-            'end_time' => ScheduleItem::hhmm($exception?->end_time ?? $item->end_time),
+            'start_time' => ScheduleItem::hhmm($exception->start_time ?? $item->start_time),
+            'end_time' => ScheduleItem::hhmm($exception->end_time ?? $item->end_time),
             'done' => $done,
             'overridden' => $exception !== null,
         ];

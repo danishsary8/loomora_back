@@ -24,6 +24,9 @@ class StoreTodoRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<int, \Closure>
+     */
     public function after(): array
     {
         return [

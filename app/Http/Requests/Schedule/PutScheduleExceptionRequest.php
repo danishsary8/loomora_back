@@ -31,6 +31,9 @@ class PutScheduleExceptionRequest extends FormRequest
     }
 
     /** An override must change something, and the final times must still be start < end. */
+    /**
+     * @return array<int, \Closure>
+     */
     public function after(): array
     {
         return [

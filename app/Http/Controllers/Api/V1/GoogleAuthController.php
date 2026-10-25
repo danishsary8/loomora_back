@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 use Throwable;
 
 /**
@@ -40,7 +41,7 @@ class GoogleAuthController extends Controller
             'nonce' => Str::random(16),
         ]));
 
-        return Socialite::driver('google')
+        return $this->google()
             ->stateless()
             ->scopes(['openid', 'email', 'profile'])
             ->with(['state' => $state, 'prompt' => 'select_account'])
@@ -56,7 +57,7 @@ class GoogleAuthController extends Controller
         }
 
         try {
-            $google = Socialite::driver('google')->stateless()->user();
+            $google = $this->google()->stateless()->user();
         } catch (Throwable $e) {
             report($e);
 
@@ -142,6 +143,14 @@ class GoogleAuthController extends Controller
     private function toFrontend(array $params): RedirectResponse
     {
         return redirect()->away(rtrim(config('app.frontend_url'), '/').'/auth/google/callback?'.http_build_query($params));
+    }
+
+    private function google(): GoogleProvider
+    {
+        $driver = Socialite::driver('google');
+        assert($driver instanceof GoogleProvider);
+
+        return $driver;
     }
 
     private function cacheKey(string $code): string
