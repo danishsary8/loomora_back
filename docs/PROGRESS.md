@@ -162,3 +162,7 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `php artisan test` -> 29 passed (147 assertions) on sqlite and Postgres 16. `./vendor/bin/pint --test` -> passed. Redocly lint -> valid. The "no rows behind" test walks every table in the schema and checks no `user_id`, `tokenable_id` or `email` still points at the deleted user, while another user's token and feedback survive.
 - **Problems:** the plain-text feedback email HTML-escaped `<`, `&` and quotes; switched the text template to raw output and added a test with `&` and quotes.
 - **Questions:** Q12 (B-011 to B-013 hold), Q13.
+
+## Planner review (2026-10-25)
+- B-004 to B-014 reviewed and merged (B-015 pending a conflict). Code is clean: no debug leftovers, no client-supplied `user_id`, tests green in CI. Good work.
+- Gap found: CORS is not configured, so a browser on Vercel cannot call the API. Added B-016. Also added B-017 (static analysis) and B-018 (README and DEPLOY.md).
