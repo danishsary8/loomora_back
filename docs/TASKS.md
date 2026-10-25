@@ -90,14 +90,14 @@ Rules:
 - **Files:** `package.json`, `vite.config.js`, `resources/*`, `routes/web.php`
 
 ### B-008: Email verification and password reset (Brevo)
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Endpoints from docs/09: email/verify, email/resend, password/forgot, password/reset. Registration sends the verification email.
   2. Mail through the Laravel mailer with an env-driven transport: `log` driver in local/test, Brevo (API or SMTP) in production. Env names only, no values. Plain, branded HTML mail templates (English, text via lang files).
   3. Pest tests with `Mail::fake()`: verify, resend (throttled), forgot, reset, expired/invalid token.
 - **Done when:**
-  - [ ] Tests and Pint pass; no secret in the repo
-  - [ ] If a Brevo key is needed to test for real, mark that part `blocked` with the exact question
+  - [x] Tests and Pint pass; no secret in the repo
+  - [x] If a Brevo key is needed to test for real, mark that part `blocked` with the exact question
 - **Files:** controllers, mail classes/templates, tests
 
 ### B-009: OpenAPI contract file

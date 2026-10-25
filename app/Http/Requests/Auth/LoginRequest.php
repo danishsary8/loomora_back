@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Requests\Concerns\NormalizesEmail;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LoginRequest extends FormRequest
 {
+    use NormalizesEmail;
+
     /**
      * @return array<string, mixed>
      */
@@ -15,12 +18,5 @@ class LoginRequest extends FormRequest
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if (is_string($this->input('email'))) {
-            $this->merge(['email' => strtolower(trim($this->input('email')))]);
-        }
     }
 }
