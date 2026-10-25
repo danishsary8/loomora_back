@@ -20,6 +20,9 @@ class ScheduleNowRequest extends FormRequest
     }
 
     /** The client's "today" must be within a day of the user's own time zone (docs/09). */
+    /**
+     * @return array<int, \Closure>
+     */
     public function after(): array
     {
         return [

@@ -21,6 +21,8 @@ class TodayRequest extends FormRequest
     /**
      * The client sends its local date; it must be within a day of "today"
      * in the user's own time zone (docs/09, A8-8).
+     *
+     * @return array<int, \Closure>
      */
     public function after(): array
     {

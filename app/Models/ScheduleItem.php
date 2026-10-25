@@ -2,14 +2,30 @@
 
 namespace App\Models;
 
+use Database\Factories\ScheduleItemFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string $user_id
+ * @property string $title
+ * @property string $category
+ * @property string $start_time
+ * @property string $end_time
+ * @property list<int> $days
+ * @property Carbon $starts_on
+ * @property Carbon|null $ends_on
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
 class ScheduleItem extends Model
 {
+    /** @use HasFactory<ScheduleItemFactory> */
     use HasFactory, HasUuids;
 
     /** The fixed set of 6 categories (docs/08 rule 12). */

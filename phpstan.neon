@@ -3,10 +3,11 @@ includes:
 
 parameters:
     level: 6
+    # Pest tests are not analysed: inside a Pest closure `$this` is the test
+    # case, which PHPStan cannot see. The tests themselves run in CI.
     paths:
         - app
         - bootstrap/app.php
         - config
         - database
         - routes
-        - tests

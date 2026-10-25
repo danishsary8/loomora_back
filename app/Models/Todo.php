@@ -3,14 +3,27 @@
 namespace App\Models;
 
 use Carbon\CarbonInterface;
+use Database\Factories\TodoFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string $id
+ * @property string $user_id
+ * @property string $title
+ * @property string $category
+ * @property Carbon|null $due_date
+ * @property Carbon|null $done_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
 class Todo extends Model
 {
+    /** @use HasFactory<TodoFactory> */
     use HasFactory, HasUuids;
 
     /** The fixed set of 6 categories (docs/08 rule 12). */

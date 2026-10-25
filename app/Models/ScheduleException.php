@@ -6,6 +6,15 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $id
+ * @property string $schedule_item_id
+ * @property string $date
+ * @property string $type
+ * @property string|null $title
+ * @property string|null $start_time
+ * @property string|null $end_time
+ */
 class ScheduleException extends Model
 {
     use HasUuids;

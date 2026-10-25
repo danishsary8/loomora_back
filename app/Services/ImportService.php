@@ -149,8 +149,12 @@ class ImportService
     }
 
     /**
+     * @template T of Model
+     *
+     * @param  T  $model
      * @param  list<string>  $fields
      * @param  array<string, mixed>  $row
+     * @return T
      */
     private function fill(Model $model, array $row, array $fields): Model
     {
