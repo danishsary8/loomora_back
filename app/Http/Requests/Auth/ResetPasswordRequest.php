@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Requests\Concerns\NormalizesEmail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
 class ResetPasswordRequest extends FormRequest
 {
+    use NormalizesEmail;
+
     /**
      * @return array<string, mixed>
      */
@@ -17,12 +20,5 @@ class ResetPasswordRequest extends FormRequest
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string', Password::min(8)],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if (is_string($this->input('email'))) {
-            $this->merge(['email' => strtolower(trim($this->input('email')))]);
-        }
     }
 }
