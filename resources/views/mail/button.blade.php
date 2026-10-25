@@ -1,0 +1,1 @@
+<a href="{{ $url }}" style="display:inline-block;background:#FFD23F;color:#111111;border:3px solid #111111;box-shadow:4px 4px 0 #111111;padding:12px 20px;font-weight:bold;text-decoration:none;">{{ $label }}</a>
