@@ -55,7 +55,7 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
-    | The web app. Links in emails (verify, reset password) point here.
+    | The web app. Links in emails and sign-in redirects point here.
     */
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 

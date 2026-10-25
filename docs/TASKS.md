@@ -156,12 +156,12 @@ Rules:
 - **Files:** controllers, migrations, tests
 
 ### B-015: Google sign-in (code only)
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Socialite flow from docs/09: redirect (with `intent` sign_in or sign_up), callback, one-time code exchange. Errors `account_not_found` and `account_already_exists` per intent. Link google_id; never log tokens.
   2. Pest tests with a mocked Socialite provider. Real login testing is a separate step that needs Render secrets; do not ask for secrets here.
 - **Done when:**
-  - [ ] Tests and Pint pass
+  - [x] Tests and Pint pass
 - **Files:** `GoogleAuthController`, config/services.php, tests
 
 ### B-016: Production hardening (CORS, headers, config)
