@@ -184,12 +184,12 @@ Rules:
 - **Files:** `phpstan.neon`, `composer.json`, `.github/workflows/ci.yml`, various
 
 ### B-018: README and deployment guide
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. `README.md`: what Loomora is, stack, how to run locally (with and without Docker), how to run tests, environment variable table (names and meaning, no values), link to `docs/openapi.yaml`.
   2. `docs/DEPLOY.md`: exact click-by-click steps for Danish for Render (service `loomora-api`, Docker, env vars), Neon (direct connection string, US region), Brevo, Google redirect URIs (`https://<api-host>/api/v1/auth/google/callback`), and first-deploy checks. Write it for a student with no DevOps experience.
 - **Done when:**
-  - [ ] README and DEPLOY.md exist and match `render.yaml` and `.env.example`
+  - [x] README and DEPLOY.md exist and match `render.yaml` and `.env.example`
 - **Files:** `README.md`, `docs/DEPLOY.md`
 
 ## Done
