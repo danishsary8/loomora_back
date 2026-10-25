@@ -46,14 +46,14 @@ Rules:
 - **Files:** `.github/workflows/ci.yml`
 
 ### B-004: Dockerfile and Render blueprint
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Add a production `Dockerfile` (PHP 8.3 + Apache or php-fpm + nginx) that runs migrations on start with `php artisan migrate --force` and fails loudly if they fail.
   2. Add `render.yaml` for a service named `loomora-api` (free plan, Docker, health check `/api/v1/health`), listing env variable NAMES only.
   3. Do not deploy. Do not add secrets.
 - **Done when:**
   - [ ] `docker build .` succeeds
-  - [ ] `render.yaml` lists all variables from docs/10 with no values
+  - [x] `render.yaml` lists all variables from docs/10 with no values
 - **Files:** `Dockerfile`, `render.yaml`, `.dockerignore`
 
 ### B-005: Users table and email/password auth
@@ -69,24 +69,24 @@ Rules:
 - **Files:** `database/migrations/*users*`, `app/Models/User.php`, `app/Http/Controllers/Api/V1/AuthController.php`, tests
 
 ### B-006: To-dos API
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migration, model, policy and controller for `todos` per docs/08 and docs/09.
   2. `GET /todos?date=` implements the Today list rules and the computed `overdue` flag.
   3. Done and undone endpoints.
   4. Pest tests for every rule: due today, undated, overdue, future hidden, other users' data not visible.
 - **Done when:**
-  - [ ] All tests pass
-  - [ ] A user cannot read or change another user's to-do (test proves it)
+  - [x] All tests pass
+  - [x] A user cannot read or change another user's to-do (test proves it)
 - **Files:** migration, `app/Models/Todo.php`, `TodoController.php`, tests
 
 ### B-007: Remove unused Laravel frontend defaults
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Remove `package.json`, `vite.config.js`, `resources/js`, `resources/css` and the `welcome` view and web route. Keep mail views and API-only routing.
   2. Make sure `php artisan test` and Pint still pass.
 - **Done when:**
-  - [ ] Tests and Pint pass; `GET /api/v1/health` still returns ok
+  - [x] Tests and Pint pass; `GET /api/v1/health` still returns ok
 - **Files:** `package.json`, `vite.config.js`, `resources/*`, `routes/web.php`
 
 ### B-008: Email verification and password reset (Brevo)
@@ -101,25 +101,25 @@ Rules:
 - **Files:** controllers, mail classes/templates, tests
 
 ### B-009: OpenAPI contract file
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Create `docs/openapi.yaml` for every endpoint built so far (health, auth, me, todos) with request/response examples and the error shape from docs/09.
   2. Add a short "keep in sync" note to CLAUDE.md. Document the current response shapes: login and register return `{token, expires_at, user}`; `/me` returns `{data: user}`.
 - **Done when:**
-  - [ ] The file validates with an OpenAPI linter (e.g. `npx @redocly/cli lint docs/openapi.yaml`)
+  - [x] The file validates with an OpenAPI linter (e.g. `npx @redocly/cli lint docs/openapi.yaml`)
 - **Files:** `docs/openapi.yaml`, `CLAUDE.md`
 
 ### B-010: Schedule items API
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migrations, models, policies, controllers for `schedule_items` per docs/08 and docs/09 (create, list, edit all repeats, delete all repeats). Validate start < end, days non-empty, limit 100 per user.
   2. Pest tests including cross-user access denied.
 - **Done when:**
-  - [ ] Tests and Pint pass
+  - [x] Tests and Pint pass
 - **Files:** migrations, `ScheduleItem` model, controller, requests, resources, tests
 
 ### B-011: Schedule occurrences, exceptions, check-ins, now/next
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Build `ScheduleService` that returns occurrences for a date or a week (docs/08 rule 4), applying skip and override exceptions.
   2. Endpoints: `GET /schedule/day`, `/schedule/week`, `/schedule/now`, exceptions PUT/DELETE, check-ins POST/DELETE, `copy-day`.
@@ -129,7 +129,7 @@ Rules:
 - **Files:** `app/Services/ScheduleService.php`, controllers, tests
 
 ### B-012: Streak API
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. `StreakService` per docs/08 rule 8 (skip empty days, today is never judged, lazy recompute on check-off and `GET /streak`). Update users.current_streak, longest_streak, last_streak_date.
   2. Hook it into to-do and schedule check-offs. Pest tests for every rule, including time zones.
@@ -138,7 +138,7 @@ Rules:
 - **Files:** `app/Services/StreakService.php`, tests
 
 ### B-013: Guest data import
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. `POST /import` per docs/08 rule 9: to-dos, schedule items, exceptions, check-ins with client UUIDs; idempotent; one transaction; enforce limits.
   2. Pest tests: success, repeat import creates no duplicates, invalid payload writes nothing, cannot overwrite another user's ids.

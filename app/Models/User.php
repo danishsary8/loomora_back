@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -59,5 +60,21 @@ class User extends Authenticatable
             'longest_streak' => 'integer',
             'last_streak_date' => 'date',
         ];
+    }
+
+    /**
+     * @return HasMany<ScheduleItem, $this>
+     */
+    public function scheduleItems(): HasMany
+    {
+        return $this->hasMany(ScheduleItem::class);
+    }
+
+    /**
+     * @return HasMany<Todo, $this>
+     */
+    public function todos(): HasMany
+    {
+        return $this->hasMany(Todo::class);
     }
 }
