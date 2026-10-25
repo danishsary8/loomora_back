@@ -165,7 +165,7 @@ Rules:
 - **Files:** `GoogleAuthController`, config/services.php, tests
 
 ### B-016: Production hardening (CORS, headers, config)
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Publish and set `config/cors.php`: allow only the origin(s) in `FRONTEND_URL` (comma-separated allowed), `api/*` paths, bearer auth (no credentials), methods and headers needed. Pest test: allowed origin passes preflight, other origin does not.
   2. Force JSON for all API errors, hide stack traces in production (`APP_DEBUG=false` documented), add basic security headers middleware, trust Render proxy headers (HTTPS URLs correct).
@@ -175,7 +175,7 @@ Rules:
 - **Files:** `config/cors.php`, `bootstrap/app.php`, middleware, tests
 
 ### B-017: Static analysis and unused-code check
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Add Larastan (PHPStan) at a sensible level and fix all findings. Remove unused code, imports, classes, translations and config the tool or a manual pass finds.
   2. Add it to CI.
@@ -184,7 +184,7 @@ Rules:
 - **Files:** `phpstan.neon`, `composer.json`, `.github/workflows/ci.yml`, various
 
 ### B-018: README and deployment guide
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. `README.md`: what Loomora is, stack, how to run locally (with and without Docker), how to run tests, environment variable table (names and meaning, no values), link to `docs/openapi.yaml`.
   2. `docs/DEPLOY.md`: exact click-by-click steps for Danish for Render (service `loomora-api`, Docker, env vars), Neon (direct connection string, US region), Brevo, Google redirect URIs (`https://<api-host>/api/v1/auth/google/callback`), and first-deploy checks. Write it for a student with no DevOps experience.
