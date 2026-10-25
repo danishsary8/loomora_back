@@ -39,6 +39,12 @@ return [
         'key' => env('BREVO_API_KEY'),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
     'feedback' => [
         // Where feedback messages are emailed (docs/07 S13).
         'to' => env('FEEDBACK_TO_EMAIL'),
