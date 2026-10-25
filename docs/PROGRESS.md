@@ -74,6 +74,14 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `php artisan test` -> 35 passed (153 assertions) on sqlite and on Postgres 16 (Docker). `./vendor/bin/pint --test` -> passed. Mutation check: making `TodoPolicy` always allow made the ownership test fail, so the test really guards access. Tests cover due today (done and not), undated not done, undated done hidden, overdue first + flag, old after 30 days, future hidden, date validation, create defaults, validation, `user_id` ignored, 500 limit, edit, delete, 404 for unknown/malformed id, done/undone, idempotent done, other users' to-dos not listed and 403 on edit/done/undone/delete, 401 without token, cascade on account delete.
 - **Problems:** the Docker daemon had stopped while the session was idle; restarted it for the Postgres run.
 - **Questions:** Q6, Q7.
+
+### 2026-10-25: B-007 Remove unused Laravel frontend defaults
+- **Branch / PR:** `feat/B-007-api-only` (PR into `v2-rebuild`)
+- **What changed:** Deleted `package.json`, `vite.config.js`, `resources/js/*`, `resources/css/app.css`, `resources/views/welcome.blade.php` and the `/` web route (`routes/web.php` now only has a comment). Kept `resources/views/` (with `.gitkeep`) for the mail templates coming in B-008; Laravel's own mail views live in `vendor/`. Removed the `npm install` / `npm run build` steps from the Composer `setup` script, and `composer dev` now just runs `php artisan serve` (it used `npx concurrently` and Vite).
+- **How it was verified:** `composer validate` -> valid. `php artisan test` -> 15 passed. `./vendor/bin/pint --test` -> passed. `php artisan serve` + `curl /api/v1/health` -> `{"status":"ok"}`; `curl /` -> 404.
+- **Problems:** first serve check gave `GET /` 500 because my `routes/web.php` edit had not been applied (a chained shell command stopped early); fixed and re-checked.
+- **Questions:** none.
+
 ### 2026-10-25: B-009 OpenAPI contract file
 - **Branch / PR:** `feat/B-009-openapi` (PR into `v2-rebuild`). Docs only; it also documents the endpoints from PR #5 (to-dos, B-006) and PR #8 (email/password, B-008), which are still in review.
 - **What changed:** `docs/openapi.yaml` (OpenAPI 3.1): `/health`, `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/email/verify`, `/auth/email/resend`, `/auth/password/forgot`, `/auth/password/reset`, `/me`, `/todos` (GET, POST), `/todos/{todo}` (PATCH, DELETE), `/todos/{todo}/done` (POST, DELETE). Bearer auth, shared error responses (401, 403, 404, 422, 429 with `Retry-After`), request/response examples, rate limits and the documented shapes (`{token, expires_at, user}` vs `{data: user}`). CLAUDE.md: new "API contract" section (update openapi.yaml in the same PR, lint command, response shapes).
