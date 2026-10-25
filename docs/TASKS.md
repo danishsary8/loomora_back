@@ -138,7 +138,7 @@ Rules:
 - **Files:** `app/Services/StreakService.php`, tests
 
 ### B-013: Guest data import
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. `POST /import` per docs/08 rule 9: to-dos, schedule items, exceptions, check-ins with client UUIDs; idempotent; one transaction; enforce limits.
   2. Pest tests: success, repeat import creates no duplicates, invalid payload writes nothing, cannot overwrite another user's ids.

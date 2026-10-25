@@ -27,6 +27,8 @@ tags:
     description: To-dos and the Today list.
   - name: Schedule
     description: The fixed weekly schedule.
+  - name: Import
+    description: Moving guest data into an account.
   - name: Streak
     description: Days in a row with something checked off.
 security:
@@ -900,6 +902,118 @@ paths:
                   current_streak: 4
                   longest_streak: 9
                   today_counted: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /import:
+    post:
+      tags: [Import]
+      operationId: importGuestData
+      summary: Import guest data
+      description: |
+        Moves a guest's local data into the account in one transaction (docs/08 rule 9). Every row carries the
+        UUID the client gave it. Nothing is written if any row is invalid (422 with the row in the error key,
+        for example `todos.1.title`). Safe to send again: rows the user already has (same id, or the same item
+        and day for exceptions and check-ins) are left untouched and counted as `skipped`. An id that belongs
+        to another account is a 422. Limits: 500 to-dos and 100 schedule items per user in total, 5000 exceptions
+        and 10000 check-ins per call. Exceptions and check-ins must point at an item in the payload or one the user has.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                todos:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, title]
+                    properties:
+                      id: {type: string, format: uuid}
+                      title: {type: string, minLength: 1, maxLength: 200}
+                      category: {$ref: '#/components/schemas/Category'}
+                      due_date: {type: [string, 'null'], format: date}
+                      done_at: {type: [string, 'null'], format: date-time}
+                      created_at: {type: [string, 'null'], format: date-time}
+                schedule_items:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, title, start_time, end_time, days]
+                    properties:
+                      id: {type: string, format: uuid}
+                      title: {type: string, minLength: 1, maxLength: 200}
+                      category: {$ref: '#/components/schemas/Category'}
+                      start_time: {$ref: '#/components/schemas/Time'}
+                      end_time: {$ref: '#/components/schemas/Time'}
+                      days: {$ref: '#/components/schemas/Weekdays'}
+                      starts_on: {type: string, format: date}
+                      ends_on: {type: [string, 'null'], format: date}
+                      created_at: {type: [string, 'null'], format: date-time}
+                exceptions:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, schedule_item_id, date, type]
+                    properties:
+                      id: {type: string, format: uuid}
+                      schedule_item_id: {type: string, format: uuid}
+                      date: {type: string, format: date}
+                      type: {type: string, enum: [skip, override]}
+                      title: {type: [string, 'null']}
+                      start_time: {oneOf: [{$ref: '#/components/schemas/Time'}, {type: 'null'}]}
+                      end_time: {oneOf: [{$ref: '#/components/schemas/Time'}, {type: 'null'}]}
+                checkins:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, schedule_item_id, date]
+                    properties:
+                      id: {type: string, format: uuid}
+                      schedule_item_id: {type: string, format: uuid}
+                      date: {type: string, format: date}
+                      done_at: {type: [string, 'null'], format: date-time}
+            example:
+              todos:
+                - id: 3b9a6c1e-2d4f-4a8b-9c0d-1e2f3a4b5c6d
+                  title: Buy pens
+                  category: life
+                  due_date: '2026-10-26'
+              schedule_items:
+                - id: 5d0c1e2a-7b3f-4c1d-9a8e-1f2b3c4d5e6f
+                  title: Math class
+                  category: study
+                  start_time: '08:00'
+                  end_time: '09:30'
+                  days: [0, 2]
+              exceptions: []
+              checkins: []
+      responses:
+        '200':
+          description: What was created and what was already there.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [todos, schedule_items, exceptions, checkins]
+                    properties:
+                      todos: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      schedule_items: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      exceptions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      checkins: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+              example:
+                data:
+                  todos: {created: 1, skipped: 0}
+                  schedule_items: {created: 1, skipped: 0}
+                  exceptions: {created: 0, skipped: 0}
+                  checkins: {created: 0, skipped: 0}
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
