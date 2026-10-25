@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Concerns\RespondsWithToken;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
@@ -15,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    use RespondsWithToken;
+
     public function register(RegisterRequest $request): JsonResponse
     {
         $user = User::create($request->validated());
@@ -46,16 +49,5 @@ class AuthController extends Controller
     public function me(Request $request): UserResource
     {
         return new UserResource($request->user());
-    }
-
-    private function tokenResponse(User $user, int $status): JsonResponse
-    {
-        $token = $user->createToken('api', ['*'], now()->addMinutes(config('sanctum.expiration')));
-
-        return response()->json([
-            'token' => $token->plainTextToken,
-            'expires_at' => $token->accessToken->expires_at->toIso8601ZuluString(),
-            'user' => new UserResource($user),
-        ], $status);
     }
 }

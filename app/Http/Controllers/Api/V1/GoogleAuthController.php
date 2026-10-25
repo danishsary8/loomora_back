@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Concerns\RespondsWithToken;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\GoogleExchangeRequest;
 use App\Http\Requests\Auth\GoogleRedirectRequest;
-use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +25,8 @@ use Throwable;
  */
 class GoogleAuthController extends Controller
 {
+    use RespondsWithToken;
+
     private const STATE_TTL_SECONDS = 600;
 
     private const CODE_TTL_SECONDS = 300;
@@ -109,13 +111,7 @@ class GoogleAuthController extends Controller
             throw ValidationException::withMessages(['code' => [__('google.code_invalid')]]);
         }
 
-        $token = $user->createToken('api', ['*'], now()->addMinutes(config('sanctum.expiration')));
-
-        return response()->json([
-            'token' => $token->plainTextToken,
-            'expires_at' => $token->accessToken->expires_at->toIso8601ZuluString(),
-            'user' => new UserResource($user),
-        ]);
+        return $this->tokenResponse($user);
     }
 
     /**
