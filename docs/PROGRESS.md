@@ -36,6 +36,8 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q12 (2026-10-25, B-011 to B-013 on hold):** B-011 (occurrences) is built directly on how `schedule_items.days` is stored (Q10), so I did not start it until Q10 is answered. B-012 (streak) needs B-006 and B-011; B-013 (import) needs to-dos, schedule items, exceptions and check-ins. I took B-014 and B-015 first since they only need B-005. Answer Q10 and the next session starts B-011.
 - **Q13 (2026-10-25, B-014):** Choices to confirm: `POST /feedback` works for guests too (docs/08 allows `user_id` null; a token links it to the account), limited to 10 per hour, message max 5000 chars; a user's feedback is deleted with the account (docs/08 rule 10 "all their rows"); Google-only accounts cannot delete yet (422) until B-015 adds Google re-auth; the feedback email is plain text with Reply-To set to the user.
 
+- **Q15 (2026-10-25, B-016):** Choices to confirm: (a) `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, `nosniff` on every response, HSTS only over HTTPS; (b) `trustProxies(at: '*')` because Render's proxy IPs are not fixed (safe only while the app is reachable only through Render); (c) `APP_DEBUG` is not listed in `render.yaml` because Laravel defaults it to false when unset; the `.env.example` comment says it must be false in production.
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -166,3 +168,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 ## Planner review (2026-10-25)
 - B-004 to B-014 reviewed and merged (B-015 pending a conflict). Code is clean: no debug leftovers, no client-supplied `user_id`, tests green in CI. Good work.
 - Gap found: CORS is not configured, so a browser on Vercel cannot call the API. Added B-016. Also added B-017 (static analysis) and B-018 (README and DEPLOY.md).
+
+### 2026-10-25: B-016 Production hardening (CORS, headers, config)
+- **Branch / PR:** `feat/B-016-hardening` (PR into `v2-rebuild`)
+- **What changed:** `config/cors.php` published: only `api/*`, origins read from `FRONTEND_URL` (comma-separated, trailing slashes trimmed), methods GET/POST/PUT/PATCH/DELETE/OPTIONS, headers Accept/Authorization/Content-Type/X-Requested-With, exposes `Retry-After`, no credentials (bearer tokens), 24 h preflight cache. `SecurityHeaders` middleware (nosniff, frame DENY, no-referrer, CSP `default-src 'none'`, HSTS over HTTPS) appended globally. `trustProxies(at: '*')` so Render's `X-Forwarded-Proto` gives correct `https` URLs. `HealthController`: `GET /api/v1/health` unchanged and DB-free; `?deep=1` runs `select 1` and returns 503 `{status: error, database: unavailable}` on failure. API errors were already JSON (B-005); test added that a 404 with debug off has no trace. `.env.example` comments for `APP_DEBUG` and `FRONTEND_URL`. `docs/openapi.yaml` health updated.
+- **How it was verified:** `php artisan test` -> 172 passed (736 assertions) on sqlite and Postgres 16. `./vendor/bin/pint --test` -> passed. Redocly lint -> valid. Tests: allowed origin passes a PATCH preflight (no credentials header); second listed origin allowed; other origin gets no `Access-Control-Allow-Origin` on preflight or GET; comma-separated `FRONTEND_URL` parsing; security headers; HSTS only when `X-Forwarded-Proto: https`; 404 JSON without trace when debug is off; plain health never queries the DB; deep health ok; deep health 503 when the DB fails.
+- **Problems:** `env()` ignores `putenv()`, so the parsing test sets `$_SERVER`/`$_ENV` and restores them.
+- **Questions:** Q15.
