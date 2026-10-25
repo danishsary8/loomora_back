@@ -23,6 +23,9 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q4 (2026-10-24, B-005):** docs/09 says `docs/openapi.yaml` is "kept in sync", but no task creates it yet. Add a task for it (and should every API task update it)?
 - **Q5 (2026-10-24, B-005):** Choices to confirm: wrong password returns **422** with `errors.email` (Laravel convention, matches the error shape) rather than 401; minimum password length **8**; `/me` wraps the user in `data` (Laravel API resource default) while register/login return `{token, expires_at, user}`.
 
+- **Q6 (2026-10-24, B-006):** docs/08 rule 1 shows undated to-dos only "if not done", so checking off an undated item makes it vanish from Today right away (a due-today item stays visible as done). Implemented exactly as written. Should an undated item done *today* stay visible until the day ends?
+- **Q7 (2026-10-24, B-006):** Choices to confirm: (a) `category` is optional on create and defaults to `other` (docs/02 says optional, docs/08 has no null); (b) `?date=` must be within 1 day of the user's local today, otherwise 422; (c) another user's to-do returns **403** (policy) rather than 404; (d) to-dos sort overdue first, then by due date, then creation time.
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -62,3 +65,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - B-001, B-002, B-003, B-005 are merged and marked done. Good work.
 - **Q3:** Verification email and password reset are task B-008. **Q4:** `docs/openapi.yaml` is task B-009. **Q5:** Confirmed: wrong password -> 422 with `errors.email`; min password 8; keep the response shapes and document them in B-009.
 - B-004 (Docker/Render) is still open: finish it, but do not deploy.
+
+### 2026-10-24: B-006 To-dos API
+- **Branch / PR:** `feat/B-006-todos`, stacked on `feat/B-005-auth` (needs its users/auth), PR into `v2-rebuild`.
+- **What changed:** `todos` migration (UUID id, `user_id` FK with cascade delete, `title` max 200, `category` enum of the 6 categories, nullable `due_date`/`done_at`, index on user+due_date). `Todo` model with `forToday` scope and computed `isOverdueOn`/`isOldOn` (overdue = due before today and not done; old = overdue more than 30 days). `TodoPolicy` (owner only), `TodayRequest` (date checked against the user's time zone), `StoreTodoRequest` (500 per user limit), `UpdateTodoRequest`, `TodoResource` (`overdue`, `old` flags). `TodoController` + routes: `GET /todos?date=`, `POST /todos`, `PATCH /todos/{id}`, `DELETE /todos/{id}`, `POST`/`DELETE /todos/{id}/done` (`{todo}` must be a UUID). Published `lang/en` and added the two new messages there.
+- **How it was verified:** `php artisan test` -> 35 passed (153 assertions) on sqlite and on Postgres 16 (Docker). `./vendor/bin/pint --test` -> passed. Mutation check: making `TodoPolicy` always allow made the ownership test fail, so the test really guards access. Tests cover due today (done and not), undated not done, undated done hidden, overdue first + flag, old after 30 days, future hidden, date validation, create defaults, validation, `user_id` ignored, 500 limit, edit, delete, 404 for unknown/malformed id, done/undone, idempotent done, other users' to-dos not listed and 403 on edit/done/undone/delete, 401 without token, cascade on account delete.
+- **Problems:** the Docker daemon had stopped while the session was idle; restarted it for the Postgres run.
+- **Questions:** Q6, Q7.
