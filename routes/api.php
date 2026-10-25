@@ -2,9 +2,8 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
-use App\Http\Controllers\Api\V1\PasswordResetController;
-
 use App\Http\Controllers\Api\V1\ImportController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ScheduleCheckinController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleExceptionController;
