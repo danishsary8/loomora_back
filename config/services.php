@@ -45,4 +45,9 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'feedback' => [
+        // Where feedback messages are emailed (docs/07 S13).
+        'to' => env('FEEDBACK_TO_EMAIL'),
+    ],
+
 ];

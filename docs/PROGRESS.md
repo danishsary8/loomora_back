@@ -35,6 +35,9 @@ _Questions that need the planner or Danish. Includes any place where code and do
 
 - **Q14 (2026-10-25, B-015):** Choices to confirm: (a) `GET /auth/google/redirect` also accepts an optional `timezone` (not in docs/09), because a new account needs one; without it the account starts on `UTC`; (b) Google sign-in and sign-up both link `google_id` to an existing account with the same email and mark the email verified, only when Google says the email is verified; (c) frontend route assumed: `{FRONTEND_URL}/auth/google/callback?code=` or `?error=` (`account_not_found`, `account_already_exists`, `email_not_verified`, `google_failed`); (d) stateless OAuth: the intent rides in an encrypted state that expires after 10 minutes (no session/cookie, since API and frontend are on different domains). Real login needs Render secrets (separate step, per the task).
 
+- **Q12 (2026-10-25, B-011 to B-013 on hold):** B-011 (occurrences) is built directly on how `schedule_items.days` is stored (Q10), so I did not start it until Q10 is answered. B-012 (streak) needs B-006 and B-011; B-013 (import) needs to-dos, schedule items, exceptions and check-ins. I took B-014 and B-015 first since they only need B-005. Answer Q10 and the next session starts B-011.
+- **Q13 (2026-10-25, B-014):** Choices to confirm: `POST /feedback` works for guests too (docs/08 allows `user_id` null; a token links it to the account), limited to 10 per hour, message max 5000 chars; a user's feedback is deleted with the account (docs/08 rule 10 "all their rows"); Google-only accounts cannot delete yet (422) until B-015 adds Google re-auth; the feedback email is plain text with Reply-To set to the user.
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -161,3 +164,14 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `php artisan test` -> 28 passed (149 assertions) on sqlite and Postgres 16, with a mocked Socialite provider. `./vendor/bin/pint --test` -> passed. Redocly lint -> valid (2 new warnings: the two Google redirect endpoints have no 2xx, they only redirect). `grep` shows no logging calls in the controller. Tests: redirect builds a Google URL with client id and encrypted intent/time zone; intent validation; sign-up creates a Google-only verified user; sign-up when account exists; sign-in when none exists; sign-in links an existing email account (case-insensitive) and verifies it; lookup by google_id when email changed; unverified Google email refused; bad/expired/forged state and Google `error` fail safely; Google token failure fails safely; exchange works once; expired/unknown/short code rejected; Google-only user cannot use password login.
 - **Problems:** none.
 - **Questions:** Q14.
+
+### 2026-10-25: B-014 Feedback and account endpoints
+- **Branch / PR:** `feat/B-014-feedback-account`, stacked on `feat/B-009-openapi` (PR #9) for the contract. PR into `v2-rebuild`.
+- **What changed:** `feedback` table (UUID, nullable `user_id` FK cascade, message, created_at) + `Feedback` model. `POST /feedback` (guests or signed in, throttle `feedback` 10/hour): stores the row, then emails `FEEDBACK_TO_EMAIL` (`config('services.feedback.to')`) as plain text with Reply-To; a mail failure is reported but the row stays. `PATCH /me` (name, timezone only). `POST /me/survey` (goal enum + heard_from, both optional; always sets `survey_done`). `DELETE /me` (password confirmation) -> `User::deleteWithData()` in one transaction: tokens, password reset rows, sessions, then the user (FK cascades remove feedback, and to-dos/schedule once those PRs land). Messages in `lang/en/account.php`. `docs/openapi.yaml` updated.
+- **How it was verified:** `php artisan test` -> 29 passed (147 assertions) on sqlite and Postgres 16. `./vendor/bin/pint --test` -> passed. Redocly lint -> valid. The "no rows behind" test walks every table in the schema and checks no `user_id`, `tokenable_id` or `email` still points at the deleted user, while another user's token and feedback survive.
+- **Problems:** the plain-text feedback email HTML-escaped `<`, `&` and quotes; switched the text template to raw output and added a test with `&` and quotes.
+- **Questions:** Q12 (B-011 to B-013 hold), Q13.
+
+## Planner review (2026-10-25)
+- B-004 to B-014 reviewed and merged (B-015 pending a conflict). Code is clean: no debug leftovers, no client-supplied `user_id`, tests green in CI. Good work.
+- Gap found: CORS is not configured, so a browser on Vercel cannot call the API. Added B-016. Also added B-017 (static analysis) and B-018 (README and DEPLOY.md).

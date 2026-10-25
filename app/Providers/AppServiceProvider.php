@@ -29,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('verification', fn (Request $request) => Limit::perMinutes(10, 3)->by($request->user()?->id ?: $request->ip()));
 
+        RateLimiter::for('feedback', fn (Request $request) => Limit::perHour(10)->by($request->user()?->id ?: $request->ip()));
+
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
 
         // Production mail goes through Brevo's API (MAIL_MAILER=brevo, BREVO_API_KEY).
