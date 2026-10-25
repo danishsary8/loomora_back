@@ -165,13 +165,13 @@ Rules:
 - **Files:** `GoogleAuthController`, config/services.php, tests
 
 ### B-016: Production hardening (CORS, headers, config)
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Publish and set `config/cors.php`: allow only the origin(s) in `FRONTEND_URL` (comma-separated allowed), `api/*` paths, bearer auth (no credentials), methods and headers needed. Pest test: allowed origin passes preflight, other origin does not.
   2. Force JSON for all API errors, hide stack traces in production (`APP_DEBUG=false` documented), add basic security headers middleware, trust Render proxy headers (HTTPS URLs correct).
   3. Make the health route also check the database connection (`/api/v1/health` stays public and cheap; add `?deep=1` for the DB check).
 - **Done when:**
-  - [ ] Tests and Pint pass; the CORS tests prove the allowed and blocked cases
+  - [x] Tests and Pint pass; the CORS tests prove the allowed and blocked cases
 - **Files:** `config/cors.php`, `bootstrap/app.php`, middleware, tests
 
 ### B-017: Static analysis and unused-code check
