@@ -24,7 +24,7 @@ class ScheduleItemResource extends JsonResource
             'start_time' => ScheduleItem::hhmm($this->start_time),
             'end_time' => ScheduleItem::hhmm($this->end_time),
             'days' => $days,
-            'starts_on' => $this->starts_on?->toDateString(),
+            'starts_on' => $this->starts_on->toDateString(),
             'ends_on' => $this->ends_on?->toDateString(),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
         ];

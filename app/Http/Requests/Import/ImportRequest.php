@@ -113,7 +113,9 @@ class ImportRequest extends FormRequest
     /** Exceptions and check-ins must point at an item in this payload or one the user already has. */
     private function checkReferencesAndDuplicates(Validator $validator): void
     {
-        $known = collect($this->input('schedule_items', []))->pluck('id')
+        /** @var list<array<string, mixed>> $items */
+        $items = $this->input('schedule_items', []);
+        $known = collect($items)->pluck('id')
             ->merge($this->user()->scheduleItems()->pluck('id'))->flip();
 
         foreach (['exceptions', 'checkins'] as $key) {
@@ -158,7 +160,9 @@ class ImportRequest extends FormRequest
         }
 
         // An item id that exists but is not the user's also makes its children unusable.
-        $foreignItems = ScheduleItem::whereIn('id', collect($this->input('exceptions', []))->merge($this->input('checkins', []))->pluck('schedule_item_id')->unique())
+        /** @var list<array<string, mixed>> $children */
+        $children = [...$this->input('exceptions', []), ...$this->input('checkins', [])];
+        $foreignItems = ScheduleItem::whereIn('id', collect($children)->pluck('schedule_item_id')->unique())
             ->where('user_id', '!=', $userId)->pluck('id')->flip();
         foreach (['exceptions', 'checkins'] as $key) {
             foreach ($this->input($key, []) as $i => $row) {

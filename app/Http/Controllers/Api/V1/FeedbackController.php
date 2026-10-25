@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreFeedbackRequest;
 use App\Mail\FeedbackReceivedMail;
 use App\Models\Feedback;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -16,7 +17,9 @@ class FeedbackController extends Controller
     public function store(StoreFeedbackRequest $request): JsonResponse
     {
         $feedback = new Feedback($request->validated());
-        $feedback->user()->associate(Auth::guard('sanctum')->user());
+        /** @var User|null $user */
+        $user = Auth::guard('sanctum')->user();
+        $feedback->user()->associate($user);
         $feedback->save();
 
         // The message is safe in the database even if the email fails.

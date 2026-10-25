@@ -158,7 +158,7 @@ class ImportService
      */
     private function fill(Model $model, array $row, array $fields): Model
     {
-        $model->id = $row['id'];
+        $model->setAttribute('id', $row['id']);
         foreach ($fields as $field) {
             if (array_key_exists($field, $row)) {
                 $model->{$field} = $row[$field];
@@ -172,7 +172,7 @@ class ImportService
     private function keepCreatedAt(Model $model, array $row): void
     {
         if (! empty($row['created_at'])) {
-            $model->created_at = $row['created_at'];
+            $model->setAttribute('created_at', $row['created_at']);
         }
     }
 }

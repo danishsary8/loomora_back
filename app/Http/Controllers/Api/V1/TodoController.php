@@ -26,7 +26,7 @@ class TodoController extends Controller
             ->get()
             ->sortBy([
                 fn (Todo $a, Todo $b) => $b->isOverdueOn($today) <=> $a->isOverdueOn($today),
-                fn (Todo $a, Todo $b) => ($a->due_date?->timestamp ?? PHP_INT_MAX) <=> ($b->due_date?->timestamp ?? PHP_INT_MAX),
+                fn (Todo $a, Todo $b) => ($a->due_date->timestamp ?? PHP_INT_MAX) <=> ($b->due_date->timestamp ?? PHP_INT_MAX),
                 fn (Todo $a, Todo $b) => $a->created_at <=> $b->created_at,
             ])
             ->values();
