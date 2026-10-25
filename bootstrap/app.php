@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // The API has no login page to redirect to; guests get a JSON 401.
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/');
+
+        // Render terminates HTTPS at its proxy; trust its X-Forwarded-* headers so URLs are https.
+        $middleware->trustProxies(at: '*');
+
+        $middleware->append(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(fn (Request $request) => $request->is('api/*') || $request->expectsJson());

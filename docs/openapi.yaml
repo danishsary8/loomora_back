@@ -42,10 +42,19 @@ paths:
       tags: [System]
       operationId: getHealth
       summary: Health check
+      description: Cheap by default (used by Render). With `deep=1` it also checks the database connection.
       security: []
+      parameters:
+        - name: deep
+          in: query
+          required: false
+          description: Set to `1` to also check the database.
+          schema:
+            type: integer
+            enum: [0, 1]
       responses:
         '200':
-          description: The API is up.
+          description: The API (and, with `deep=1`, the database) is up.
           content:
             application/json:
               schema:
@@ -55,8 +64,32 @@ paths:
                   status:
                     type: string
                     const: ok
-              example:
-                status: ok
+                  database:
+                    type: string
+                    const: ok
+                    description: Only present with `deep=1`.
+              examples:
+                basic:
+                  value:
+                    status: ok
+                deep:
+                  value:
+                    status: ok
+                    database: ok
+        '503':
+          description: Only with `deep=1`, the database could not be reached.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, database]
+                properties:
+                  status:
+                    type: string
+                    const: error
+                  database:
+                    type: string
+                    const: unavailable
 
   /auth/register:
     post:
