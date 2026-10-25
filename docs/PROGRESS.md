@@ -28,6 +28,8 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q10 (2026-10-25, B-010):** docs/08 says `schedule_items.days` is `smallint[]`. I used `jsonb` (an array of 0 to 6) because Laravel has no portable array column and local tests run on sqlite. Same data and API shape; B-011 can still filter by weekday in PHP or with `jsonb` operators. OK, or switch to a real Postgres array (tests would then need Postgres everywhere)?
 - **Q11 (2026-10-25, B-010):** Choices to confirm: `category` optional (defaults to `other`, same as to-dos); `starts_on` optional (defaults to today in the user's time zone); `ends_on` must be on or after `starts_on`; `end_time` must be later on the same day (no items crossing midnight); another user's item -> 403.
 
+- ~~**Q2**~~ Worked around 2026-10-25: the image is now built and smoke-tested by a `docker` job in CI (GitHub runners can reach `deb.debian.org`). Allowing `deb.debian.org` here is still useful for local builds. Original question: (2026-10-24, B-004) `docker build .` cannot finish in this cloud session: the network policy returns 403 for `deb.debian.org`, so `apt-get install libpq-dev` (needed for `pdo_pgsql`) fails. Danish: please add `deb.debian.org` under Allowed domains in this environment's network settings (https://code.claude.com/docs/en/cloud-environments#network-access), or say if a `docker build` job in CI is preferred as the check instead. Work is saved on `feat/B-004-docker-render`; no PR until the build is proven.
+
 ## Log
 
 ### 2026-10-24: B-001 Tidy repo for the rebuild
@@ -74,6 +76,20 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `php artisan test` -> 35 passed (153 assertions) on sqlite and on Postgres 16 (Docker). `./vendor/bin/pint --test` -> passed. Mutation check: making `TodoPolicy` always allow made the ownership test fail, so the test really guards access. Tests cover due today (done and not), undated not done, undated done hidden, overdue first + flag, old after 30 days, future hidden, date validation, create defaults, validation, `user_id` ignored, 500 limit, edit, delete, 404 for unknown/malformed id, done/undone, idempotent done, other users' to-dos not listed and 403 on edit/done/undone/delete, 401 without token, cascade on account delete.
 - **Problems:** the Docker daemon had stopped while the session was idle; restarted it for the Postgres run.
 - **Questions:** Q6, Q7.
+
+### 2026-10-24: B-004 Dockerfile and Render blueprint (first attempt, blocked)
+- **Branch / PR:** `feat/B-004-docker-render` (pushed, no PR yet)
+- **What changed:** `Dockerfile` (composer stage + `php:8.3-apache`, `pdo_pgsql`, `opcache`, docroot `public/`). `docker/entrypoint.sh`: binds Render's `$PORT`, caches config/routes, runs `php artisan migrate --force` with 3 attempts (Neon wakes slowly), then exits 1 with a FATAL line if all fail. `render.yaml`: `loomora-api`, free plan, Docker, health check `/api/v1/health`, 11 env names from docs/10 with `sync: false` (no values). `.dockerignore` excludes `.env`, `vendor`, `legacy`, `docs`, `tests`.
+- **How it was verified:** `render.yaml` checked against docs/10: all 11 names, no values. Composer stage of the build succeeds. The apt stage cannot run here (see Q2), so `docker build .` is NOT verified.
+- **Problems:** Docker Hub returned 429 (rate limit); images were pulled from `mirror.gcr.io` and tagged locally. A local-only Dockerfile copy with the sandbox proxy CA was used for testing; it is not committed.
+- **Questions:** Q2.
+
+### 2026-10-25: B-004 Dockerfile and Render blueprint (finished)
+- **Branch / PR:** `feat/B-004-docker-render` (PR into `v2-rebuild`)
+- **What changed:** Added a `docker` job to `.github/workflows/ci.yml`: builds the image, starts it against a Postgres 16 service and waits for `GET /api/v1/health`, then starts it with a wrong `DB_URL` and checks it exits non-zero with the `FATAL: migrations failed` line. Dockerfile, entrypoint, `render.yaml`, `.dockerignore` unchanged from the first attempt. Nothing deployed.
+- **How it was verified:** Locally: `config:cache` and `route:cache` succeed; ran the entrypoint script (Apache paths pointed at temp files) against Postgres 16 -> config and routes cached, all 5 migrations DONE, then the server command ran; with a wrong `DB_URL` -> 3 attempts, `FATAL: migrations failed after 3 attempts, refusing to start`, server command never ran; `$PORT` rewrite gives `Listen 10000` / `<VirtualHost *:10000>`. `docker build .` itself runs in CI (this session's network blocks the Debian mirror), so the PR's `docker` job is the "Done when" check.
+- **Problems:** none new.
+- **Questions:** none.
 
 ### 2026-10-25: B-007 Remove unused Laravel frontend defaults
 - **Branch / PR:** `feat/B-007-api-only` (PR into `v2-rebuild`)
