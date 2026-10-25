@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\ImportController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ScheduleCheckinController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleExceptionController;
@@ -16,10 +18,16 @@ Route::prefix('v1')->group(function () {
     Route::middleware('throttle:auth')->prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register'])->name('auth.register');
         Route::post('login', [AuthController::class, 'login'])->name('auth.login');
+        Route::post('email/verify', [EmailVerificationController::class, 'verify'])->name('auth.email.verify');
+        Route::post('password/forgot', [PasswordResetController::class, 'forgot'])->name('auth.password.forgot');
+        Route::post('password/reset', [PasswordResetController::class, 'reset'])->name('auth.password.reset');
     });
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->whereUuid(['item', 'todo'])->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
+        Route::post('auth/email/resend', [EmailVerificationController::class, 'resend'])
+            ->middleware('throttle:verification')
+            ->name('auth.email.resend');
         Route::get('me', [AuthController::class, 'me'])->name('me');
 
         Route::post('import', [ImportController::class, 'store'])->name('import');

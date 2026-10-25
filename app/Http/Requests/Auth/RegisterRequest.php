@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Requests\Concerns\NormalizesEmail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
 class RegisterRequest extends FormRequest
 {
+    use NormalizesEmail;
+
     /**
      * @return array<string, mixed>
      */
@@ -18,12 +21,5 @@ class RegisterRequest extends FormRequest
             'password' => ['required', 'string', Password::min(8)],
             'timezone' => ['required', 'string', 'timezone:all'],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if (is_string($this->input('email'))) {
-            $this->merge(['email' => strtolower(trim($this->input('email')))]);
-        }
     }
 }
