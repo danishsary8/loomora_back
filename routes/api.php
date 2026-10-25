@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\FeedbackController;
+use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -15,7 +16,7 @@ use App\Http\Controllers\Api\V1\TodoController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
-    Route::get('health', fn () => response()->json(['status' => 'ok']))->name('health');
+    Route::get('health', HealthController::class)->name('health');
 
     Route::post('feedback', [FeedbackController::class, 'store'])->middleware('throttle:feedback')->name('feedback.store');
 
