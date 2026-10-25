@@ -39,4 +39,9 @@ return [
         'key' => env('BREVO_API_KEY'),
     ],
 
+    'feedback' => [
+        // Where feedback messages are emailed (docs/07 S13).
+        'to' => env('FEEDBACK_TO_EMAIL'),
+    ],
+
 ];

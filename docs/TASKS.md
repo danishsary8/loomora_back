@@ -147,12 +147,12 @@ Rules:
 - **Files:** `ImportService`, controller, tests
 
 ### B-014: Feedback and account endpoints
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. `POST /feedback` (stores in DB, emails FEEDBACK_TO_EMAIL; mail faked in tests), `PATCH /me`, `POST /me/survey`, `DELETE /me` (confirmation by password, cascades all rows).
   2. Pest tests for each.
 - **Done when:**
-  - [ ] Tests and Pint pass; deleting a user leaves no rows behind (test proves it)
+  - [x] Tests and Pint pass; deleting a user leaves no rows behind (test proves it)
 - **Files:** controllers, migrations, tests
 
 ### B-015: Google sign-in (code only)

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -37,6 +38,8 @@ class User extends Authenticatable
         'email',
         'password',
         'timezone',
+        'goal',
+        'heard_from',
     ];
 
     /**
@@ -60,6 +63,29 @@ class User extends Authenticatable
             'longest_streak' => 'integer',
             'last_streak_date' => 'date',
         ];
+    }
+
+    /**
+     * @return HasMany<Feedback, $this>
+     */
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(Feedback::class);
+    }
+
+    /**
+     * Delete the account and everything that belongs to it (docs/08 rule 10).
+     * Rows with a user_id foreign key cascade in the database; tokens and
+     * password resets have no foreign key, so they are removed here.
+     */
+    public function deleteWithData(): void
+    {
+        DB::transaction(function () {
+            $this->tokens()->delete();
+            DB::table('password_reset_tokens')->where('email', $this->email)->delete();
+            DB::table('sessions')->where('user_id', $this->id)->delete();
+            $this->delete();
+        });
     }
 
     /**

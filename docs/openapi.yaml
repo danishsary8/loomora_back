@@ -25,6 +25,8 @@ tags:
     description: The signed-in user's account.
   - name: Todos
     description: To-dos and the Today list.
+  - name: Feedback
+    description: Messages from users and guests.
   - name: Schedule
     description: The fixed weekly schedule.
   - name: Import
@@ -297,6 +299,127 @@ paths:
                   $ref: '#/components/examples/MeResponse'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+    patch:
+      tags: [Me]
+      operationId: updateMe
+      summary: Change name or time zone
+      description: Send only the fields to change. Other fields are ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                timezone:
+                  type: string
+                  description: IANA time zone name.
+            example:
+              timezone: Europe/Paris
+      responses:
+        '200':
+          $ref: '#/components/responses/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Me]
+      operationId: deleteMe
+      summary: Delete the account and all its data
+      description: |
+        Needs the current password. Deletes the user, all tokens and every row they own, immediately.
+        Google-only accounts get 422 until Google re-auth is available.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+            example:
+              password: correct-horse-battery
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          description: Wrong or missing password (reported on `password`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /me/survey:
+    post:
+      tags: [Me]
+      operationId: submitSurvey
+      summary: Answer (or skip) the sign-up survey
+      description: Both answers are optional; an empty body means "skip". Either way `survey_done` becomes true.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                goal:
+                  type: [string, 'null']
+                  enum: [be_consistent, manage_time, finish_tasks, other, null]
+                heard_from:
+                  type: [string, 'null']
+                  maxLength: 500
+            example:
+              goal: manage_time
+              heard_from: A friend
+      responses:
+        '200':
+          $ref: '#/components/responses/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /feedback:
+    post:
+      tags: [Feedback]
+      operationId: sendFeedback
+      summary: Send feedback
+      description: |
+        Works for guests and signed-in users (send the token to link the message to the account).
+        Stored, then emailed to the team. Limited to 10 per hour.
+      security:
+        - {}
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000
+            example:
+              message: The progress ring is lovely.
+      responses:
+        '201':
+          $ref: '#/components/responses/Message'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /todos:
     get:
@@ -1344,6 +1467,16 @@ components:
               starts_on: '2026-10-25'
               ends_on: null
               created_at: '2026-10-24T23:30:00Z'
+    MeResponse:
+      description: The current user, wrapped in `data`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/User'
     Message:
       description: Done. A human-readable message.
       content:
