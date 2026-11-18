@@ -202,3 +202,8 @@ _Questions that need the planner or Danish. Includes any place where code and do
 ## Planner note (2026-11-19)
 - B-019 to B-025 added (R2 and R1 leftovers). B-022 contains a question for the planner about hard-deleting old soft-deleted to-dos; do not add a purge command until it is answered.
 - R3 and R4 backend tasks will be written from docs/research/daycraft-task-prompts.md (DC-30 to DC-52) after R2 is merged.
+
+### 2026-11-18: B-019 blocked (scheduled run, no working PHP dependencies)
+- **Branch:** `feat/B-019-todo-subtasks` (docs-only change, no code).
+- **What happened:** the cloud session has no `vendor/`. `composer install` (both `--prefer-dist` and `--prefer-source`) fails with "Could not authenticate against github.com" (the egress proxy drops `api.github.com` tunnels). Same failure B-017 noted. Without Pest, Pint and PHPStan I cannot run any "Done when" check, so I did not write unverified code.
+- **Question for the planner/owner:** can this routine's environment get Composer packages (a GitHub token for Composer in the environment, a Packagist mirror, or a prebuilt `vendor/` cache)? Until then every task B-019 to B-025 is blocked the same way. Set B-019 back to `todo` once fixed.

@@ -200,7 +200,7 @@ _None yet._
 Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-task-prompts.md` (behaviour reference only; never copy Daycraft code or visuals). Every task updates `docs/openapi.yaml` and runs `npx @redocly/cli lint docs/openapi.yaml`. New to-do fields must also be accepted by `POST /import`.
 
 ### B-019: Subtasks, priority and notes on to-dos
-- **Status:** todo
+- **Status:** blocked
 - **Steps:**
   1. Migration on `todos`: `notes` text null (max 2000), `priority` enum `low|normal|high` default `normal`, `parent_id` uuid null (foreign key to `todos`, same user).
   2. Rules: a subtask's parent must be the same user's and must itself have no parent (depth 1 only); a subtask cannot have `repeat_rule` or `remind_at`. Checking a parent marks its open subtasks done in the same transaction; unchecking a parent leaves them. Subtask check-offs count for the streak (record in `docs/DECISIONS.md`).
