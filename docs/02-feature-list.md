@@ -53,3 +53,6 @@ Khmer language, accessibility and performance polish, push notifications, quick-
 
 ## Out of scope
 Multiple themes (one neo-brutalism identity), teams/sharing, native mobile apps.
+
+## Added 2026-11-19 (from the Daycraft analysis, docs/research/)
+See the same section in the frontend repo's `docs/02-feature-list.md`. Backend work: subtasks, priority, notes, repeats, reminders, soft delete, time format and week start, daily intention, `has_password` (B-019 to B-025); sessions, stats, notes API and presets follow in R3 and R4.

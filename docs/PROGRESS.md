@@ -198,3 +198,7 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** a script checked that all 12 `render.yaml` names appear in both README and DEPLOY.md, and that `.env.example` has no name missing from `render.yaml` (besides local-only APP_NAME/APP_ENV/APP_DEBUG/LOG_*). Confirmed Laravel accepts Neon's `postgresql://...?sslmode=` URL form (connected to local Postgres 16 with that scheme). `php artisan test` -> 175 passed on sqlite and Postgres; Pint passed (docs-only change).
 - **Problems:** none. The README mentions `./vendor/bin/phpstan`, which arrives with B-017 (PR #17).
 - **Questions:** none.
+
+## Planner note (2026-11-19)
+- B-019 to B-025 added (R2 and R1 leftovers). B-022 contains a question for the planner about hard-deleting old soft-deleted to-dos; do not add a purge command until it is answered.
+- R3 and R4 backend tasks will be written from docs/research/daycraft-task-prompts.md (DC-30 to DC-52) after R2 is merged.

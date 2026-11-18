@@ -195,3 +195,83 @@ Rules:
 ## Done
 
 _None yet._
+
+## R1 leftovers and R2 (added 2026-11-19 from the Daycraft analysis)
+Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-task-prompts.md` (behaviour reference only; never copy Daycraft code or visuals). Every task updates `docs/openapi.yaml` and runs `npx @redocly/cli lint docs/openapi.yaml`. New to-do fields must also be accepted by `POST /import`.
+
+### B-019: Subtasks, priority and notes on to-dos
+- **Status:** todo
+- **Steps:**
+  1. Migration on `todos`: `notes` text null (max 2000), `priority` enum `low|normal|high` default `normal`, `parent_id` uuid null (foreign key to `todos`, same user).
+  2. Rules: a subtask's parent must be the same user's and must itself have no parent (depth 1 only); a subtask cannot have `repeat_rule` or `remind_at`. Checking a parent marks its open subtasks done in the same transaction; unchecking a parent leaves them. Subtask check-offs count for the streak (record in `docs/DECISIONS.md`).
+  3. List and single responses return top-level to-dos with a nested `subtasks` array (ordered by creation); update the Todo resources, requests and `docs/openapi.yaml`. Extend `POST /import` to accept the new fields.
+  4. Pest feature tests for each rule above, plus a 422 for a subtask of a subtask and a 404 for another user's `parent_id`.
+- **Done when:**
+  - [ ] `php artisan test` passes the new tests
+  - [ ] `./vendor/bin/pint --test` and the static-analysis command from B-017 pass
+  - [ ] `npx @redocly/cli lint docs/openapi.yaml` is valid
+- **Files:** `database/migrations/*`, `app/Models/Todo.php`, todo requests and resources, `app/Services/*Import*`, `tests/Feature/*`, `docs/openapi.yaml`
+
+### B-020: Repeating to-dos
+- **Status:** todo
+- **Steps:**
+  1. Migration: `todos.repeat_rule` jsonb null (`{type:'daily'}` or `{type:'weekly', days:[...]}`; use the same weekday representation as schedule items) and `todos.next_todo_id` uuid null. A repeating to-do requires a `due_date` (422 otherwise).
+  2. When a repeating to-do is checked off the first time, create the next one in the same transaction: same title, category, priority, notes, rule and a copy of its subtasks (undone); `due_date` is the next matching date after the later of the old due date and today in the user's time zone. Save its id in `next_todo_id`. Unchecking and checking again must not create another.
+  3. Update resources, requests, `docs/openapi.yaml` and `POST /import`. Add the rule to `docs/DECISIONS.md`.
+- **Done when:**
+  - [ ] Tests pass for: daily, weekly across a week boundary, a check-off at 00:30 in `Asia/Phnom_Penh` (UTC date is still the day before), toggling twice creates one next to-do, missing `due_date` returns 422, subtasks are copied undone
+  - [ ] Pint, static analysis and Redocly lint pass
+- **Files:** migration, `app/Models/Todo.php`, `app/Services/RepeatTodoService.php`, todo controller, `tests/Feature/RepeatTodoTest.php`, `docs/openapi.yaml`
+
+### B-021: In-app reminders for to-dos
+- **Status:** todo
+- **Steps:**
+  1. Migration: `todos.remind_at` timestamptz null (stored UTC), `todos.remind_dismissed_at` timestamptz null. Not allowed on subtasks.
+  2. `GET /reminders/due` returns the user's undone, non-deleted to-dos where `remind_at <= now` and not dismissed, oldest first (max 50). `POST /todos/{todo}/reminder/dismiss` sets `remind_dismissed_at`. `POST /todos/{todo}/reminder/snooze {minutes: 5|10|30|60}` sets `remind_at = now + minutes` and clears the dismissal. Changing `remind_at` clears the dismissal.
+  3. No push notifications (docs/02: Later). Update `docs/openapi.yaml` and `POST /import`.
+- **Done when:**
+  - [ ] Tests pass for: due list contents and order, done and deleted to-dos excluded, dismiss, snooze values (other values return 422), another user's to-do returns 404
+  - [ ] Pint, static analysis and Redocly lint pass
+- **Files:** migration, `app/Http/Controllers/*Reminder*`, `routes/api.php`, `tests/Feature/ReminderTest.php`, `docs/openapi.yaml`
+
+### B-022: To-do soft delete and restore
+- **Status:** todo
+- **Steps:**
+  1. Add soft deletes to `todos`. `DELETE /todos/{todo}` soft-deletes (204) and also soft-deletes its subtasks. `POST /todos/{todo}/restore` returns the to-do (and its subtasks) if it was deleted less than 7 days ago, otherwise 410.
+  2. Do NOT add any command that permanently deletes expired rows. Write the question in `docs/PROGRESS.md`: should a daily command hard-delete to-dos deleted more than 7 days ago (planner decides, it is destructive)?
+  3. Check that account deletion still removes all of the user's to-dos including soft-deleted ones. Update `docs/openapi.yaml`.
+- **Done when:**
+  - [ ] Tests pass for: delete hides it from lists, restore brings it back with the same id, restore after 8 days returns 410, another user returns 404, account deletion leaves no rows
+  - [ ] Pint, static analysis and Redocly lint pass
+- **Files:** migration, `app/Models/Todo.php`, todo controller, `routes/api.php`, `tests/Feature/TodoRestoreTest.php`, `docs/openapi.yaml`
+
+### B-023: Time format and week start preferences
+- **Status:** todo
+- **Steps:**
+  1. Migration on `users`: `time_format` enum `12h|24h` default `24h`, `week_starts_on` smallint 1 (Monday) to 7 (Sunday) default 1. Allow them in `PATCH /me` and return them in the User resource; `timezone` keeps its current validation (use the PHP identifier list if not already).
+  2. Add `tests/Fixtures/local-date-cases.json` with the cases from DC-10 in `docs/research/daycraft-task-prompts.md` (Asia/Phnom_Penh just after local midnight, Asia/Kolkata, America/Los_Angeles, a DST day) and a test that reads it against the existing local-date helper. Fix the helper if a case fails.
+  3. Update `docs/openapi.yaml`.
+- **Done when:**
+  - [ ] Tests pass for valid and invalid values (`time_format: 'x'` and `week_starts_on: 8` return 422) and for every fixture case
+  - [ ] Pint, static analysis and Redocly lint pass
+- **Files:** migration, `UpdateMeRequest`, user resource, `tests/Fixtures/local-date-cases.json`, `tests/Feature/*`, `docs/openapi.yaml`
+
+### B-024: Daily intention API
+- **Status:** todo
+- **Steps:**
+  1. Table `daily_intentions`: `user_id`, `local_date` date, `text` string(200), timestamps, unique `(user_id, local_date)`.
+  2. `GET /days/{date}/intention` returns `{data:{date, text}}` (`text` null if none). `PUT` the same path with `{text}` upserts; an empty string deletes the row. `{date}` must be `Y-m-d` within 366 days of the user's today (else 422).
+  3. Extend `POST /import` with `daily_intentions` (idempotent). Update `docs/openapi.yaml`.
+- **Done when:**
+  - [ ] Tests pass for: put then get, second put updates the same row, empty deletes, invalid date returns 422, another user cannot see it, import twice leaves one row
+  - [ ] Pint, static analysis and Redocly lint pass
+- **Files:** migration, `app/Models/DailyIntention.php`, controller, `routes/api.php`, `tests/Feature/DailyIntentionTest.php`, `docs/openapi.yaml`
+
+### B-025: `has_password` on the user
+- **Status:** todo
+- **Steps:**
+  1. Return `has_password` (boolean) in the User resource, true when the account has a password (false for Google-only accounts). Update `docs/openapi.yaml`.
+- **Done when:**
+  - [ ] Tests pass for an email account (true) and a Google-only account (false)
+  - [ ] Pint, static analysis and Redocly lint pass
+- **Files:** `app/Http/Resources/UserResource.php`, `tests/Feature/*`, `docs/openapi.yaml`
