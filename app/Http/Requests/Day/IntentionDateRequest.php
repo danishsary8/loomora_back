@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Day;
 
 use App\Models\DailyIntention;
+use App\Support\LocalDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -39,7 +40,7 @@ class IntentionDateRequest extends FormRequest
                     return;
                 }
 
-                $today = CarbonImmutable::now($this->user()->timezone)->startOfDay();
+                $today = LocalDate::startOfDay($this->user(), LocalDate::todayFor($this->user()));
 
                 if (abs($this->localDate()->diffInDays($today, false)) > DailyIntention::MAX_DAYS_FROM_TODAY) {
                     $validator->errors()->add('date', __('validation.intention_date_out_of_range', ['days' => DailyIntention::MAX_DAYS_FROM_TODAY]));
@@ -50,6 +51,6 @@ class IntentionDateRequest extends FormRequest
 
     public function localDate(): CarbonImmutable
     {
-        return CarbonImmutable::createFromFormat('!Y-m-d', $this->route('date'), $this->user()->timezone);
+        return LocalDate::startOfDay($this->user(), $this->route('date'));
     }
 }

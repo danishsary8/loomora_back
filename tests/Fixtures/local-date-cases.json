@@ -1,0 +1,56 @@
+[
+    {
+        "name": "Phnom Penh, 30 minutes after local midnight (UTC is still the 18th)",
+        "timezone": "Asia/Phnom_Penh",
+        "instant_utc": "2026-11-18T17:30:00Z",
+        "local_date": "2026-11-19",
+        "start_utc": "2026-11-18T17:00:00Z",
+        "end_utc": "2026-11-19T16:59:59Z",
+        "hours": 24
+    },
+    {
+        "name": "Kolkata, 23:59 local (just before UTC 18:30)",
+        "timezone": "Asia/Kolkata",
+        "instant_utc": "2026-11-18T18:29:00Z",
+        "local_date": "2026-11-18",
+        "start_utc": "2026-11-17T18:30:00Z",
+        "end_utc": "2026-11-18T18:29:59Z",
+        "hours": 24
+    },
+    {
+        "name": "Kolkata, 00:01 local (just after UTC 18:30)",
+        "timezone": "Asia/Kolkata",
+        "instant_utc": "2026-11-18T18:31:00Z",
+        "local_date": "2026-11-19",
+        "start_utc": "2026-11-18T18:30:00Z",
+        "end_utc": "2026-11-19T18:29:59Z",
+        "hours": 24
+    },
+    {
+        "name": "Los Angeles, 17:00 local while UTC is already the next day",
+        "timezone": "America/Los_Angeles",
+        "instant_utc": "2026-11-20T01:00:00Z",
+        "local_date": "2026-11-19",
+        "start_utc": "2026-11-19T08:00:00Z",
+        "end_utc": "2026-11-20T07:59:59Z",
+        "hours": 24
+    },
+    {
+        "name": "New York, spring-forward day (23 hours)",
+        "timezone": "America/New_York",
+        "instant_utc": "2026-03-08T12:00:00Z",
+        "local_date": "2026-03-08",
+        "start_utc": "2026-03-08T05:00:00Z",
+        "end_utc": "2026-03-09T03:59:59Z",
+        "hours": 23
+    },
+    {
+        "name": "New York, fall-back day (25 hours)",
+        "timezone": "America/New_York",
+        "instant_utc": "2026-11-01T12:00:00Z",
+        "local_date": "2026-11-01",
+        "start_utc": "2026-11-01T04:00:00Z",
+        "end_utc": "2026-11-02T04:59:59Z",
+        "hours": 25
+    }
+]

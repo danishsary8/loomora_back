@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ScheduleCheckin;
 use App\Models\User;
+use App\Support\LocalDate;
 use Carbon\CarbonImmutable;
 
 /**
@@ -32,7 +33,7 @@ class StreakService
      */
     public function recompute(User $user, ?string $today = null): array
     {
-        $today ??= CarbonImmutable::now($user->timezone)->toDateString();
+        $today ??= LocalDate::todayFor($user);
         $result = $this->calculate($user, $today);
 
         $user->forceFill([
@@ -92,10 +93,10 @@ class StreakService
         // Look one day further back in UTC so no local day at the edge is cut off.
         $user->todos()
             ->whereNotNull('done_at')
-            ->where('done_at', '>=', CarbonImmutable::parse($from, $user->timezone)->subDay())
+            ->where('done_at', '>=', LocalDate::rangeUtc($user, $from)[0]->subDay())
             ->pluck('done_at')
             ->each(function ($doneAt) use (&$dates, $user) {
-                $dates[CarbonImmutable::parse($doneAt)->setTimezone($user->timezone)->toDateString()] = true;
+                $dates[LocalDate::forUser($user, CarbonImmutable::parse($doneAt))] = true;
             });
 
         ScheduleCheckin::query()

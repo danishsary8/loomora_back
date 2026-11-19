@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Schedule;
 
 use App\Models\ScheduleItem;
+use App\Support\LocalDate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -52,6 +53,6 @@ class StoreScheduleItemRequest extends FormRequest
     /** Defaults to today in the user's time zone. */
     public function startsOn(): string
     {
-        return $this->input('starts_on') ?? now($this->user()->timezone)->toDateString();
+        return $this->input('starts_on') ?? LocalDate::todayFor($this->user());
     }
 }

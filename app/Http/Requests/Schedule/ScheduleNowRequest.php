@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Schedule;
 
+use App\Support\LocalDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -31,7 +32,7 @@ class ScheduleNowRequest extends FormRequest
                     return;
                 }
 
-                $today = CarbonImmutable::parse(now($this->user()->timezone)->toDateString());
+                $today = CarbonImmutable::parse(LocalDate::todayFor($this->user()));
 
                 if (abs($today->diffInDays(CarbonImmutable::parse($this->input('date')), false)) > 1) {
                     $validator->errors()->add('date', __('schedule.date_out_of_range'));

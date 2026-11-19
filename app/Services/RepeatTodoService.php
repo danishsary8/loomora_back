@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Todo;
+use App\Support\LocalDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +47,7 @@ class RepeatTodoService
 
     private function createNext(Todo $todo): Todo
     {
-        $today = CarbonImmutable::now($todo->user->timezone)->startOfDay();
+        $today = LocalDate::startOfDay($todo->user, LocalDate::todayFor($todo->user));
         $dueDate = CarbonImmutable::parse($todo->due_date->toDateString());
 
         $nextDueDate = self::nextDueDate($todo->repeat_rule, $dueDate, $today);

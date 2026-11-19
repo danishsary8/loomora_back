@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Todo;
+use App\Support\LocalDate;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -18,7 +19,7 @@ class TodoResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $today = static::$today ?? now($request->user()->timezone);
+        $today = static::$today ?? LocalDate::startOfDay($request->user(), LocalDate::todayFor($request->user()));
 
         return [
             'id' => $this->id,
