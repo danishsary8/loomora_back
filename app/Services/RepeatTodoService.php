@@ -53,7 +53,7 @@ class RepeatTodoService
 
         $next = $todo->replicate(['done_at', 'next_todo_id', 'remind_at', 'remind_dismissed_at', 'created_at', 'updated_at']);
         $next->due_date = Carbon::instance($nextDueDate);
-        $next->remind_at = $todo->remind_at?->addDays((int) $dueDate->diffInDays($nextDueDate));
+        $next->remind_at = $todo->remind_at?->addDays((int) $dueDate->diffInDays(CarbonImmutable::parse($nextDueDate->toDateString())));
         $next->save();
 
         foreach ($todo->subtasks as $subtask) {
