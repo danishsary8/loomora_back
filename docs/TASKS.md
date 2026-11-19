@@ -200,7 +200,7 @@ _None yet._
 Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-task-prompts.md` (behaviour reference only; never copy Daycraft code or visuals). Every task updates `docs/openapi.yaml` and runs `npx @redocly/cli lint docs/openapi.yaml`. New to-do fields must also be accepted by `POST /import`.
 
 ### B-019: Subtasks, priority and notes on to-dos
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Migration on `todos`: `notes` text null (max 2000), `priority` enum `low|normal|high` default `normal`, `parent_id` uuid null (foreign key to `todos`, same user).
   2. Rules: a subtask's parent must be the same user's and must itself have no parent (depth 1 only); a subtask cannot have `repeat_rule` or `remind_at`. Checking a parent marks its open subtasks done in the same transaction; unchecking a parent leaves them. Subtask check-offs count for the streak (record in `docs/DECISIONS.md`).
@@ -213,7 +213,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** `database/migrations/*`, `app/Models/Todo.php`, todo requests and resources, `app/Services/*Import*`, `tests/Feature/*`, `docs/openapi.yaml`
 
 ### B-020: Repeating to-dos
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Migration: `todos.repeat_rule` jsonb null (`{type:'daily'}` or `{type:'weekly', days:[...]}`; use the same weekday representation as schedule items) and `todos.next_todo_id` uuid null. A repeating to-do requires a `due_date` (422 otherwise).
   2. When a repeating to-do is checked off the first time, create the next one in the same transaction: same title, category, priority, notes, rule and a copy of its subtasks (undone); `due_date` is the next matching date after the later of the old due date and today in the user's time zone. Save its id in `next_todo_id`. Unchecking and checking again must not create another.

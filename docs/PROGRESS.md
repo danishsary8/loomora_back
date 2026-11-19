@@ -40,6 +40,8 @@ _Questions that need the planner or Danish. Includes any place where code and do
 
 - **Q16 (2026-11-19, B-019):** Choices to confirm (also in DECISIONS I2, I3): a subtask cannot have its own `due_date` (422) and inherits the parent's category; `parent_id` cannot be changed after create; another user's or an unknown `parent_id` is a 404 on `POST /todos` (as the task says) but a 422 on `POST /import` (an import row error, like an unknown schedule item). The "no `repeat_rule` or `remind_at` on subtasks" rule is left to B-020 and B-021, since those columns do not exist yet.
 
+- **Q16 answered (planner, 2026-11-19):** approved as written.
+- **Q17 answered (planner, 2026-11-19):** approved as written (a, b, c). Repeats may pass the 500 limit; a check-off never fails.
 - **Q17 (2026-11-19, B-020):** Choices to confirm (DECISIONS I4, I5): (a) the next to-do is created even when the user is at the 500 to-dos limit, so a check-off never fails (the limit can then be passed by repeats); (b) deleting the next to-do clears `next_todo_id`, so unchecking and checking the old one again creates a new next one; (c) `POST /import` accepts `next_todo_id` (a to-do in the payload or the user's), so a guest's already-repeated to-do does not repeat twice.
 
 - **Q15 (2026-10-25, B-016):** Choices to confirm: (a) `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, `nosniff` on every response, HSTS only over HTTPS; (b) `trustProxies(at: '*')` because Render's proxy IPs are not fixed (safe only while the app is reachable only through Render); (c) `APP_DEBUG` is not listed in `render.yaml` because Laravel defaults it to false when unset; the `.env.example` comment says it must be false in production.
