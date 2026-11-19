@@ -125,12 +125,12 @@ describe('create, edit, delete', function () {
             ->assertJsonPath('data.due_date', null);
     });
 
-    it('deletes a to-do', function () {
+    it('soft-deletes a to-do', function () {
         $todo = Todo::factory()->for($this->user)->create();
 
         $this->deleteJson("/api/v1/todos/{$todo->id}")->assertNoContent();
 
-        $this->assertModelMissing($todo);
+        $this->assertSoftDeleted($todo);
     });
 
     it('returns 404 for an unknown or malformed id', function () {

@@ -235,7 +235,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** migration, `app/Http/Controllers/*Reminder*`, `routes/api.php`, `tests/Feature/ReminderTest.php`, `docs/openapi.yaml`
 
 ### B-022: To-do soft delete and restore
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Add soft deletes to `todos`. `DELETE /todos/{todo}` soft-deletes (204) and also soft-deletes its subtasks. `POST /todos/{todo}/restore` returns the to-do (and its subtasks) if it was deleted less than 7 days ago, otherwise 410.
   2. Do NOT add any command that permanently deletes expired rows. Write the question in `docs/PROGRESS.md`: should a daily command hard-delete to-dos deleted more than 7 days ago (planner decides, it is destructive)?

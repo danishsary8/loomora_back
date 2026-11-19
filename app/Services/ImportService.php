@@ -47,7 +47,7 @@ class ImportService
      */
     private function todos(User $user, array $rows): array
     {
-        $existing = $user->todos()->whereIn('id', array_column($rows, 'id'))->pluck('id')->flip();
+        $existing = $user->todos()->withTrashed()->whereIn('id', array_column($rows, 'id'))->pluck('id')->flip();
         $created = 0;
 
         // Parents first, so every subtask's foreign key already exists.

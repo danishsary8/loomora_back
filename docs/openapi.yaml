@@ -713,7 +713,9 @@ paths:
       tags: [Todos]
       operationId: deleteTodo
       summary: Delete a to-do
-      description: Also deletes its subtasks.
+      description: |
+        Soft delete: hides the to-do and its subtasks everywhere. It can be restored with
+        `POST /todos/{todo}/restore` for 7 days. Account deletion removes every row, deleted ones included.
       responses:
         '204':
           description: Deleted.
@@ -723,6 +725,33 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /todos/{todo}/restore:
+    parameters:
+      - $ref: '#/components/parameters/TodoId'
+    post:
+      tags: [Todos]
+      operationId: restoreTodo
+      summary: Restore a deleted to-do
+      description: |
+        Brings back a to-do deleted less than 7 days ago, with the same id, together with the subtasks that were
+        deleted along with it (not ones deleted on their own earlier). A to-do that is not deleted is returned
+        unchanged. Another user's to-do is a 404. A subtask cannot be restored while its parent is still deleted (422).
+      responses:
+        '200':
+          $ref: '#/components/responses/TodoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: The to-do was deleted 7 days ago or more and can no longer be restored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /todos/{todo}/done:
     parameters:
