@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\DailyIntention;
 use App\Models\ScheduleCheckin;
 use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
