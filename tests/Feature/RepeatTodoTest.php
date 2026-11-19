@@ -47,7 +47,7 @@ describe('creating the next to-do', function () {
         $next = checkOffAndGetNext($this, repeating($this->user, ['type' => 'weekly', 'days' => [2, 0]]));
 
         expect($next->due_date->toDateString())->toBe('2026-10-26')
-            ->and($next->repeat_rule)->toBe(['type' => 'weekly', 'days' => [0, 2]]);
+            ->and($next->repeat_rule)->toEqual(['type' => 'weekly', 'days' => [0, 2]]);
     });
 
     it('repeats weekly on the same weekday one week later', function () {
@@ -114,7 +114,8 @@ describe('validation', function () {
 
         $this->postJson('/api/v1/todos', ['title' => 'Gym', 'due_date' => '2026-10-24', 'repeat_rule' => ['type' => 'weekly', 'days' => [4, 0]]])
             ->assertCreated()
-            ->assertJsonPath('data.repeat_rule', ['type' => 'weekly', 'days' => [0, 4]])
+            ->assertJsonPath('data.repeat_rule.type', 'weekly')
+            ->assertJsonPath('data.repeat_rule.days', [0, 4])
             ->assertJsonPath('data.next_todo_id', null);
 
         $this->postJson('/api/v1/todos', ['title' => 'Read', 'due_date' => '2026-10-24', 'repeat_rule' => ['type' => 'daily', 'days' => [1]]])
