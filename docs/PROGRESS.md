@@ -271,3 +271,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Problems:** no local test run (above).
 - **Questions:** none.
 
+
+### 2026-11-19: B-026 Repeating to-do keeps its reminder time
+- **Branch / PR:** `feat/B-026-repeat-reminder` from `v2-rebuild` (PR into `v2-rebuild`).
+- **What changed:** `RepeatTodoService::createNext()` sets the next to-do's `remind_at` to the old one plus the number of days the due date moved (null when there was none); `remind_dismissed_at` is not copied; copied subtasks get no reminder. The old ReminderTest case "does not copy the reminder" is replaced by 8 cases in `RepeatTodoTest` (daily, weekly across the week boundary, reminder one hour before a 09:00 due time, overdue jump to today, no reminder, dismissal not carried, 00:30 in Asia/Phnom_Penh, subtasks without reminder). DECISIONS I7 and the check-off text in `docs/openapi.yaml` updated.
+- **How it was verified:** `php -l` on changed PHP files and a YAML parse of `docs/openapi.yaml` only. `composer install` times out in this session (GitHub packages cannot be downloaded through the proxy), so Pest, Pint, PHPStan and Redocly did NOT run here. CI on the PR is the real check.
+- **Problems:** no local test run (above). The shift is whole 24 h steps in UTC (matches "same distance in UTC"); in a zone with daylight saving the local reminder time shifts by an hour across the change.
+- **Questions:** Q22: should the shift keep the local clock time across a daylight-saving change (shift in the user's zone) instead of the UTC distance? Current choice follows the "Done when" wording.

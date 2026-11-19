@@ -200,14 +200,6 @@ describe('snooze', function () {
 });
 
 describe('repeats and import', function () {
-    it('does not copy the reminder to the next repeating to-do', function () {
-        $todo = withReminder($this->user, '2026-10-24 02:00:00', ['due_date' => '2026-10-24', 'repeat_rule' => ['type' => 'daily']]);
-
-        $nextId = $this->postJson("/api/v1/todos/{$todo->id}/done")->assertOk()->json('data.next_todo_id');
-
-        expect(Todo::findOrFail($nextId)->remind_at)->toBeNull();
-    });
-
     it('imports remind_at and remind_dismissed_at in UTC', function () {
         $due = (string) Str::uuid();
         $dismissed = (string) Str::uuid();
