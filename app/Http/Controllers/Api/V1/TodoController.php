@@ -63,7 +63,7 @@ class TodoController extends Controller
     {
         Gate::authorize('manage', $todo);
 
-        $todo->delete();
+        $todo->deleteWithSubtasks();
 
         return response()->noContent();
     }

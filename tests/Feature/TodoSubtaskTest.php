@@ -143,7 +143,7 @@ describe('listing', function () {
 
         $this->deleteJson("/api/v1/todos/{$parent->id}")->assertNoContent();
 
-        $this->assertModelMissing($child);
+        $this->assertSoftDeleted($child);
     });
 
     it('deletes subtasks with the account', function () {

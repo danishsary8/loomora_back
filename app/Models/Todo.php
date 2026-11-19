@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -31,12 +32,13 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $done_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  * @property-read Collection<int, Todo> $subtasks
  */
 class Todo extends Model
 {
     /** @use HasFactory<TodoFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     /** The fixed set of 6 categories (docs/08 rule 12). */
     public const CATEGORIES = ['study', 'work', 'health', 'life', 'rest', 'other'];
@@ -46,6 +48,9 @@ class Todo extends Model
     public const DEFAULT_PRIORITY = 'normal';
 
     public const MAX_NOTES_LENGTH = 2000;
+
+    /** A deleted to-do can be restored for this many days. */
+    public const RESTORE_WITHIN_DAYS = 7;
 
     public const REPEAT_DAILY = 'daily';
 
@@ -186,6 +191,36 @@ class Todo extends Model
     public function isSubtask(): bool
     {
         return $this->parent_id !== null;
+    }
+
+    /**
+     * Soft-deletes the to-do together with its subtasks, all with the same time so a restore
+     * brings back exactly those. A next to-do created by a repeat stops pointing here (docs I5).
+     */
+    public function deleteWithSubtasks(): void
+    {
+        DB::transaction(function () {
+            $deletedAt = now();
+            Todo::where('parent_id', $this->id)->update(['deleted_at' => $deletedAt]);
+            Todo::where('next_todo_id', $this->id)->update(['next_todo_id' => null]);
+            $this->deleted_at = $deletedAt;
+            $this->save();
+        });
+    }
+
+    public function canBeRestored(): bool
+    {
+        return $this->trashed() && $this->deleted_at->gt(now()->subDays(self::RESTORE_WITHIN_DAYS));
+    }
+
+    /** Restores the to-do and the subtasks that were deleted along with it. */
+    public function restoreWithSubtasks(): void
+    {
+        DB::transaction(function () {
+            $deletedAt = $this->deleted_at;
+            $this->restore();
+            Todo::onlyTrashed()->where('parent_id', $this->id)->where('deleted_at', $deletedAt)->restore();
+        });
     }
 
     /**

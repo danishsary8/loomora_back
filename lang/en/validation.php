@@ -182,6 +182,8 @@ return [
     'todo_limit' => 'You can have at most :max to-dos.',
     'subtask_depth' => 'A subtask cannot have subtasks of its own.',
     'subtask_due_date' => 'A subtask uses the date of its to-do and cannot have its own.',
+    'todo_restore_expired' => 'This to-do was deleted more than :days days ago and can no longer be restored.',
+    'todo_restore_parent_deleted' => 'Restore the parent to-do first.',
     'subtask_repeat' => 'A subtask cannot repeat.',
     'repeat_needs_due_date' => 'A repeating to-do needs a due date.',
     'subtask_reminder' => 'A subtask cannot have a reminder.',

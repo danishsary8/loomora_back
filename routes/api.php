@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\ScheduleExceptionController;
 use App\Http\Controllers\Api\V1\ScheduleItemController;
 use App\Http\Controllers\Api\V1\StreakController;
 use App\Http\Controllers\Api\V1\TodoController;
+use App\Http\Controllers\Api\V1\TodoRestoreController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -51,6 +52,7 @@ Route::prefix('v1')->group(function () {
         Route::post('todos', [TodoController::class, 'store'])->name('todos.store');
         Route::patch('todos/{todo}', [TodoController::class, 'update'])->name('todos.update');
         Route::delete('todos/{todo}', [TodoController::class, 'destroy'])->name('todos.destroy');
+        Route::post('todos/{todo}/restore', TodoRestoreController::class)->name('todos.restore');
         Route::post('todos/{todo}/done', [TodoController::class, 'markDone'])->name('todos.done');
         Route::delete('todos/{todo}/done', [TodoController::class, 'markUndone'])->name('todos.undone');
 

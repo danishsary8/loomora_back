@@ -195,7 +195,7 @@ class ImportRequest extends FormRequest
         $userId = $this->user()->id;
 
         $foreign = [
-            'todos' => fn (array $ids) => Todo::whereIn('id', $ids)->where('user_id', '!=', $userId)->pluck('id'),
+            'todos' => fn (array $ids) => Todo::withTrashed()->whereIn('id', $ids)->where('user_id', '!=', $userId)->pluck('id'),
             'schedule_items' => fn (array $ids) => ScheduleItem::whereIn('id', $ids)->where('user_id', '!=', $userId)->pluck('id'),
             'exceptions' => fn (array $ids) => ScheduleException::whereIn('id', $ids)
                 ->whereHas('scheduleItem', fn ($q) => $q->where('user_id', '!=', $userId))->pluck('id'),
