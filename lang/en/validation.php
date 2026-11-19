@@ -184,6 +184,7 @@ return [
     'subtask_due_date' => 'A subtask uses the date of its to-do and cannot have its own.',
     'todo_restore_expired' => 'This to-do was deleted more than :days days ago and can no longer be restored.',
     'todo_restore_parent_deleted' => 'Restore the parent to-do first.',
+    'intention_date_out_of_range' => 'The date must be within :days days of today.',
     'subtask_repeat' => 'A subtask cannot repeat.',
     'repeat_needs_due_date' => 'A repeating to-do needs a due date.',
     'subtask_reminder' => 'A subtask cannot have a reminder.',

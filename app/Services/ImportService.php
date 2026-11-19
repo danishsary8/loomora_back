@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DailyIntention;
 use App\Models\ScheduleCheckin;
 use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
@@ -33,6 +34,7 @@ class ImportService
                 'schedule_items' => $this->items($user, $data['schedule_items'] ?? []),
                 'exceptions' => $this->exceptions($user, $data['exceptions'] ?? []),
                 'checkins' => $this->checkins($user, $data['checkins'] ?? []),
+                'daily_intentions' => $this->intentions($user, $data['daily_intentions'] ?? []),
             ];
 
             $this->streak->recompute($user);
@@ -152,6 +154,29 @@ class ImportService
             $checkin->done_at = $row['done_at'] ?? now();
             $checkin->schedule_item_id = $row['schedule_item_id'];
             $checkin->save();
+            $created++;
+        }
+
+        return ['created' => $created, 'skipped' => count($rows) - $created];
+    }
+
+    /**
+     * One intention per day: a day the user already has one for is left as it is.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return array{created: int, skipped: int}
+     */
+    private function intentions(User $user, array $rows): array
+    {
+        $taken = $user->dailyIntentions()->whereIn('local_date', array_column($rows, 'date'))->pluck('local_date')->flip();
+        $created = 0;
+
+        foreach ($rows as $row) {
+            if ($taken->has($row['date'])) {
+                continue;
+            }
+
+            $user->dailyIntentions()->create(['local_date' => $row['date'], 'text' => $row['text']]);
             $created++;
         }
 

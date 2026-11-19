@@ -129,6 +129,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<DailyIntention, $this>
+     */
+    public function dailyIntentions(): HasMany
+    {
+        return $this->hasMany(DailyIntention::class);
+    }
+
+    /**
      * @return HasMany<Todo, $this>
      */
     public function todos(): HasMany
