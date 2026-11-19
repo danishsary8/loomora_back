@@ -779,8 +779,10 @@ paths:
 
         For a repeating to-do, the first check-off also creates the next one in the same transaction and returns
         its id in `next_todo_id`: same title, category, priority, notes and rule, plus undone copies of the
-        subtasks (the reminder is not copied). Its `due_date` is the next date matching the rule after the later of the old due date and
-        today in the user's time zone. Unchecking and checking off again does not create another.
+        subtasks. Its `due_date` is the next date matching the rule after the later of the old due date and
+        today in the user's time zone. Its `remind_at` moves by the same number of days as the due date, so the
+        reminder keeps its distance from the due date; it is null when the checked-off to-do had none, and a
+        dismissed reminder is not carried over. Unchecking and checking off again does not create another.
       responses:
         '200':
           $ref: '#/components/responses/TodoResponse'

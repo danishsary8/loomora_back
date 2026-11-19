@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Repeating to-dos (B-020). The first check-off of a repeating to-do creates the next one
  * in the same transaction and links it in `next_todo_id`, so checking off again never
- * creates a second one.
+ * creates a second one. Its reminder moves by the same number of days as the due date (B-026).
  */
 class RepeatTodoService
 {
@@ -49,8 +49,11 @@ class RepeatTodoService
         $today = CarbonImmutable::now($todo->user->timezone)->startOfDay();
         $dueDate = CarbonImmutable::parse($todo->due_date->toDateString());
 
+        $nextDueDate = self::nextDueDate($todo->repeat_rule, $dueDate, $today);
+
         $next = $todo->replicate(['done_at', 'next_todo_id', 'remind_at', 'remind_dismissed_at', 'created_at', 'updated_at']);
-        $next->due_date = Carbon::instance(self::nextDueDate($todo->repeat_rule, $dueDate, $today));
+        $next->due_date = Carbon::instance($nextDueDate);
+        $next->remind_at = $todo->remind_at?->addDays((int) $dueDate->diffInDays($nextDueDate));
         $next->save();
 
         foreach ($todo->subtasks as $subtask) {

@@ -277,7 +277,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** `app/Http/Resources/UserResource.php`, `tests/Feature/*`, `docs/openapi.yaml`
 
 ### B-026: Repeating to-do keeps its reminder time
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. When the first check-off of a repeating to-do creates the next to-do, move `remind_at` by the same time distance as the due date moved (old due date to new due date), so "remind me at 07:00" repeats. If the old to-do has no `remind_at`, the next one has none. Subtasks copied with it get no reminder (subtasks cannot have one).
   2. Tests: daily and weekly repeats, a reminder 1 hour before a 09:00 due time, no reminder, the 00:30 Asia/Phnom_Penh case. Update DECISIONS I7 and `docs/openapi.yaml` text if it mentions "not copied".

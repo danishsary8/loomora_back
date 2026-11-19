@@ -107,6 +107,74 @@ describe('creating the next to-do', function () {
     });
 });
 
+describe('the reminder of the next to-do', function () {
+    function reminded(User $user, array $rule, string $due, string $remindAt): Todo
+    {
+        return repeating($user, $rule, $due, ['remind_at' => $remindAt]);
+    }
+
+    it('keeps the same time of day on a daily repeat', function () {
+        $next = checkOffAndGetNext($this, reminded($this->user, ['type' => 'daily'], '2026-10-24', '2026-10-24 00:00:00')); // 07:00 local
+
+        expect($next->due_date->toDateString())->toBe('2026-10-25')
+            ->and($next->remind_at->toDateTimeString())->toBe('2026-10-25 00:00:00');
+    });
+
+    it('moves the reminder by the days the due date moved on a weekly repeat', function () {
+        $next = checkOffAndGetNext($this, reminded($this->user, ['type' => 'weekly', 'days' => [0]], '2026-10-24', '2026-10-24 00:00:00'));
+
+        expect($next->due_date->toDateString())->toBe('2026-10-26')
+            ->and($next->remind_at->toDateTimeString())->toBe('2026-10-26 00:00:00');
+    });
+
+    it('keeps a reminder that is one hour before a 09:00 due time', function () {
+        // Due 2026-10-24, reminder 08:00 local (01:00 UTC); next due 2026-10-25.
+        $next = checkOffAndGetNext($this, reminded($this->user, ['type' => 'daily'], '2026-10-24', '2026-10-24 01:00:00'));
+
+        expect($next->remind_at->toDateTimeString())->toBe('2026-10-25 01:00:00');
+    });
+
+    it('keeps the distance when an overdue to-do jumps to today', function () {
+        $next = checkOffAndGetNext($this, reminded($this->user, ['type' => 'daily'], '2026-10-20', '2026-10-19 23:00:00')); // due 20th, reminder the evening before
+
+        expect($next->due_date->toDateString())->toBe('2026-10-25')
+            ->and($next->remind_at->toDateTimeString())->toBe('2026-10-24 23:00:00');
+    });
+
+    it('has no reminder when the checked-off to-do had none', function () {
+        $next = checkOffAndGetNext($this, repeating($this->user, ['type' => 'daily']));
+
+        expect($next->remind_at)->toBeNull();
+    });
+
+    it('does not carry over a dismissal', function () {
+        $todo = reminded($this->user, ['type' => 'daily'], '2026-10-24', '2026-10-24 00:00:00');
+        $todo->forceFill(['remind_dismissed_at' => '2026-10-24 00:05:00'])->save();
+
+        $next = checkOffAndGetNext($this, $todo);
+
+        expect($next->remind_dismissed_at)->toBeNull();
+    });
+
+    it('uses the local today at 00:30 in Phnom Penh', function () {
+        Carbon::setTestNow('2026-10-24 17:30:00'); // 2026-10-25 00:30 local
+
+        $next = checkOffAndGetNext($this, reminded($this->user, ['type' => 'daily'], '2026-10-24', '2026-10-24 00:00:00'));
+
+        expect($next->due_date->toDateString())->toBe('2026-10-26')
+            ->and($next->remind_at->toDateTimeString())->toBe('2026-10-26 00:00:00');
+    });
+
+    it('gives the copied subtasks no reminder', function () {
+        $todo = reminded($this->user, ['type' => 'daily'], '2026-10-24', '2026-10-24 00:00:00');
+        Todo::factory()->subtaskOf($todo)->create(['title' => 'Step']);
+
+        $next = checkOffAndGetNext($this, $todo);
+
+        expect($next->subtasks->pluck('remind_at')->filter()->all())->toBe([]);
+    });
+});
+
 describe('validation', function () {
     it('creates a repeating to-do and returns the rule', function () {
         $this->postJson('/api/v1/todos', ['title' => 'Gym', 'due_date' => '2026-10-24', 'repeat_rule' => ['type' => 'weekly', 'days' => [4, 0, 4]]])
