@@ -224,14 +224,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** migration, `app/Models/Todo.php`, `app/Services/RepeatTodoService.php`, todo controller, `tests/Feature/RepeatTodoTest.php`, `docs/openapi.yaml`
 
 ### B-021: In-app reminders for to-dos
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migration: `todos.remind_at` timestamptz null (stored UTC), `todos.remind_dismissed_at` timestamptz null. Not allowed on subtasks.
   2. `GET /reminders/due` returns the user's undone, non-deleted to-dos where `remind_at <= now` and not dismissed, oldest first (max 50). `POST /todos/{todo}/reminder/dismiss` sets `remind_dismissed_at`. `POST /todos/{todo}/reminder/snooze {minutes: 5|10|30|60}` sets `remind_at = now + minutes` and clears the dismissal. Changing `remind_at` clears the dismissal.
   3. No push notifications (docs/02: Later). Update `docs/openapi.yaml` and `POST /import`.
 - **Done when:**
-  - [ ] Tests pass for: due list contents and order, done and deleted to-dos excluded, dismiss, snooze values (other values return 422), another user's to-do returns 404
-  - [ ] Pint, static analysis and Redocly lint pass
+  - [x] Tests pass for: due list contents and order, done and deleted to-dos excluded, dismiss, snooze values (other values return 422), another user's to-do returns 404
+  - [x] Pint, static analysis and Redocly lint pass
 - **Files:** migration, `app/Http/Controllers/*Reminder*`, `routes/api.php`, `tests/Feature/ReminderTest.php`, `docs/openapi.yaml`
 
 ### B-022: To-do soft delete and restore
