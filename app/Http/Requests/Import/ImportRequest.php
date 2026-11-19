@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Import;
 
+use App\Http\Requests\Todo\TodoRules;
 use App\Models\ScheduleCheckin;
 use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
@@ -36,6 +37,8 @@ class ImportRequest extends FormRequest
             'todos.*.notes' => ['nullable', 'string', 'max:'.Todo::MAX_NOTES_LENGTH],
             'todos.*.priority' => ['sometimes', 'string', Rule::in(Todo::PRIORITIES)],
             'todos.*.parent_id' => ['nullable', 'uuid'],
+            ...TodoRules::repeatRuleRules('todos.*.repeat_rule'),
+            'todos.*.next_todo_id' => ['nullable', 'uuid'],
             'todos.*.created_at' => ['nullable', 'date'],
 
             'schedule_items' => ['sometimes', 'array', 'max:'.ScheduleItem::MAX_PER_USER],
@@ -80,6 +83,7 @@ class ImportRequest extends FormRequest
 
                 $this->checkTimesAndDates($validator);
                 $this->checkSubtasks($validator);
+                $this->checkRepeats($validator);
                 $this->checkReferencesAndDuplicates($validator);
                 $this->checkOwnership($validator);
 
@@ -131,6 +135,27 @@ class ImportRequest extends FormRequest
             }
             if (! empty($todo['due_date'])) {
                 $validator->errors()->add("todos.{$i}.due_date", __('validation.subtask_due_date'));
+            }
+        }
+    }
+
+    /** A repeating to-do needs a due date; `next_todo_id` must point at a to-do in this payload or one the user has. */
+    private function checkRepeats(Validator $validator): void
+    {
+        /** @var list<array<string, mixed>> $todos */
+        $todos = $this->input('todos', []);
+        $known = collect($todos)->pluck('id')->merge($this->user()->todos()->pluck('id'))->flip();
+
+        foreach ($todos as $i => $todo) {
+            if (! empty($todo['repeat_rule'])) {
+                if (! empty($todo['parent_id'])) {
+                    $validator->errors()->add("todos.{$i}.repeat_rule", __('validation.subtask_repeat'));
+                } elseif (empty($todo['due_date'])) {
+                    $validator->errors()->add("todos.{$i}.due_date", __('validation.repeat_needs_due_date'));
+                }
+            }
+            if (! empty($todo['next_todo_id']) && ! $known->has($todo['next_todo_id'])) {
+                $validator->errors()->add("todos.{$i}.next_todo_id", __('import.unknown_todo'));
             }
         }
     }

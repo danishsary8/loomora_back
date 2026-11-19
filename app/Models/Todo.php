@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Database\Factories\TodoFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\DB;
  * @property string|null $notes
  * @property string $priority
  * @property string|null $parent_id
+ * @property array{type: string, days?: list<int>}|null $repeat_rule
+ * @property string|null $next_todo_id
  * @property Carbon|null $due_date
  * @property Carbon|null $done_at
  * @property Carbon|null $created_at
@@ -42,6 +45,10 @@ class Todo extends Model
 
     public const MAX_NOTES_LENGTH = 2000;
 
+    public const REPEAT_DAILY = 'daily';
+
+    public const REPEAT_WEEKLY = 'weekly';
+
     /** R1 limit per user (docs/08 rule 11). */
     public const MAX_PER_USER = 500;
 
@@ -57,6 +64,7 @@ class Todo extends Model
         'due_date',
         'notes',
         'priority',
+        'repeat_rule',
     ];
 
     /**
@@ -68,6 +76,36 @@ class Todo extends Model
             'due_date' => 'date:Y-m-d',
             'done_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Stored as {type: daily} or {type: weekly, days: [...]} with days sorted and unique
+     * (0 = Monday ... 6 = Sunday, the same numbers as schedule items).
+     *
+     * @return Attribute<array{type: string, days?: list<int>}|null, array<string, mixed>|null>
+     */
+    protected function repeatRule(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value === null ? null : json_decode($value, true),
+            set: fn (?array $rule) => $rule === null ? null : json_encode(self::normalizeRepeatRule($rule)),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $rule
+     * @return array{type: string, days?: list<int>}
+     */
+    private static function normalizeRepeatRule(array $rule): array
+    {
+        if ($rule['type'] !== self::REPEAT_WEEKLY) {
+            return ['type' => self::REPEAT_DAILY];
+        }
+
+        $days = array_values(array_unique(array_map('intval', $rule['days'])));
+        sort($days);
+
+        return ['type' => self::REPEAT_WEEKLY, 'days' => $days];
     }
 
     /**

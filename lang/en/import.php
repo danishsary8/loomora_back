@@ -3,6 +3,7 @@
 return [
     'unknown_item' => 'This must point at a schedule item in the import or one you already have.',
     'unknown_parent' => 'This must point at a to-do without a parent, in the import or one you already have.',
+    'unknown_todo' => 'This must point at a to-do in the import or one you already have.',
     'duplicate_day' => 'Only one entry per item and date is allowed.',
     'id_taken' => 'This id is already used by another account.',
 ];

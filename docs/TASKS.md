@@ -213,14 +213,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** `database/migrations/*`, `app/Models/Todo.php`, todo requests and resources, `app/Services/*Import*`, `tests/Feature/*`, `docs/openapi.yaml`
 
 ### B-020: Repeating to-dos
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migration: `todos.repeat_rule` jsonb null (`{type:'daily'}` or `{type:'weekly', days:[...]}`; use the same weekday representation as schedule items) and `todos.next_todo_id` uuid null. A repeating to-do requires a `due_date` (422 otherwise).
   2. When a repeating to-do is checked off the first time, create the next one in the same transaction: same title, category, priority, notes, rule and a copy of its subtasks (undone); `due_date` is the next matching date after the later of the old due date and today in the user's time zone. Save its id in `next_todo_id`. Unchecking and checking again must not create another.
   3. Update resources, requests, `docs/openapi.yaml` and `POST /import`. Add the rule to `docs/DECISIONS.md`.
 - **Done when:**
-  - [ ] Tests pass for: daily, weekly across a week boundary, a check-off at 00:30 in `Asia/Phnom_Penh` (UTC date is still the day before), toggling twice creates one next to-do, missing `due_date` returns 422, subtasks are copied undone
-  - [ ] Pint, static analysis and Redocly lint pass
+  - [x] Tests pass for: daily, weekly across a week boundary, a check-off at 00:30 in `Asia/Phnom_Penh` (UTC date is still the day before), toggling twice creates one next to-do, missing `due_date` returns 422, subtasks are copied undone
+  - [x] Pint, static analysis and Redocly lint pass
 - **Files:** migration, `app/Models/Todo.php`, `app/Services/RepeatTodoService.php`, todo controller, `tests/Feature/RepeatTodoTest.php`, `docs/openapi.yaml`
 
 ### B-021: In-app reminders for to-dos
