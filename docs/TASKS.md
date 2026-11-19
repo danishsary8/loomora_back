@@ -224,7 +224,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** migration, `app/Models/Todo.php`, `app/Services/RepeatTodoService.php`, todo controller, `tests/Feature/RepeatTodoTest.php`, `docs/openapi.yaml`
 
 ### B-021: In-app reminders for to-dos
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Migration: `todos.remind_at` timestamptz null (stored UTC), `todos.remind_dismissed_at` timestamptz null. Not allowed on subtasks.
   2. `GET /reminders/due` returns the user's undone, non-deleted to-dos where `remind_at <= now` and not dismissed, oldest first (max 50). `POST /todos/{todo}/reminder/dismiss` sets `remind_dismissed_at`. `POST /todos/{todo}/reminder/snooze {minutes: 5|10|30|60}` sets `remind_at = now + minutes` and clears the dismissal. Changing `remind_at` clears the dismissal.
@@ -235,7 +235,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** migration, `app/Http/Controllers/*Reminder*`, `routes/api.php`, `tests/Feature/ReminderTest.php`, `docs/openapi.yaml`
 
 ### B-022: To-do soft delete and restore
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Add soft deletes to `todos`. `DELETE /todos/{todo}` soft-deletes (204) and also soft-deletes its subtasks. `POST /todos/{todo}/restore` returns the to-do (and its subtasks) if it was deleted less than 7 days ago, otherwise 410.
   2. Do NOT add any command that permanently deletes expired rows. Write the question in `docs/PROGRESS.md`: should a daily command hard-delete to-dos deleted more than 7 days ago (planner decides, it is destructive)?
@@ -246,10 +246,10 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** migration, `app/Models/Todo.php`, todo controller, `routes/api.php`, `tests/Feature/TodoRestoreTest.php`, `docs/openapi.yaml`
 
 ### B-023: Time format and week start preferences
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Migration on `users`: `time_format` enum `12h|24h` default `24h`, `week_starts_on` smallint 1 (Monday) to 7 (Sunday) default 1. Allow them in `PATCH /me` and return them in the User resource; `timezone` keeps its current validation (use the PHP identifier list if not already).
-  2. Add `tests/Fixtures/local-date-cases.json` with the cases from DC-10 in `docs/research/daycraft-task-prompts.md` (Asia/Phnom_Penh just after local midnight, Asia/Kolkata, America/Los_Angeles, a DST day) and a test that reads it against the existing local-date helper. Fix the helper if a case fails.
+  2. (Moved to B-027, see Q20.) Add `tests/Fixtures/local-date-cases.json` with the cases from DC-10 in `docs/research/daycraft-task-prompts.md` (Asia/Phnom_Penh just after local midnight, Asia/Kolkata, America/Los_Angeles, a DST day) and a test that reads it against the existing local-date helper. Fix the helper if a case fails.
   3. Update `docs/openapi.yaml`.
 - **Done when:**
   - [ ] Tests pass for valid and invalid values (`time_format: 'x'` and `week_starts_on: 8` return 422) and for every fixture case
@@ -257,7 +257,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** migration, `UpdateMeRequest`, user resource, `tests/Fixtures/local-date-cases.json`, `tests/Feature/*`, `docs/openapi.yaml`
 
 ### B-024: Daily intention API
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Table `daily_intentions`: `user_id`, `local_date` date, `text` string(200), timestamps, unique `(user_id, local_date)`.
   2. `GET /days/{date}/intention` returns `{data:{date, text}}` (`text` null if none). `PUT` the same path with `{text}` upserts; an empty string deletes the row. `{date}` must be `Y-m-d` within 366 days of the user's today (else 422).
@@ -268,10 +268,31 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** migration, `app/Models/DailyIntention.php`, controller, `routes/api.php`, `tests/Feature/DailyIntentionTest.php`, `docs/openapi.yaml`
 
 ### B-025: `has_password` on the user
-- **Status:** review
+- **Status:** done
 - **Steps:**
   1. Return `has_password` (boolean) in the User resource, true when the account has a password (false for Google-only accounts). Update `docs/openapi.yaml`.
 - **Done when:**
   - [ ] Tests pass for an email account (true) and a Google-only account (false)
   - [ ] Pint, static analysis and Redocly lint pass
 - **Files:** `app/Http/Resources/UserResource.php`, `tests/Feature/*`, `docs/openapi.yaml`
+
+### B-026: Repeating to-do keeps its reminder time
+- **Status:** todo
+- **Steps:**
+  1. When the first check-off of a repeating to-do creates the next to-do, move `remind_at` by the same time distance as the due date moved (old due date to new due date), so "remind me at 07:00" repeats. If the old to-do has no `remind_at`, the next one has none. Subtasks copied with it get no reminder (subtasks cannot have one).
+  2. Tests: daily and weekly repeats, a reminder 1 hour before a 09:00 due time, no reminder, the 00:30 Asia/Phnom_Penh case. Update DECISIONS I7 and `docs/openapi.yaml` text if it mentions "not copied".
+- **Done when:**
+  - [ ] The next to-do's `remind_at` keeps the same distance from its due date, in UTC
+  - [ ] Pest, Pint, PHPStan and Redocly lint pass
+- **Files:** `app/Services/RepeatTodoService.php`, `tests/Feature/RepeatTodoTest.php`, `docs/DECISIONS.md`, `docs/openapi.yaml`
+
+### B-027: Local-date helper and fixture cases
+- **Status:** todo
+- **Steps:**
+  1. Add `App\Support\LocalDate` as described in DC-10 of `docs/research/daycraft-task-prompts.md` (`forUser`, `todayFor`, `rangeUtc`).
+  2. Replace the inline local-date code with it in `StreakService`, `TodayRequest::localDate()`, `RepeatTodoService`, `IntentionDateRequest` and any other place `CarbonImmutable::now($user->timezone)` is used. No other behaviour change.
+  3. Add `tests/Fixtures/local-date-cases.json` (Asia/Phnom_Penh just after local midnight, Asia/Kolkata, America/Los_Angeles, a DST day) and a test that reads it.
+- **Done when:**
+  - [ ] Every fixture case passes and no inline local-date code is left
+  - [ ] All earlier tests still pass; Pint, PHPStan and Redocly lint pass
+- **Files:** `app/Support/LocalDate.php`, the services and requests above, `tests/Fixtures/local-date-cases.json`, `tests/Feature/*`
