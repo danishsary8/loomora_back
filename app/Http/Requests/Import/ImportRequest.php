@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Import;
 
 use App\Http\Requests\Todo\TodoRules;
+use App\Models\DailyIntention;
 use App\Models\ScheduleCheckin;
 use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
@@ -21,6 +22,8 @@ class ImportRequest extends FormRequest
     public const MAX_EXCEPTIONS = 5000;
 
     public const MAX_CHECKINS = 10000;
+
+    public const MAX_INTENTIONS = 1000;
 
     /**
      * @return array<string, mixed>
@@ -63,6 +66,10 @@ class ImportRequest extends FormRequest
             'exceptions.*.title' => ['nullable', 'string', 'min:1', 'max:200'],
             'exceptions.*.start_time' => ['nullable', 'date_format:H:i'],
             'exceptions.*.end_time' => ['nullable', 'date_format:H:i'],
+
+            'daily_intentions' => ['sometimes', 'array', 'max:'.self::MAX_INTENTIONS],
+            'daily_intentions.*.date' => ['required', 'date_format:Y-m-d', 'distinct'],
+            'daily_intentions.*.text' => ['required', 'string', 'min:1', 'max:'.DailyIntention::MAX_TEXT_LENGTH],
 
             'checkins' => ['sometimes', 'array', 'max:'.self::MAX_CHECKINS],
             'checkins.*.id' => ['required', 'uuid', 'distinct'],

@@ -33,6 +33,8 @@ tags:
     description: The fixed weekly schedule.
   - name: Import
     description: Moving guest data into an account.
+  - name: Days
+    description: Things the user sets for a single day.
   - name: Streak
     description: Days in a row with something checked off.
 security:
@@ -1305,6 +1307,51 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /days/{date}/intention:
+    parameters:
+      - $ref: '#/components/parameters/DatePath'
+    get:
+      tags: [Days]
+      operationId: getDailyIntention
+      summary: The intention for a day
+      description: |
+        One short line the user sets for a local day. `text` is null when none is set. `date` must be a real
+        `Y-m-d` date within 366 days of the user's today (before or after); otherwise 422.
+      responses:
+        '200':
+          $ref: '#/components/responses/IntentionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [Days]
+      operationId: putDailyIntention
+      summary: Set or clear the intention for a day
+      description: |
+        Creates the intention or replaces the existing one (one per user and day). `text` must be sent: up to
+        200 characters after trimming. An empty string, blank text or null deletes it. Same date rules as GET.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: [string, 'null']
+                  maxLength: 200
+            example:
+              text: Finish the essay outline
+      responses:
+        '200':
+          $ref: '#/components/responses/IntentionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /streak:
     get:
       tags: [Streak]
@@ -1427,6 +1474,16 @@ paths:
                       schedule_item_id: {type: string, format: uuid}
                       date: {type: string, format: date}
                       done_at: {type: [string, 'null'], format: date-time}
+                daily_intentions:
+                  type: array
+                  maxItems: 1000
+                  description: One per day. A day the user already has an intention for is skipped (the server copy wins).
+                  items:
+                    type: object
+                    required: [date, text]
+                    properties:
+                      date: {type: string, format: date}
+                      text: {type: string, minLength: 1, maxLength: 200}
             example:
               todos:
                 - id: 3b9a6c1e-2d4f-4a8b-9c0d-1e2f3a4b5c6d
@@ -1453,18 +1510,20 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [todos, schedule_items, exceptions, checkins]
+                    required: [todos, schedule_items, exceptions, checkins, daily_intentions]
                     properties:
                       todos: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       schedule_items: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       exceptions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       checkins: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      daily_intentions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
               example:
                 data:
                   todos: {created: 1, skipped: 0}
                   schedule_items: {created: 1, skipped: 0}
                   exceptions: {created: 0, skipped: 0}
                   checkins: {created: 0, skipped: 0}
+                  daily_intentions: {created: 0, skipped: 0}
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -1895,6 +1954,28 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             message: If an account exists for that email, we sent a reset link.
+    IntentionResponse:
+      description: The day's intention, wrapped in `data`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [date, text]
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  text:
+                    type: [string, 'null']
+                    maxLength: 200
+          example:
+            data:
+              date: '2026-10-24'
+              text: Finish the essay outline
     TodoResponse:
       description: The to-do, wrapped in `data`.
       content:

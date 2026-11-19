@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DailyIntentionController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\FeedbackController;
 use App\Http\Controllers\Api\V1\GoogleAuthController;
@@ -45,6 +46,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
 
         Route::post('import', [ImportController::class, 'store'])->name('import');
+
+        Route::get('days/{date}/intention', [DailyIntentionController::class, 'show'])->name('days.intention.show');
+        Route::put('days/{date}/intention', [DailyIntentionController::class, 'update'])->name('days.intention.update');
 
         Route::get('streak', [StreakController::class, 'show'])->name('streak');
 
