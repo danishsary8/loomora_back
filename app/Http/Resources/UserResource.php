@@ -20,6 +20,8 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'email_verified_at' => $this->email_verified_at?->toIso8601ZuluString(),
             'timezone' => $this->timezone,
+            'time_format' => $this->time_format,
+            'week_starts_on' => $this->week_starts_on,
             'goal' => $this->goal,
             'heard_from' => $this->heard_from,
             'survey_done' => $this->survey_done,

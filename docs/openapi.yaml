@@ -437,8 +437,18 @@ paths:
                 timezone:
                   type: string
                   description: IANA time zone name.
+                time_format:
+                  type: string
+                  enum: ['12h', '24h']
+                week_starts_on:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                  description: 1 = Monday to 7 = Sunday.
             example:
               timezone: Europe/Paris
+              time_format: 12h
+              week_starts_on: 7
       responses:
         '200':
           $ref: '#/components/responses/MeResponse'
@@ -1631,7 +1641,7 @@ components:
 
     User:
       type: object
-      required: [id, name, email, email_verified_at, timezone, goal, heard_from, survey_done, current_streak, longest_streak, created_at]
+      required: [id, name, email, email_verified_at, timezone, time_format, week_starts_on, goal, heard_from, survey_done, current_streak, longest_streak, created_at]
       properties:
         id:
           type: string
@@ -1646,6 +1656,16 @@ components:
           format: date-time
         timezone:
           type: string
+        time_format:
+          type: string
+          enum: ['12h', '24h']
+          default: 24h
+        week_starts_on:
+          type: integer
+          minimum: 1
+          maximum: 7
+          default: 1
+          description: First day of the week, 1 = Monday to 7 = Sunday.
         goal:
           type: [string, 'null']
           enum: [be_consistent, manage_time, finish_tasks, other, null]
@@ -1941,6 +1961,8 @@ components:
           email: sokha@example.com
           email_verified_at: null
           timezone: Asia/Phnom_Penh
+          time_format: 24h
+          week_starts_on: 1
           goal: null
           heard_from: null
           survey_done: false
@@ -1957,6 +1979,8 @@ components:
           email: sokha@example.com
           email_verified_at: null
           timezone: Asia/Phnom_Penh
+          time_format: 24h
+          week_starts_on: 1
           goal: null
           heard_from: null
           survey_done: false

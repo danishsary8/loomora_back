@@ -20,6 +20,8 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $google_id
  * @property Carbon|null $email_verified_at
  * @property string $timezone
+ * @property string $time_format
+ * @property int $week_starts_on
  * @property string|null $goal
  * @property string|null $heard_from
  * @property bool $survey_done
@@ -34,6 +36,13 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasUuids, Notifiable;
 
+    public const TIME_FORMATS = ['12h', '24h'];
+
+    public const DEFAULT_TIME_FORMAT = '24h';
+
+    /** 1 = Monday ... 7 = Sunday. */
+    public const DEFAULT_WEEK_STARTS_ON = 1;
+
     /**
      * Mirrors the column defaults so a freshly created user serialises correctly.
      *
@@ -41,6 +50,8 @@ class User extends Authenticatable
      */
     protected $attributes = [
         'survey_done' => false,
+        'time_format' => self::DEFAULT_TIME_FORMAT,
+        'week_starts_on' => self::DEFAULT_WEEK_STARTS_ON,
         'current_streak' => 0,
         'longest_streak' => 0,
     ];
@@ -56,6 +67,8 @@ class User extends Authenticatable
         'email',
         'password',
         'timezone',
+        'time_format',
+        'week_starts_on',
         'goal',
         'heard_from',
     ];
@@ -77,6 +90,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'survey_done' => 'boolean',
+            'week_starts_on' => 'integer',
             'current_streak' => 'integer',
             'longest_streak' => 'integer',
             'last_streak_date' => 'date',
