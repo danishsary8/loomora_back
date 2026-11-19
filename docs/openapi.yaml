@@ -1700,7 +1700,7 @@ components:
 
     User:
       type: object
-      required: [id, name, email, email_verified_at, timezone, time_format, week_starts_on, goal, heard_from, survey_done, current_streak, longest_streak, created_at]
+      required: [id, name, email, has_password, email_verified_at, timezone, time_format, week_starts_on, goal, heard_from, survey_done, current_streak, longest_streak, created_at]
       properties:
         id:
           type: string
@@ -1710,6 +1710,9 @@ components:
         email:
           type: string
           format: email
+        has_password:
+          type: boolean
+          description: False for an account created with Google that never set a password.
         email_verified_at:
           type: [string, 'null']
           format: date-time
@@ -2040,6 +2043,7 @@ components:
           id: 9f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f
           name: Sokha
           email: sokha@example.com
+          has_password: true
           email_verified_at: null
           timezone: Asia/Phnom_Penh
           time_format: 24h
@@ -2058,6 +2062,7 @@ components:
           id: 9f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f
           name: Sokha
           email: sokha@example.com
+          has_password: true
           email_verified_at: null
           timezone: Asia/Phnom_Penh
           time_format: 24h

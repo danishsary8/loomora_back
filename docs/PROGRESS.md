@@ -259,3 +259,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Problems:** no local test run (above).
 - **Questions:** Q21.
 
+### 2026-11-19: B-025 `has_password` on the user
+- **Branch / PR:** `feat/B-025-has-password`, stacked on `feat/B-024-daily-intention` (PR #25, stacked on #24, #23, #22). PR into `v2-rebuild`.
+- **What changed:** `UserResource` returns `has_password` (true when the account has a password, false for Google-only accounts); the hash itself stays hidden. It appears everywhere the user is returned (`/me`, `PATCH /me`, register, login, Google exchange). openapi: `User` schema (required) and the examples.
+- **How it was verified:** `php -l` and a YAML parse only; Composer packages cannot be installed in this session, so Pest, Pint, PHPStan and Redocly did not run here. `tests/Feature/HasPasswordTest.php`: an email account is true, a Google-only account (no password, with a Google id) is false and exposes neither `password` nor `google_id`, and the field is present in the login response and `PATCH /me`. CI on the PR is the check.
+- **Problems:** no local test run (above).
+- **Questions:** none.
+
