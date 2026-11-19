@@ -207,3 +207,7 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Branch:** `feat/B-019-todo-subtasks` (docs-only change, no code).
 - **What happened:** the cloud session has no `vendor/`. `composer install` (both `--prefer-dist` and `--prefer-source`) fails with "Could not authenticate against github.com" (the egress proxy drops `api.github.com` tunnels). Same failure B-017 noted. Without Pest, Pint and PHPStan I cannot run any "Done when" check, so I did not write unverified code.
 - **Question for the planner/owner:** can this routine's environment get Composer packages (a GitHub token for Composer in the environment, a Packagist mirror, or a prebuilt `vendor/` cache)? Until then every task B-019 to B-025 is blocked the same way. Set B-019 back to `todo` once fixed.
+
+### 2026-11-19: B-019 still blocked (scheduled run, composer still cannot install)
+- **What happened:** same as the 2026-11-18 note. `composer install` (retried 4 times) still times out on `api.github.com` ("Proxy CONNECT aborted due to timeout"); `vendor/` is incomplete (no `vendor/bin/pest`, Pint binary or PHPStan), so no "Done when" check can run. No code was written. B-020 to B-025 are blocked the same way, so I did not start them.
+- **Still needed:** a Composer-capable environment for this routine (GitHub token for Composer, a Packagist mirror, or a prebuilt `vendor/` cache). Set B-019 back to `todo` once fixed.
