@@ -184,6 +184,7 @@ return [
     'subtask_due_date' => 'A subtask uses the date of its to-do and cannot have its own.',
     'subtask_repeat' => 'A subtask cannot repeat.',
     'repeat_needs_due_date' => 'A repeating to-do needs a due date.',
+    'subtask_reminder' => 'A subtask cannot have a reminder.',
 
     'custom' => [
         'attribute-name' => [

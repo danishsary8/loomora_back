@@ -25,6 +25,8 @@ use Illuminate\Support\Facades\DB;
  * @property string|null $parent_id
  * @property array{type: string, days?: list<int>}|null $repeat_rule
  * @property string|null $next_todo_id
+ * @property Carbon|null $remind_at
+ * @property Carbon|null $remind_dismissed_at
  * @property Carbon|null $due_date
  * @property Carbon|null $done_at
  * @property Carbon|null $created_at
@@ -49,6 +51,12 @@ class Todo extends Model
 
     public const REPEAT_WEEKLY = 'weekly';
 
+    /** Snooze lengths offered by a due reminder, in minutes. */
+    public const SNOOZE_MINUTES = [5, 10, 30, 60];
+
+    /** At most this many reminders are returned as due at once. */
+    public const MAX_DUE_REMINDERS = 50;
+
     /** R1 limit per user (docs/08 rule 11). */
     public const MAX_PER_USER = 500;
 
@@ -65,6 +73,7 @@ class Todo extends Model
         'notes',
         'priority',
         'repeat_rule',
+        'remind_at',
     ];
 
     /**
@@ -75,7 +84,47 @@ class Todo extends Model
         return [
             'due_date' => 'date:Y-m-d',
             'done_at' => 'datetime',
+            'remind_at' => 'datetime',
+            'remind_dismissed_at' => 'datetime',
         ];
+    }
+
+    /** A new or changed reminder time brings a dismissed reminder back. */
+    protected static function booted(): void
+    {
+        static::saving(function (Todo $todo) {
+            if ($todo->isDirty('remind_at') && ! $todo->isDirty('remind_dismissed_at')) {
+                $todo->remind_dismissed_at = null;
+            }
+        });
+    }
+
+    /**
+     * @return Attribute<Carbon|null, mixed>
+     */
+    protected function remindAt(): Attribute
+    {
+        return $this->storedInUtc();
+    }
+
+    /**
+     * @return Attribute<Carbon|null, mixed>
+     */
+    protected function remindDismissedAt(): Attribute
+    {
+        return $this->storedInUtc();
+    }
+
+    /**
+     * A date-time sent with any UTC offset is stored in UTC.
+     *
+     * @return Attribute<Carbon|null, mixed>
+     */
+    private function storedInUtc(): Attribute
+    {
+        return Attribute::make(
+            set: fn (mixed $value) => $value === null ? null : $this->fromDateTime(Carbon::parse($value)->utc()),
+        );
     }
 
     /**
@@ -150,6 +199,33 @@ class Todo extends Model
             $this->save();
             $this->subtasks()->whereNull('done_at')->update(['done_at' => $this->done_at]);
         });
+    }
+
+    public function dismissReminder(): void
+    {
+        $this->remind_dismissed_at ??= now();
+        $this->save();
+    }
+
+    public function snoozeReminder(int $minutes): void
+    {
+        $this->remind_at = now()->addMinutes($minutes);
+        $this->save();
+    }
+
+    /**
+     * Undone to-dos whose reminder time has passed and that were not dismissed, oldest first.
+     *
+     * @param  Builder<Todo>  $query
+     */
+    public function scopeDueReminders(Builder $query): void
+    {
+        $query->whereNull('done_at')
+            ->whereNull('remind_dismissed_at')
+            ->where('remind_at', '<=', now())
+            ->orderBy('remind_at')
+            ->orderBy('id')
+            ->limit(self::MAX_DUE_REMINDERS);
     }
 
     /**

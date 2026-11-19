@@ -35,6 +35,7 @@ class UpdateTodoRequest extends FormRequest
                     $validator->errors()->add('due_date', __('validation.subtask_due_date'));
                 }
                 $this->checkRepeat($validator, $todo, $todo->isSubtask());
+                $this->checkReminder($validator, $todo->isSubtask());
             },
         ];
     }

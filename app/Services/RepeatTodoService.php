@@ -49,7 +49,7 @@ class RepeatTodoService
         $today = CarbonImmutable::now($todo->user->timezone)->startOfDay();
         $dueDate = CarbonImmutable::parse($todo->due_date->toDateString());
 
-        $next = $todo->replicate(['done_at', 'next_todo_id', 'created_at', 'updated_at']);
+        $next = $todo->replicate(['done_at', 'next_todo_id', 'remind_at', 'remind_dismissed_at', 'created_at', 'updated_at']);
         $next->due_date = Carbon::instance(self::nextDueDate($todo->repeat_rule, $dueDate, $today));
         $next->save();
 

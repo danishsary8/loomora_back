@@ -58,7 +58,7 @@ class ImportService
                 continue;
             }
 
-            $todo = $this->fill(new Todo, $row, ['title', 'category', 'due_date', 'done_at', 'notes', 'priority', 'parent_id', 'repeat_rule']);
+            $todo = $this->fill(new Todo, $row, ['title', 'category', 'due_date', 'done_at', 'notes', 'priority', 'parent_id', 'repeat_rule', 'remind_at', 'remind_dismissed_at']);
             $todo->category ??= 'other';
             $todo->user_id = $user->id;
             $this->keepCreatedAt($todo, $row);

@@ -25,6 +25,8 @@ tags:
     description: The signed-in user's account.
   - name: Todos
     description: To-dos and the Today list.
+  - name: Reminders
+    description: In-app reminders for to-dos. No push notifications yet.
   - name: Feedback
     description: Messages from users and guests.
   - name: Schedule
@@ -580,6 +582,7 @@ paths:
                     parent_id: null
                     repeat_rule: null
                     next_todo_id: null
+                    remind_at: null
                     due_date: '2026-10-20'
                     done_at: null
                     overdue: true
@@ -594,6 +597,7 @@ paths:
                         parent_id: 2b7e1a90-5c3d-4f2e-9a1b-0c8d7e6f5a4b
                         repeat_rule: null
                         next_todo_id: null
+                        remind_at: null
                         due_date: null
                         done_at: '2026-10-24T02:00:00Z'
                         overdue: false
@@ -608,6 +612,7 @@ paths:
                     parent_id: null
                     repeat_rule: {type: weekly, days: [0, 2, 4]}
                     next_todo_id: 4e5f6a7b-8c9d-4e0f-a1b2-c3d4e5f6a7b8
+                    remind_at: null
                     due_date: '2026-10-24'
                     done_at: '2026-10-24T03:00:00Z'
                     overdue: false
@@ -627,7 +632,8 @@ paths:
         Send `parent_id` to create a subtask. The parent must be one of the user's own top-level to-dos:
         another user's or an unknown id is a 404, and a parent that is itself a subtask is a 422 on `parent_id`.
         A subtask takes its parent's category unless one is sent, and cannot have a `due_date` (422).
-        A to-do with a `repeat_rule` needs a `due_date` (422 on `due_date`); a subtask cannot repeat (422 on `repeat_rule`).
+        A to-do with a `repeat_rule` needs a `due_date` (422 on `due_date`); a subtask cannot repeat (422 on `repeat_rule`)
+        or have a `remind_at` (422 on `remind_at`).
       requestBody:
         required: true
         content:
@@ -659,7 +665,8 @@ paths:
       description: |
         Send only the fields to change. `parent_id` cannot be changed. A subtask cannot get a `due_date` or a
         `repeat_rule` (422). A repeating to-do must keep a `due_date`: clearing it, or adding a rule to an undated
-        to-do, is a 422 on `due_date`. Send `repeat_rule: null` to stop repeating.
+        to-do, is a 422 on `due_date`. Send `repeat_rule: null` to stop repeating. A subtask cannot get a `remind_at` (422).
+        A `remind_at` different from the current one brings back a dismissed reminder; `remind_at: null` removes it.
       requestBody:
         required: true
         content:
@@ -685,6 +692,8 @@ paths:
                   oneOf:
                     - $ref: '#/components/schemas/RepeatRule'
                     - type: 'null'
+                remind_at:
+                  $ref: '#/components/schemas/RemindAt'
             example:
               title: Read chapter 4
               due_date: null
@@ -729,7 +738,7 @@ paths:
 
         For a repeating to-do, the first check-off also creates the next one in the same transaction and returns
         its id in `next_todo_id`: same title, category, priority, notes and rule, plus undone copies of the
-        subtasks. Its `due_date` is the next date matching the rule after the later of the old due date and
+        subtasks (the reminder is not copied). Its `due_date` is the next date matching the rule after the later of the old due date and
         today in the user's time zone. Unchecking and checking off again does not create another.
       responses:
         '200':
@@ -754,6 +763,101 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /reminders/due:
+    get:
+      tags: [Reminders]
+      operationId: listDueReminders
+      summary: Reminders that are due now
+      description: |
+        The user's to-dos that are not done, whose `remind_at` has passed and whose reminder was not dismissed,
+        oldest `remind_at` first, at most 50. The client polls this while the app is open and shows each one
+        until it is dismissed or snoozed.
+      responses:
+        '200':
+          description: The due reminders.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 50
+                    items:
+                      $ref: '#/components/schemas/Todo'
+              example:
+                data:
+                  - id: 2b7e1a90-5c3d-4f2e-9a1b-0c8d7e6f5a4b
+                    title: Call the bank
+                    category: life
+                    priority: normal
+                    notes: null
+                    parent_id: null
+                    repeat_rule: null
+                    next_todo_id: null
+                    remind_at: '2026-10-24T03:00:00Z'
+                    due_date: '2026-10-24'
+                    done_at: null
+                    overdue: false
+                    old: false
+                    created_at: '2026-10-23T08:00:00Z'
+                    subtasks: []
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /todos/{todo}/reminder/dismiss:
+    parameters:
+      - $ref: '#/components/parameters/TodoId'
+    post:
+      tags: [Reminders]
+      operationId: dismissReminder
+      summary: Dismiss a reminder
+      description: |
+        Removes the to-do from the due list; `remind_at` is kept. Calling it again keeps the first dismissal.
+        Setting a different `remind_at` (edit or snooze) brings the reminder back.
+        Another user's to-do is a 404.
+      responses:
+        '200':
+          $ref: '#/components/responses/TodoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /todos/{todo}/reminder/snooze:
+    parameters:
+      - $ref: '#/components/parameters/TodoId'
+    post:
+      tags: [Reminders]
+      operationId: snoozeReminder
+      summary: Snooze a reminder
+      description: |
+        Sets `remind_at` to now plus `minutes` and clears a dismissal. Another user's to-do is a 404;
+        a subtask is a 422 on `remind_at` (subtasks have no reminders).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [minutes]
+              properties:
+                minutes:
+                  type: integer
+                  enum: [5, 10, 30, 60]
+            example:
+              minutes: 10
+      responses:
+        '200':
+          $ref: '#/components/responses/TodoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /schedule/items:
     get:
@@ -1218,7 +1322,8 @@ paths:
         and 10000 check-ins per call. Exceptions and check-ins must point at an item in the payload or one the user has.
         A to-do's `parent_id` must point at a top-level to-do in the payload or one the user has (in any order in the
         payload), and a subtask cannot have a `due_date` or a `repeat_rule`. A to-do with a `repeat_rule` needs a
-        `due_date`. `next_todo_id` must point at a to-do in the payload or one the user has.
+        `due_date`. `next_todo_id` must point at a to-do in the payload or one the user has. A subtask cannot have a
+        `remind_at`; send `remind_dismissed_at` for a reminder the guest already dismissed.
       requestBody:
         required: true
         content:
@@ -1243,6 +1348,8 @@ paths:
                       parent_id: {type: [string, 'null'], format: uuid}
                       repeat_rule: {oneOf: [{$ref: '#/components/schemas/RepeatRule'}, {type: 'null'}]}
                       next_todo_id: {type: [string, 'null'], format: uuid}
+                      remind_at: {$ref: '#/components/schemas/RemindAt'}
+                      remind_dismissed_at: {$ref: '#/components/schemas/RemindAt'}
                 schedule_items:
                   type: array
                   items:
@@ -1571,6 +1678,16 @@ components:
             - $ref: '#/components/schemas/RepeatRule'
             - type: 'null'
           description: Needs a `due_date`. Not allowed on a subtask.
+        remind_at:
+          $ref: '#/components/schemas/RemindAt'
+
+    RemindAt:
+      type: [string, 'null']
+      format: date-time
+      description: |
+        When to remind, as ISO 8601 with an explicit offset (`2026-10-24T18:30:00+07:00` or `2026-10-24T11:30:00.000Z`).
+        A value without an offset is a 422. Stored and returned in UTC. Not allowed on a subtask.
+      example: '2026-10-24T11:30:00Z'
 
     RepeatRule:
       type: object
@@ -1596,7 +1713,7 @@ components:
 
     Todo:
       type: object
-      required: [id, title, category, priority, notes, parent_id, repeat_rule, next_todo_id, due_date, done_at, overdue, old, created_at, subtasks]
+      required: [id, title, category, priority, notes, parent_id, repeat_rule, next_todo_id, remind_at, due_date, done_at, overdue, old, created_at, subtasks]
       properties:
         id:
           type: string
@@ -1621,6 +1738,10 @@ components:
           type: [string, 'null']
           format: uuid
           description: Set when a repeating to-do is first checked off; the to-do created for the next date.
+        remind_at:
+          type: [string, 'null']
+          format: date-time
+          description: When the in-app reminder is due, in UTC. Always null on a subtask.
         due_date:
           type: [string, 'null']
           format: date
