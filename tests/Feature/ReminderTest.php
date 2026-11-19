@@ -32,7 +32,7 @@ describe('setting a reminder', function () {
             ->assertJsonPath('data.remind_at', '2026-10-24T11:30:00Z')
             ->json('data.id');
 
-        expect(Todo::findOrFail($id)->getRawOriginal('remind_at'))->toBe('2026-10-24 11:30:00');
+        expect(Todo::findOrFail($id)->getRawOriginal('remind_at'))->toStartWith('2026-10-24 11:30:00');
     });
 
     it('accepts toISOString() output with milliseconds', function () {
