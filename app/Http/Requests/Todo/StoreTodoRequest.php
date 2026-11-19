@@ -37,7 +37,11 @@ class StoreTodoRequest extends FormRequest
                 }
             },
             function (Validator $validator) {
-                if ($validator->errors()->has('parent_id') || $this->parent() === null) {
+                if ($validator->errors()->has('parent_id')) {
+                    return;
+                }
+                $this->checkRepeat($validator, null, $this->parent() !== null);
+                if ($this->parent() === null) {
                     return;
                 }
                 if ($this->parent()->isSubtask()) {

@@ -58,12 +58,19 @@ class ImportService
                 continue;
             }
 
-            $todo = $this->fill(new Todo, $row, ['title', 'category', 'due_date', 'done_at', 'notes', 'priority', 'parent_id']);
+            $todo = $this->fill(new Todo, $row, ['title', 'category', 'due_date', 'done_at', 'notes', 'priority', 'parent_id', 'repeat_rule']);
             $todo->category ??= 'other';
             $todo->user_id = $user->id;
             $this->keepCreatedAt($todo, $row);
             $todo->save();
             $created++;
+        }
+
+        // Linked after every row exists, since a next to-do may come later in the payload.
+        foreach ($rows as $row) {
+            if (! $existing->has($row['id']) && ! empty($row['next_todo_id'])) {
+                Todo::whereKey($row['id'])->update(['next_todo_id' => $row['next_todo_id']]);
+            }
         }
 
         return ['created' => $created, 'skipped' => count($rows) - $created];

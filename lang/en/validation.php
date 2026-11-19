@@ -182,6 +182,8 @@ return [
     'todo_limit' => 'You can have at most :max to-dos.',
     'subtask_depth' => 'A subtask cannot have subtasks of its own.',
     'subtask_due_date' => 'A subtask uses the date of its to-do and cannot have its own.',
+    'subtask_repeat' => 'A subtask cannot repeat.',
+    'repeat_needs_due_date' => 'A repeating to-do needs a due date.',
 
     'custom' => [
         'attribute-name' => [

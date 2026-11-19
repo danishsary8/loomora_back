@@ -8,6 +8,7 @@ use App\Http\Requests\Todo\TodayRequest;
 use App\Http\Requests\Todo\UpdateTodoRequest;
 use App\Http\Resources\TodoResource;
 use App\Models\Todo;
+use App\Services\RepeatTodoService;
 use App\Services\StreakService;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -67,11 +68,11 @@ class TodoController extends Controller
         return response()->noContent();
     }
 
-    public function markDone(Todo $todo, StreakService $streak): TodoResource
+    public function markDone(Todo $todo, RepeatTodoService $repeat, StreakService $streak): TodoResource
     {
         Gate::authorize('manage', $todo);
 
-        $todo->markDone();
+        $repeat->checkOff($todo);
         $streak->recompute($todo->user);
 
         return new TodoResource($todo);
