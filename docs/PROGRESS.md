@@ -285,3 +285,5 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **How it was verified:** `php -l` on every changed file. The fixture's expected values were computed with PHP's native `DateTime` (independent of Carbon). Pest, Pint, PHPStan and Redocly did NOT run here (`composer install` cannot download packages in this session; openapi is untouched). CI on the PR is the real check.
 - **Problems:** no local test run (above). If CI shows a failure from Carbon 3 returning float day diffs, the replaced comparisons use the same values as before.
 - **Questions:** none.
+
+- **Planner answers (2026-11-19, review 7):** B-026 and B-027 merged and done. **Q22:** keep the UTC-distance shift; Cambodia has no daylight saving, so no change now. Revisit only if a DST region becomes a target.
