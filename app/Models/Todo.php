@@ -5,21 +5,28 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Database\Factories\TodoFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property string $id
  * @property string $user_id
  * @property string $title
  * @property string $category
+ * @property string|null $notes
+ * @property string $priority
+ * @property string|null $parent_id
  * @property Carbon|null $due_date
  * @property Carbon|null $done_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read Collection<int, Todo> $subtasks
  */
 class Todo extends Model
 {
@@ -28,6 +35,12 @@ class Todo extends Model
 
     /** The fixed set of 6 categories (docs/08 rule 12). */
     public const CATEGORIES = ['study', 'work', 'health', 'life', 'rest', 'other'];
+
+    public const PRIORITIES = ['low', 'normal', 'high'];
+
+    public const DEFAULT_PRIORITY = 'normal';
+
+    public const MAX_NOTES_LENGTH = 2000;
 
     /** R1 limit per user (docs/08 rule 11). */
     public const MAX_PER_USER = 500;
@@ -42,6 +55,8 @@ class Todo extends Model
         'title',
         'category',
         'due_date',
+        'notes',
+        'priority',
     ];
 
     /**
@@ -61,6 +76,50 @@ class Todo extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Todo, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Todo::class, 'parent_id');
+    }
+
+    /**
+     * One level deep only: a subtask never has subtasks of its own.
+     *
+     * @return HasMany<Todo, $this>
+     */
+    public function subtasks(): HasMany
+    {
+        return $this->hasMany(Todo::class, 'parent_id')->orderBy('created_at')->orderBy('id');
+    }
+
+    public function isSubtask(): bool
+    {
+        return $this->parent_id !== null;
+    }
+
+    /**
+     * Checks off the to-do and, for a parent, its open subtasks, in one transaction.
+     * Idempotent: a second call keeps the original completion time.
+     */
+    public function markDone(): void
+    {
+        DB::transaction(function () {
+            $this->done_at ??= now();
+            $this->save();
+            $this->subtasks()->whereNull('done_at')->update(['done_at' => $this->done_at]);
+        });
+    }
+
+    /**
+     * @param  Builder<Todo>  $query
+     */
+    public function scopeTopLevel(Builder $query): void
+    {
+        $query->whereNull('parent_id');
     }
 
     /**

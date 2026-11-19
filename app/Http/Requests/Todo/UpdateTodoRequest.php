@@ -5,11 +5,11 @@ namespace App\Http\Requests\Todo;
 use App\Http\Requests\Concerns\TrimsTitle;
 use App\Models\Todo;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateTodoRequest extends FormRequest
 {
-    use TrimsTitle;
+    use TodoRules, TrimsTitle;
 
     /**
      * @return array<string, mixed>
@@ -18,8 +18,23 @@ class UpdateTodoRequest extends FormRequest
     {
         return [
             'title' => ['sometimes', 'required', 'string', 'min:1', 'max:200'],
-            'category' => ['sometimes', 'required', 'string', Rule::in(Todo::CATEGORIES)],
-            'due_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
+            ...$this->optionalFieldRules(),
+        ];
+    }
+
+    /**
+     * @return array<int, \Closure>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator) {
+                /** @var Todo $todo */
+                $todo = $this->route('todo');
+                if ($todo->isSubtask() && $this->filled('due_date')) {
+                    $validator->errors()->add('due_date', __('validation.subtask_due_date'));
+                }
+            },
         ];
     }
 }

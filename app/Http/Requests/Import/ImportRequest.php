@@ -33,6 +33,9 @@ class ImportRequest extends FormRequest
             'todos.*.category' => ['sometimes', 'string', Rule::in(Todo::CATEGORIES)],
             'todos.*.due_date' => ['nullable', 'date_format:Y-m-d'],
             'todos.*.done_at' => ['nullable', 'date'],
+            'todos.*.notes' => ['nullable', 'string', 'max:'.Todo::MAX_NOTES_LENGTH],
+            'todos.*.priority' => ['sometimes', 'string', Rule::in(Todo::PRIORITIES)],
+            'todos.*.parent_id' => ['nullable', 'uuid'],
             'todos.*.created_at' => ['nullable', 'date'],
 
             'schedule_items' => ['sometimes', 'array', 'max:'.ScheduleItem::MAX_PER_USER],
@@ -76,6 +79,7 @@ class ImportRequest extends FormRequest
                 }
 
                 $this->checkTimesAndDates($validator);
+                $this->checkSubtasks($validator);
                 $this->checkReferencesAndDuplicates($validator);
                 $this->checkOwnership($validator);
 
@@ -106,6 +110,27 @@ class ImportRequest extends FormRequest
             }
             if (! empty($exception['start_time']) && ! empty($exception['end_time']) && $exception['start_time'] >= $exception['end_time']) {
                 $validator->errors()->add("exceptions.{$i}.end_time", __('schedule.end_after_start'));
+            }
+        }
+    }
+
+    /** A subtask's parent must be a top-level to-do in this payload or one the user already has. */
+    private function checkSubtasks(Validator $validator): void
+    {
+        /** @var list<array<string, mixed>> $todos */
+        $todos = $this->input('todos', []);
+        $parents = collect($todos)->whereNull('parent_id')->pluck('id')
+            ->merge($this->user()->todos()->topLevel()->pluck('id'))->flip();
+
+        foreach ($todos as $i => $todo) {
+            if (empty($todo['parent_id'])) {
+                continue;
+            }
+            if (! $parents->has($todo['parent_id'])) {
+                $validator->errors()->add("todos.{$i}.parent_id", __('import.unknown_parent'));
+            }
+            if (! empty($todo['due_date'])) {
+                $validator->errors()->add("todos.{$i}.due_date", __('validation.subtask_due_date'));
             }
         }
     }

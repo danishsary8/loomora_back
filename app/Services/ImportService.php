@@ -50,12 +50,15 @@ class ImportService
         $existing = $user->todos()->whereIn('id', array_column($rows, 'id'))->pluck('id')->flip();
         $created = 0;
 
+        // Parents first, so every subtask's foreign key already exists.
+        usort($rows, fn (array $a, array $b) => empty($b['parent_id']) <=> empty($a['parent_id']));
+
         foreach ($rows as $row) {
             if ($existing->has($row['id'])) {
                 continue;
             }
 
-            $todo = $this->fill(new Todo, $row, ['title', 'category', 'due_date', 'done_at']);
+            $todo = $this->fill(new Todo, $row, ['title', 'category', 'due_date', 'done_at', 'notes', 'priority', 'parent_id']);
             $todo->category ??= 'other';
             $todo->user_id = $user->id;
             $this->keepCreatedAt($todo, $row);

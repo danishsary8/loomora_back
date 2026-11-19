@@ -200,16 +200,16 @@ _None yet._
 Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-task-prompts.md` (behaviour reference only; never copy Daycraft code or visuals). Every task updates `docs/openapi.yaml` and runs `npx @redocly/cli lint docs/openapi.yaml`. New to-do fields must also be accepted by `POST /import`.
 
 ### B-019: Subtasks, priority and notes on to-dos
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Migration on `todos`: `notes` text null (max 2000), `priority` enum `low|normal|high` default `normal`, `parent_id` uuid null (foreign key to `todos`, same user).
   2. Rules: a subtask's parent must be the same user's and must itself have no parent (depth 1 only); a subtask cannot have `repeat_rule` or `remind_at`. Checking a parent marks its open subtasks done in the same transaction; unchecking a parent leaves them. Subtask check-offs count for the streak (record in `docs/DECISIONS.md`).
   3. List and single responses return top-level to-dos with a nested `subtasks` array (ordered by creation); update the Todo resources, requests and `docs/openapi.yaml`. Extend `POST /import` to accept the new fields.
   4. Pest feature tests for each rule above, plus a 422 for a subtask of a subtask and a 404 for another user's `parent_id`.
 - **Done when:**
-  - [ ] `php artisan test` passes the new tests
-  - [ ] `./vendor/bin/pint --test` and the static-analysis command from B-017 pass
-  - [ ] `npx @redocly/cli lint docs/openapi.yaml` is valid
+  - [x] `php artisan test` passes the new tests
+  - [x] `./vendor/bin/pint --test` and the static-analysis command from B-017 pass
+  - [x] `npx @redocly/cli lint docs/openapi.yaml` is valid
 - **Files:** `database/migrations/*`, `app/Models/Todo.php`, todo requests and resources, `app/Services/*Import*`, `tests/Feature/*`, `docs/openapi.yaml`
 
 ### B-020: Repeating to-dos
