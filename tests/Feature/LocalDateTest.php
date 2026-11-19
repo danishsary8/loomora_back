@@ -5,7 +5,7 @@ use App\Support\LocalDate;
 use Carbon\CarbonImmutable;
 
 dataset('local date cases', function () {
-    foreach (json_decode(file_get_contents(base_path('tests/Fixtures/local-date-cases.json')), true, flags: JSON_THROW_ON_ERROR) as $case) {
+    foreach (json_decode(file_get_contents(__DIR__.'/../Fixtures/local-date-cases.json'), true, flags: JSON_THROW_ON_ERROR) as $case) {
         yield $case['name'] => [$case];
     }
 });
