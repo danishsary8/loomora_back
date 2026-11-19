@@ -99,14 +99,14 @@ describe('the date', function () {
 
 describe('privacy', function () {
     it('never shows another user\'s intention', function () {
-        DailyIntention::create(['user_id' => User::factory()->create()->id, 'local_date' => '2026-10-24', 'text' => 'Secret']);
+        User::factory()->create()->dailyIntentions()->create(['local_date' => '2026-10-24', 'text' => 'Secret']);
 
         $this->getJson('/api/v1/days/2026-10-24/intention')->assertOk()->assertJsonPath('data.text', null);
     });
 
     it('does not touch another user\'s intention on put or delete', function () {
         $other = User::factory()->create();
-        DailyIntention::create(['user_id' => $other->id, 'local_date' => '2026-10-24', 'text' => 'Theirs']);
+        $other->dailyIntentions()->create(['local_date' => '2026-10-24', 'text' => 'Theirs']);
 
         $this->putJson('/api/v1/days/2026-10-24/intention', ['text' => 'Mine'])->assertOk();
         $this->putJson('/api/v1/days/2026-10-24/intention', ['text' => ''])->assertOk();
