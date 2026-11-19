@@ -7,6 +7,7 @@ use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
 use App\Models\Todo;
 use App\Models\User;
+use App\Support\LocalDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -93,7 +94,7 @@ class ImportService
 
             $item = $this->fill(new ScheduleItem, $row, ['title', 'category', 'start_time', 'end_time', 'starts_on', 'ends_on']);
             $item->category ??= 'other';
-            $item->starts_on ??= now($user->timezone)->toDateString();
+            $item->starts_on ??= LocalDate::todayFor($user);
             $item->days = array_values(array_unique($row['days']));
             $item->user_id = $user->id;
             $this->keepCreatedAt($item, $row);

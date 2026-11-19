@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Todo;
 
+use App\Support\LocalDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -32,7 +33,7 @@ class TodayRequest extends FormRequest
                     return;
                 }
 
-                $userToday = CarbonImmutable::now($this->user()->timezone)->startOfDay();
+                $userToday = LocalDate::startOfDay($this->user(), LocalDate::todayFor($this->user()));
 
                 if (abs($this->localDate()->diffInDays($userToday, false)) > 1) {
                     $validator->errors()->add('date', __('validation.todo_date_out_of_range'));
@@ -43,6 +44,6 @@ class TodayRequest extends FormRequest
 
     public function localDate(): CarbonImmutable
     {
-        return CarbonImmutable::createFromFormat('!Y-m-d', $this->input('date'), $this->user()->timezone);
+        return LocalDate::startOfDay($this->user(), $this->input('date'));
     }
 }

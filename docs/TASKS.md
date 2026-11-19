@@ -287,7 +287,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** `app/Services/RepeatTodoService.php`, `tests/Feature/RepeatTodoTest.php`, `docs/DECISIONS.md`, `docs/openapi.yaml`
 
 ### B-027: Local-date helper and fixture cases
-- **Status:** todo
+- **Status:** review
 - **Steps:**
   1. Add `App\Support\LocalDate` as described in DC-10 of `docs/research/daycraft-task-prompts.md` (`forUser`, `todayFor`, `rangeUtc`).
   2. Replace the inline local-date code with it in `StreakService`, `TodayRequest::localDate()`, `RepeatTodoService`, `IntentionDateRequest` and any other place `CarbonImmutable::now($user->timezone)` is used. No other behaviour change.
