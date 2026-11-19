@@ -312,3 +312,59 @@ describe('other users\' ids', function () {
             ->and($this->user->todos()->count())->toBe(2);
     });
 });
+
+describe('subtasks, priority and notes', function () {
+    it('imports subtasks listed before their parent, with priority and notes', function () {
+        $parent = (string) Str::uuid();
+        $child = (string) Str::uuid();
+
+        $this->postJson('/api/v1/import', ['todos' => [
+            ['id' => $child, 'title' => 'Outline', 'parent_id' => $parent],
+            ['id' => $parent, 'title' => 'Essay', 'priority' => 'high', 'notes' => 'Due Friday'],
+        ]])->assertOk()->assertJsonPath('data.todos.created', 2);
+
+        expect(Todo::find($child)->parent_id)->toBe($parent)
+            ->and(Todo::find($parent)->priority)->toBe('high')
+            ->and(Todo::find($parent)->notes)->toBe('Due Friday')
+            ->and(Todo::find($child)->priority)->toBe('normal');
+    });
+
+    it('accepts a subtask of a to-do the user already has', function () {
+        $parent = Todo::factory()->for($this->user)->create();
+
+        $this->postJson('/api/v1/import', ['todos' => [
+            ['id' => (string) Str::uuid(), 'title' => 'Step', 'parent_id' => $parent->id],
+        ]])->assertOk();
+
+        expect($parent->subtasks()->count())->toBe(1);
+    });
+
+    it('rejects bad subtasks and writes nothing', function (Closure $rows) {
+        $this->postJson('/api/v1/import', ['todos' => $rows($this->user)])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('todos.1.parent_id');
+
+        expect(Todo::where('user_id', $this->user->id)->count())->toBe(0);
+    })->with([
+        'subtask of a subtask' => [function () {
+            [$a, $b] = [(string) Str::uuid(), (string) Str::uuid()];
+
+            return [['id' => $a, 'title' => 'A', 'parent_id' => $b], ['id' => (string) Str::uuid(), 'title' => 'B', 'parent_id' => $a], ['id' => $b, 'title' => 'C']];
+        }],
+        'another user\'s parent' => [fn () => [['id' => (string) Str::uuid(), 'title' => 'A'], ['id' => (string) Str::uuid(), 'title' => 'B', 'parent_id' => Todo::factory()->create()->id]]],
+        'unknown parent' => [fn () => [['id' => (string) Str::uuid(), 'title' => 'A'], ['id' => (string) Str::uuid(), 'title' => 'B', 'parent_id' => (string) Str::uuid()]]],
+    ]);
+
+    it('validates priority, notes and a subtask due date', function () {
+        $parent = (string) Str::uuid();
+
+        $this->postJson('/api/v1/import', ['todos' => [
+            ['id' => $parent, 'title' => 'A', 'priority' => 'urgent', 'notes' => str_repeat('a', Todo::MAX_NOTES_LENGTH + 1)],
+        ]])->assertUnprocessable()->assertJsonValidationErrors(['todos.0.priority', 'todos.0.notes']);
+
+        $this->postJson('/api/v1/import', ['todos' => [
+            ['id' => $parent, 'title' => 'A'],
+            ['id' => (string) Str::uuid(), 'title' => 'B', 'parent_id' => $parent, 'due_date' => '2026-10-26'],
+        ]])->assertUnprocessable()->assertJsonValidationErrors('todos.1.due_date');
+    });
+});

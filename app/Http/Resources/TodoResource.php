@@ -24,11 +24,15 @@ class TodoResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'category' => $this->category,
+            'priority' => $this->priority,
+            'notes' => $this->notes,
+            'parent_id' => $this->parent_id,
             'due_date' => $this->due_date?->toDateString(),
             'done_at' => $this->done_at?->toIso8601ZuluString(),
             'overdue' => $this->isOverdueOn($today),
             'old' => $this->isOldOn($today),
             'created_at' => $this->created_at?->toIso8601ZuluString(),
+            'subtasks' => $this->isSubtask() ? [] : TodoResource::collection($this->subtasks),
         ];
     }
 }

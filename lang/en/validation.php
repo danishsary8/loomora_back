@@ -180,6 +180,8 @@ return [
 
     'todo_date_out_of_range' => 'The date must be within one day of today in your time zone.',
     'todo_limit' => 'You can have at most :max to-dos.',
+    'subtask_depth' => 'A subtask cannot have subtasks of its own.',
+    'subtask_due_date' => 'A subtask uses the date of its to-do and cannot have its own.',
 
     'custom' => [
         'attribute-name' => [

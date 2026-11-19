@@ -29,6 +29,11 @@ class TodoFactory extends Factory
         return $this->state(fn () => ['due_date' => $date]);
     }
 
+    public function subtaskOf(Todo $parent): static
+    {
+        return $this->state(fn () => ['user_id' => $parent->user_id, 'parent_id' => $parent->id, 'category' => $parent->category]);
+    }
+
     public function done(): static
     {
         return $this->state(fn () => ['done_at' => now()]);

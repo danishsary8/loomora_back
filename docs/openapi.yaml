@@ -546,7 +546,8 @@ paths:
       description: |
         To-dos due on `date` (done or not), undated to-dos that are not done, and overdue
         to-dos (due before `date`, not done). Future-dated to-dos are hidden until their day.
-        Sorted overdue first, then by due date, then by creation time.
+        Sorted overdue first, then by due date, then by creation time. Only top-level to-dos are listed;
+        each carries its subtasks (done or not) in `subtasks`, oldest first.
       parameters:
         - name: date
           in: query
@@ -574,19 +575,39 @@ paths:
                   - id: 2b7e1a90-5c3d-4f2e-9a1b-0c8d7e6f5a4b
                     title: Finish essay draft
                     category: study
+                    priority: high
+                    notes: Use the library sources.
+                    parent_id: null
                     due_date: '2026-10-20'
                     done_at: null
                     overdue: true
                     old: false
                     created_at: '2026-10-19T08:00:00Z'
+                    subtasks:
+                      - id: 9d1e2f3a-4b5c-4d6e-8f7a-1b2c3d4e5f6a
+                        title: Write the outline
+                        category: study
+                        priority: normal
+                        notes: null
+                        parent_id: 2b7e1a90-5c3d-4f2e-9a1b-0c8d7e6f5a4b
+                        due_date: null
+                        done_at: '2026-10-24T02:00:00Z'
+                        overdue: false
+                        old: false
+                        created_at: '2026-10-19T08:05:00Z'
+                        subtasks: []
                   - id: 7c4d2e1f-0a9b-4c8d-8e7f-6a5b4c3d2e1f
                     title: Gym
                     category: health
+                    priority: normal
+                    notes: null
+                    parent_id: null
                     due_date: '2026-10-24'
                     done_at: '2026-10-24T03:00:00Z'
                     overdue: false
                     old: false
                     created_at: '2026-10-24T01:00:00Z'
+                    subtasks: []
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -594,8 +615,12 @@ paths:
     post:
       tags: [Todos]
       operationId: createTodo
-      summary: Create a to-do
-      description: At most 500 to-dos per user (reported on `title`).
+      summary: Create a to-do or a subtask
+      description: |
+        At most 500 to-dos per user, subtasks included (reported on `title`).
+        Send `parent_id` to create a subtask. The parent must be one of the user's own top-level to-dos:
+        another user's or an unknown id is a 404, and a parent that is itself a subtask is a 422 on `parent_id`.
+        A subtask takes its parent's category unless one is sent, and cannot have a `due_date` (422).
       requestBody:
         required: true
         content:
@@ -605,12 +630,15 @@ paths:
             example:
               title: Read chapter 3
               category: study
+              priority: high
               due_date: '2026-10-24'
       responses:
         '201':
           $ref: '#/components/responses/TodoResponse'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -621,7 +649,7 @@ paths:
       tags: [Todos]
       operationId: updateTodo
       summary: Edit a to-do
-      description: Send only the fields to change.
+      description: Send only the fields to change. `parent_id` cannot be changed. A subtask cannot get a `due_date` (422).
       requestBody:
         required: true
         content:
@@ -638,9 +666,15 @@ paths:
                 due_date:
                   type: [string, 'null']
                   format: date
+                priority:
+                  $ref: '#/components/schemas/Priority'
+                notes:
+                  type: [string, 'null']
+                  maxLength: 2000
             example:
               title: Read chapter 4
               due_date: null
+              priority: low
       responses:
         '200':
           $ref: '#/components/responses/TodoResponse'
@@ -656,6 +690,7 @@ paths:
       tags: [Todos]
       operationId: deleteTodo
       summary: Delete a to-do
+      description: Also deletes its subtasks.
       responses:
         '204':
           description: Deleted.
@@ -673,7 +708,10 @@ paths:
       tags: [Todos]
       operationId: markTodoDone
       summary: Check off a to-do
-      description: Sets `done_at`. Calling it again keeps the first completion time.
+      description: |
+        Sets `done_at`. Calling it again keeps the first completion time. Checking off a parent also checks
+        off its open subtasks with the same time; subtasks already done keep theirs. Subtask check-offs count
+        for the streak like any to-do.
       responses:
         '200':
           $ref: '#/components/responses/TodoResponse'
@@ -687,7 +725,7 @@ paths:
       tags: [Todos]
       operationId: markTodoUndone
       summary: Undo a check-off
-      description: Clears `done_at`.
+      description: Clears `done_at`. Unchecking a parent leaves its subtasks as they are.
       responses:
         '200':
           $ref: '#/components/responses/TodoResponse'
@@ -1159,6 +1197,8 @@ paths:
         and day for exceptions and check-ins) are left untouched and counted as `skipped`. An id that belongs
         to another account is a 422. Limits: 500 to-dos and 100 schedule items per user in total, 5000 exceptions
         and 10000 check-ins per call. Exceptions and check-ins must point at an item in the payload or one the user has.
+        A to-do's `parent_id` must point at a top-level to-do in the payload or one the user has (in any order in the
+        payload), and a subtask cannot have a `due_date`.
       requestBody:
         required: true
         content:
@@ -1178,6 +1218,9 @@ paths:
                       due_date: {type: [string, 'null'], format: date}
                       done_at: {type: [string, 'null'], format: date-time}
                       created_at: {type: [string, 'null'], format: date-time}
+                      priority: {$ref: '#/components/schemas/Priority'}
+                      notes: {type: [string, 'null'], maxLength: 2000}
+                      parent_id: {type: [string, 'null'], format: uuid}
                 schedule_items:
                   type: array
                   items:
@@ -1491,10 +1534,25 @@ components:
         due_date:
           type: [string, 'null']
           format: date
+          description: Not allowed on a subtask.
+        priority:
+          $ref: '#/components/schemas/Priority'
+        notes:
+          type: [string, 'null']
+          maxLength: 2000
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Makes this a subtask of one of the user's top-level to-dos. Only on create.
+
+    Priority:
+      type: string
+      enum: [low, normal, high]
+      default: normal
 
     Todo:
       type: object
-      required: [id, title, category, due_date, done_at, overdue, old, created_at]
+      required: [id, title, category, priority, notes, parent_id, due_date, done_at, overdue, old, created_at, subtasks]
       properties:
         id:
           type: string
@@ -1503,6 +1561,14 @@ components:
           type: string
         category:
           $ref: '#/components/schemas/Category'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        notes:
+          type: [string, 'null']
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Set on a subtask. Subtasks are one level deep.
         due_date:
           type: [string, 'null']
           format: date
@@ -1518,6 +1584,11 @@ components:
         created_at:
           type: string
           format: date-time
+        subtasks:
+          type: array
+          description: The to-do's subtasks, oldest first. Always empty on a subtask.
+          items:
+            $ref: '#/components/schemas/Todo'
 
     Error:
       type: object

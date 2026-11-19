@@ -22,7 +22,9 @@ class TodoController extends Controller
         TodoResource::$today = $today;
 
         $todos = $request->user()->todos()
+            ->topLevel()
             ->forToday($today)
+            ->with('subtasks')
             ->get()
             ->sortBy([
                 fn (Todo $a, Todo $b) => $b->isOverdueOn($today) <=> $a->isOverdueOn($today),
@@ -36,10 +38,13 @@ class TodoController extends Controller
 
     public function store(StoreTodoRequest $request): TodoResource
     {
-        $todo = $request->user()->todos()->create([
-            'category' => 'other',
-            ...$request->validated(),
+        $parent = $request->parent();
+        $todo = $request->user()->todos()->make([
+            'category' => $parent->category ?? 'other',
+            ...$request->safe()->except('parent_id'),
         ]);
+        $todo->parent()->associate($parent);
+        $todo->save();
 
         return new TodoResource($todo->refresh());
     }
@@ -66,9 +71,7 @@ class TodoController extends Controller
     {
         Gate::authorize('manage', $todo);
 
-        // Idempotent: a second tap keeps the original completion time.
-        $todo->done_at ??= now();
-        $todo->save();
+        $todo->markDone();
         $streak->recompute($todo->user);
 
         return new TodoResource($todo);

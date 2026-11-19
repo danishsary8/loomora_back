@@ -38,6 +38,8 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Q12 (2026-10-25, B-011 to B-013 on hold):** B-011 (occurrences) is built directly on how `schedule_items.days` is stored (Q10), so I did not start it until Q10 is answered. B-012 (streak) needs B-006 and B-011; B-013 (import) needs to-dos, schedule items, exceptions and check-ins. I took B-014 and B-015 first since they only need B-005. Answer Q10 and the next session starts B-011.
 - **Q13 (2026-10-25, B-014):** Choices to confirm: `POST /feedback` works for guests too (docs/08 allows `user_id` null; a token links it to the account), limited to 10 per hour, message max 5000 chars; a user's feedback is deleted with the account (docs/08 rule 10 "all their rows"); Google-only accounts cannot delete yet (422) until B-015 adds Google re-auth; the feedback email is plain text with Reply-To set to the user.
 
+- **Q16 (2026-11-19, B-019):** Choices to confirm (also in DECISIONS I2, I3): a subtask cannot have its own `due_date` (422) and inherits the parent's category; `parent_id` cannot be changed after create; another user's or an unknown `parent_id` is a 404 on `POST /todos` (as the task says) but a 422 on `POST /import` (an import row error, like an unknown schedule item). The "no `repeat_rule` or `remind_at` on subtasks" rule is left to B-020 and B-021, since those columns do not exist yet.
+
 - **Q15 (2026-10-25, B-016):** Choices to confirm: (a) `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, `nosniff` on every response, HSTS only over HTTPS; (b) `trustProxies(at: '*')` because Render's proxy IPs are not fixed (safe only while the app is reachable only through Render); (c) `APP_DEBUG` is not listed in `render.yaml` because Laravel defaults it to false when unset; the `.env.example` comment says it must be false in production.
 
 ## Log
@@ -202,3 +204,10 @@ _Questions that need the planner or Danish. Includes any place where code and do
 ## Planner note (2026-11-19)
 - B-019 to B-025 added (R2 and R1 leftovers). B-022 contains a question for the planner about hard-deleting old soft-deleted to-dos; do not add a purge command until it is answered.
 - R3 and R4 backend tasks will be written from docs/research/daycraft-task-prompts.md (DC-30 to DC-52) after R2 is merged.
+
+### 2026-11-19: B-019 Subtasks, priority and notes on to-dos
+- **Branch / PR:** `feat/B-019-subtasks-priority-notes` (PR into `v2-rebuild`)
+- **What changed:** migration adds `todos.notes` (text null), `todos.priority` (enum low/normal/high, default normal) and `todos.parent_id` (uuid null, self foreign key, cascade). `Todo` gets `parent`/`subtasks` relations, a `topLevel` scope and `markDone()` (parent and its open subtasks in one transaction). `POST /todos` accepts `notes`, `priority`, `parent_id`; `PATCH` accepts `notes`, `priority`; shared field rules in `TodoRules`. The Today list shows top-level to-dos with nested `subtasks` (creation order); every Todo response has `priority`, `notes`, `parent_id`, `subtasks`. `POST /import` accepts the three fields; parents may come after their subtasks in the payload (sorted before writing). openapi updated (new `Priority` schema). Decisions I1 to I3.
+- **How it was verified:** `vendor/bin/pest` -> 210 passed (911 assertions) on SQLite (25 new: 19 in `TodoSubtaskTest`, 6 in `ImportTest`). `./vendor/bin/pint --test` -> passed. `vendor/bin/phpstan analyse` -> no errors. `npx @redocly/cli lint docs/openapi.yaml` -> valid (same 4 warnings as before).
+- **Problems:** this machine's PHP has `pdo_sqlite` off and no `.env`, so tests ran as `APP_KEY=... php -d extension=pdo_sqlite vendor/bin/pest` (the 210 "warnings" are the missing `.env`). The local Postgres does not take the CI credentials, so Postgres is checked by CI only.
+- **Questions:** Q16.
