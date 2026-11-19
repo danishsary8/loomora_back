@@ -41,6 +41,7 @@ class StoreTodoRequest extends FormRequest
                     return;
                 }
                 $this->checkRepeat($validator, null, $this->parent() !== null);
+                $this->checkReminder($validator, $this->parent() !== null);
                 if ($this->parent() === null) {
                     return;
                 }

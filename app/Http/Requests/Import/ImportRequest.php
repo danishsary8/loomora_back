@@ -39,6 +39,8 @@ class ImportRequest extends FormRequest
             'todos.*.parent_id' => ['nullable', 'uuid'],
             ...TodoRules::repeatRuleRules('todos.*.repeat_rule'),
             'todos.*.next_todo_id' => ['nullable', 'uuid'],
+            'todos.*.remind_at' => TodoRules::dateTimeRules(),
+            'todos.*.remind_dismissed_at' => TodoRules::dateTimeRules(),
             'todos.*.created_at' => ['nullable', 'date'],
 
             'schedule_items' => ['sometimes', 'array', 'max:'.ScheduleItem::MAX_PER_USER],
@@ -118,7 +120,7 @@ class ImportRequest extends FormRequest
         }
     }
 
-    /** A subtask's parent must be a top-level to-do in this payload or one the user already has. */
+    /** A subtask's parent must be a top-level to-do in this payload or one the user already has; it has no date or reminder of its own. */
     private function checkSubtasks(Validator $validator): void
     {
         /** @var list<array<string, mixed>> $todos */
@@ -135,6 +137,9 @@ class ImportRequest extends FormRequest
             }
             if (! empty($todo['due_date'])) {
                 $validator->errors()->add("todos.{$i}.due_date", __('validation.subtask_due_date'));
+            }
+            if (! empty($todo['remind_at'])) {
+                $validator->errors()->add("todos.{$i}.remind_at", __('validation.subtask_reminder'));
             }
         }
     }

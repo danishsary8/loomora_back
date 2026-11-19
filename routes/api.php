@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\ReminderController;
 use App\Http\Controllers\Api\V1\ScheduleCheckinController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleExceptionController;
@@ -52,6 +53,10 @@ Route::prefix('v1')->group(function () {
         Route::delete('todos/{todo}', [TodoController::class, 'destroy'])->name('todos.destroy');
         Route::post('todos/{todo}/done', [TodoController::class, 'markDone'])->name('todos.done');
         Route::delete('todos/{todo}/done', [TodoController::class, 'markUndone'])->name('todos.undone');
+
+        Route::get('reminders/due', [ReminderController::class, 'due'])->name('reminders.due');
+        Route::post('todos/{todo}/reminder/dismiss', [ReminderController::class, 'dismiss'])->name('reminders.dismiss');
+        Route::post('todos/{todo}/reminder/snooze', [ReminderController::class, 'snooze'])->name('reminders.snooze');
 
         Route::get('schedule/items', [ScheduleItemController::class, 'index'])->name('schedule.items.index');
         Route::post('schedule/items', [ScheduleItemController::class, 'store'])->name('schedule.items.store');

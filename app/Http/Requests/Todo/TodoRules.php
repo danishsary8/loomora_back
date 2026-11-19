@@ -20,7 +20,18 @@ trait TodoRules
             'notes' => ['sometimes', 'nullable', 'string', 'max:'.Todo::MAX_NOTES_LENGTH],
             'priority' => ['sometimes', 'required', 'string', Rule::in(Todo::PRIORITIES)],
             ...self::repeatRuleRules('repeat_rule'),
+            'remind_at' => ['sometimes', ...self::dateTimeRules()],
         ];
+    }
+
+    /**
+     * A nullable ISO 8601 date-time with an explicit UTC offset (`Z` or `+07:00`), as `toISOString()` sends it.
+     *
+     * @return list<string>
+     */
+    public static function dateTimeRules(): array
+    {
+        return ['nullable', 'date', 'regex:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/'];
     }
 
     /**
@@ -55,6 +66,13 @@ trait TodoRules
             $validator->errors()->add('repeat_rule', __('validation.subtask_repeat'));
         } elseif ($repeats && ! $hasDueDate) {
             $validator->errors()->add('due_date', __('validation.repeat_needs_due_date'));
+        }
+    }
+
+    protected function checkReminder(Validator $validator, bool $isSubtask): void
+    {
+        if ($isSubtask && $this->filled('remind_at')) {
+            $validator->errors()->add('remind_at', __('validation.subtask_reminder'));
         }
     }
 }

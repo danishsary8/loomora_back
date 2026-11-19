@@ -29,6 +29,7 @@ class TodoResource extends JsonResource
             'parent_id' => $this->parent_id,
             'repeat_rule' => $this->repeat_rule,
             'next_todo_id' => $this->next_todo_id,
+            'remind_at' => $this->remind_at?->toIso8601ZuluString(),
             'due_date' => $this->due_date?->toDateString(),
             'done_at' => $this->done_at?->toIso8601ZuluString(),
             'overdue' => $this->isOverdueOn($today),
