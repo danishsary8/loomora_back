@@ -1,8 +1,8 @@
 <?php
 
-it('locks a patched runtime version of :dataset', function (string $package, string $minimum) {
+it('locks a patched version of :dataset', function (string $package, string $minimum, string $section = 'packages') {
     $lock = json_decode(file_get_contents(__DIR__.'/../../composer.lock'), true, flags: JSON_THROW_ON_ERROR);
-    $versions = array_column($lock['packages'], 'version', 'name');
+    $versions = array_column($lock[$section], 'version', 'name');
 
     expect($versions)->toHaveKey($package);
     expect(version_compare(ltrim($versions[$package], 'v'), $minimum, '>='))
@@ -15,4 +15,5 @@ it('locks a patched runtime version of :dataset', function (string $package, str
     'Symfony HTTP kernel' => ['symfony/http-kernel', '7.4.23'],
     'Symfony MIME' => ['symfony/mime', '7.4.22'],
     'Symfony routing' => ['symfony/routing', '7.4.23'],
+    'Symfony YAML' => ['symfony/yaml', '7.4.23', 'packages-dev'],
 ]);
