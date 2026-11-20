@@ -361,7 +361,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Deployment follow-up:** Q25 owner confirmation and QA-009 staging sign-off are pending. Q23 remains open.
 
 ### B-034: Google-only account deletion security design
-- **Status:** review (planner decision pending)
+- **Status:** done ([PR #37](https://github.com/danishsary8/loomora_back/pull/37), merged at `e6e705fc1db5d513394a70a34f81ec66be9f33c1`)
 - **Scope:** Q23 and QA-004. `DELETE /me` requires a current password and returns 422 for Google-only accounts without one. The [design proposal](B-034-google-account-deletion-design.md) compares Google reauthentication, verified email confirmation and restricting Google-only signup at launch. It specifies the recommended API, frontend integration and regression plan.
 - **Recommendation:** Use a purpose-bound Google confirmation with a signed recent authentication time and the original Sanctum session. Pending the provider capability check, keep Google-only signup outside public launch if the team cannot establish the required freshness.
-- **Planner decision:** Approve the proposed Google design and staged gate or explicitly choose a launch restriction or email confirmation. Q23 remains open. QA-004 disclosures, Q25 and QA-009 remain open.
+- **Planner decision:** Q23 remains open. B-035 adds evidence for an existing recovery path alongside the B-034 options. QA-004 disclosures, Q25 owner evidence and QA-009 staging sign-off remain pending.
+
+### B-035: Google-only account recovery and deletion readiness
+- **Status:** blocked (planner review required)
+- **Scope:** Planner-authorized follow-up to B-034 / Q23. Verify whether deliberate password recovery followed by password sign-in and explicit account deletion can use the existing API.
+- [x] Exercise the sequential flow with a real broker token and Sanctum bearers, including recovery rejection, identity preservation, revocation, deletion, isolation and database rollback.
+- [x] Review security and document the [frontend handoff](B-034-google-account-deletion-design.md#frontend-handoff-after-approval) and [verification](PROGRESS.md#2026-11-20-b-035-google-only-account-recovery-and-deletion-readiness).
+- **Blocker:** A reset can partially commit, and recovery and deletion lack a shared ordering with credential issuance. The [B-035 addendum](B-034-google-account-deletion-design.md#b-035-addendum-existing-password-recovery) records the verified behavior and the decision needed before release.

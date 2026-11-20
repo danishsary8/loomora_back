@@ -111,12 +111,17 @@ describe('callback', function () {
         expect($user->google_id)->toBe('g-123')->and($user->email_verified_at)->not->toBeNull();
     });
 
-    it('finds a linked user by Google id even if their email changed', function () {
-        User::factory()->create(['email' => 'old@example.com', 'google_id' => 'g-123']);
+    it('signs a password-enabled linked user in by Google id even if their Google email changed', function () {
+        $user = User::factory()->create(['email' => 'old@example.com', 'google_id' => 'g-123']);
+        $passwordHash = $user->password;
         fakeGoogle(['email' => 'new@gmail.com']);
 
-        expect(callbackParams($this, googleState('sign_in')))->toHaveKey('code')
-            ->and(User::count())->toBe(1);
+        $code = callbackParams($this, googleState('sign_in'))['code'];
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $code])
+            ->assertOk()->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.email', 'old@example.com')->assertJsonPath('user.has_password', true);
+        expect(User::count())->toBe(1)
+            ->and($user->fresh()->password === $passwordHash)->toBeTrue();
     });
 
     it('refuses an unverified Google email', function () {
