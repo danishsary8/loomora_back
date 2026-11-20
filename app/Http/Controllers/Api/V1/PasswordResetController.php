@@ -7,10 +7,13 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
+use Illuminate\Auth\Passwords\DatabaseTokenRepository;
+use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class PasswordResetController extends Controller
 {
@@ -31,11 +34,27 @@ class PasswordResetController extends Controller
 
     public function reset(ResetPasswordRequest $request): JsonResponse
     {
-        $status = Password::reset($request->validated(), function (User $user, string $password) {
-            $user->forceFill(['password' => $password])->save();
+        $connection = (new User)->getConnection();
+        $broker = Password::broker();
+        $repository = $broker instanceof PasswordBroker ? $broker->getRepository() : null;
 
-            // Sign out every device that used the old password.
-            $user->tokens()->delete();
+        if (! $repository instanceof DatabaseTokenRepository || $repository->getConnection() !== $connection) {
+            throw new RuntimeException('Password resets require a token repository on the user database connection.');
+        }
+
+        $credentials = $request->validated();
+        $status = $connection->transaction(function () use ($broker, $credentials) {
+            // Serialize credential changes before the broker reads the reset token.
+            $userId = User::where('email', $credentials['email'])->lockForUpdate()->value('id');
+
+            // The broker consumes the reset token after the callback returns.
+            return $broker->reset([...$credentials, 'id' => $userId], function (User $user, string $password) {
+                if (! $user->forceFill(['password' => $password])->save()) {
+                    throw new RuntimeException('Password reset was cancelled.');
+                }
+
+                $user->tokens()->delete();
+            });
         });
 
         if ($status !== Password::PASSWORD_RESET) {

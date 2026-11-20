@@ -367,8 +367,20 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Planner decision:** Q23 remains open. B-035 adds evidence for an existing recovery path alongside the B-034 options. QA-004 disclosures, Q25 owner evidence and QA-009 staging sign-off remain pending.
 
 ### B-035: Google-only account recovery and deletion readiness
-- **Status:** blocked (planner review required)
+- **Status:** done ([PR #38](https://github.com/danishsary8/loomora_back/pull/38), merged at `d9556d4203ced6f3b4c481338a954b959e153343`)
 - **Scope:** Planner-authorized follow-up to B-034 / Q23. Verify whether deliberate password recovery followed by password sign-in and explicit account deletion can use the existing API.
 - [x] Exercise the sequential flow with a real broker token and Sanctum bearers, including recovery rejection, identity preservation, revocation, deletion, isolation and database rollback.
 - [x] Review security and document the [frontend handoff](B-034-google-account-deletion-design.md#frontend-handoff-after-approval) and [verification](PROGRESS.md#2026-11-20-b-035-google-only-account-recovery-and-deletion-readiness).
-- **Blocker:** A reset can partially commit, and recovery and deletion lack a shared ordering with credential issuance. The [B-035 addendum](B-034-google-account-deletion-design.md#b-035-addendum-existing-password-recovery) records the verified behavior and the decision needed before release.
+- **Release gate:** The [B-035 assessment](B-034-google-account-deletion-design.md#b-035-addendum-existing-password-recovery) remains under Q23. B-036 addresses the partial commit and records the remaining credential-lifecycle work.
+
+### B-036: Password reset atomicity and credential safety
+- **Status:** review
+- **Scope:** Make Laravel's database-backed token redemption, password save, Sanctum bearer revocation and reset-token consumption one transaction. Serialize redemption, password login, Google exchange and account deletion on the existing user row.
+- [x] Commit a RED regression and prove rollback, reset-token retry and another account's isolation on PostgreSQL and SQLite.
+- [x] Verify overlapping reset, sign-in, exchange and deletion with independent PostgreSQL connections. See the [B-036 verification](PROGRESS.md#2026-11-20-b-036-password-reset-atomicity-and-credential-safety).
+- **Release gate:** Q23 still requires planner approval of the recovery assurance model and paired staging verification. Q25 and QA-009 remain open.
+
+### B-037: Credential lifecycle across authentication boundaries (proposed)
+- **Status:** blocked (proposal pending planner approval)
+- **Scope:** Define how reset and deletion invalidate outstanding Google exchange grants. Coordinate reset-link issuance, Google callback/linking and registration with account lifecycle changes. Define the guarantee for protected requests that passed Sanctum authentication before revocation, and enforce it for any operations that must recheck authorization before committing.
+- **Acceptance:** Reproduce each approved race with separate PostgreSQL connections. Test stale grants and fresh Google sign-in, revoked bearers, superseded recovery credentials, account deletion and re-registration, and unrelated-account isolation. Keep Q23 and QA-009 open until the selected release flow passes staging.

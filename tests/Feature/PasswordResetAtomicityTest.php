@@ -65,3 +65,34 @@ it('rolls back every credential change when reset cannot delete a required row',
     $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
     $this->assertModelExists($otherBearer->accessToken);
 })->with(['bearer revocation' => 'personal_access_tokens', 'reset token consumption' => 'password_reset_tokens']);
+
+it('cleans up the configured database reset token table on account deletion', function () {
+    $tableName = 'configured_reset_tokens';
+    Schema::create($tableName, function (Blueprint $table) {
+        $table->string('email')->primary();
+        $table->string('token');
+        $table->timestamp('created_at')->nullable();
+    });
+    config(['auth.passwords.users.table' => $tableName]);
+
+    try {
+        $user = User::factory()->create(['password' => 'original-password']);
+        $bearer = $user->createToken('delete');
+        $token = Password::createToken($user);
+
+        $this->withToken($bearer->plainTextToken)
+            ->deleteJson('/api/v1/me', ['password' => 'original-password'])->assertNoContent();
+        $this->assertDatabaseMissing($tableName, ['email' => $user->email]);
+        $this->assertModelMissing($bearer->accessToken);
+
+        $this->flushHeaders();
+        User::factory()->create(['email' => $user->email]);
+        $this->postJson('/api/v1/auth/password/reset', [
+            'email' => $user->email,
+            'token' => $token,
+            'password' => 'new-password',
+        ])->assertUnprocessable()->assertJsonValidationErrors('token');
+    } finally {
+        Schema::drop($tableName);
+    }
+});

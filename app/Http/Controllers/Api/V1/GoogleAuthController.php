@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
@@ -104,15 +105,19 @@ class GoogleAuthController extends Controller
 
     public function exchange(GoogleExchangeRequest $request): JsonResponse
     {
-        // pull() makes the code single-use.
-        $userId = Cache::pull($this->cacheKey($request->validated('code')));
-        $user = $userId ? User::find($userId) : null;
+        $key = $this->cacheKey($request->validated('code'));
+        $userId = Cache::get($key);
 
-        if (! $user) {
-            throw ValidationException::withMessages(['code' => [__('google.code_invalid')]]);
-        }
+        return DB::transaction(function () use ($key, $userId) {
+            $user = $userId ? User::lockForUpdate()->find($userId) : null;
 
-        return $this->tokenResponse($user);
+            // Claim the code for this account while issuance is serialized with reset and deletion.
+            if (! $user || Cache::pull($key) !== $user->id) {
+                throw ValidationException::withMessages(['code' => [__('google.code_invalid')]]);
+            }
+
+            return $this->tokenResponse($user);
+        });
     }
 
     /**

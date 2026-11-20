@@ -7,7 +7,12 @@ use App\Http\Requests\Account\DeleteMeRequest;
 use App\Http\Requests\Account\SurveyRequest;
 use App\Http\Requests\Account\UpdateMeRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class MeController extends Controller
 {
@@ -34,7 +39,27 @@ class MeController extends Controller
     /** Confirm, then delete everything immediately (docs/07 S14). */
     public function destroy(DeleteMeRequest $request): Response
     {
-        $request->user()->deleteWithData();
+        $userId = $request->user()->id;
+        $bearerId = data_get($request->user()->currentAccessToken(), 'id');
+
+        DB::transaction(function () use ($userId, $bearerId, $request) {
+            $user = User::lockForUpdate()->find($userId);
+
+            // Sanctum can authenticate the request before a concurrent reset revokes its bearer.
+            if (! $user || ($bearerId !== null && ! $user->tokens()->whereKey($bearerId)->exists())) {
+                throw new AuthenticationException;
+            }
+
+            if ($user->password === null) {
+                throw ValidationException::withMessages(['password' => [__('account.google_reauth_required')]]);
+            }
+
+            if (! Hash::check($request->validated('password'), $user->password)) {
+                throw ValidationException::withMessages(['password' => [__('account.wrong_password')]]);
+            }
+
+            $user->deleteWithData();
+        });
 
         return response()->noContent();
     }
