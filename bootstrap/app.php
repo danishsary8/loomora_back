@@ -20,7 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Render terminates HTTPS at its proxy; trust its X-Forwarded-* headers so URLs are https.
         $middleware->trustProxies(at: '*');
 
-        $middleware->append(SecurityHeaders::class);
+        // Wrap CORS preflights, which return without calling later middleware.
+        $middleware->prepend(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(fn (Request $request) => $request->is('api/*') || $request->expectsJson());

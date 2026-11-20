@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 
 describe('CORS', function () {
     beforeEach(function () {
@@ -47,6 +48,23 @@ describe('CORS', function () {
 });
 
 describe('security headers and proxies', function () {
+    it('adds security headers to HTTPS preflight responses', function () {
+        config(['cors.allowed_origins' => ['https://app.loomora.test']]);
+
+        $this->call('OPTIONS', '/api/v1/todos', server: [
+            'HTTP_ORIGIN' => 'https://app.loomora.test',
+            'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'PATCH',
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+        ])
+            ->assertNoContent()
+            ->assertHeader('Access-Control-Allow-Origin', 'https://app.loomora.test')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'")
+            ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    });
+
     it('sends hardening headers on API responses', function () {
         $this->getJson('/api/v1/health')
             ->assertHeader('X-Content-Type-Options', 'nosniff')
@@ -68,6 +86,17 @@ describe('security headers and proxies', function () {
             ->assertJsonStructure(['message'])
             ->assertJsonMissingPath('trace')
             ->assertJsonMissingPath('exception');
+    });
+
+    it('hides exception messages and details on an unhandled API error', function () {
+        config(['app.debug' => false, 'logging.default' => 'null']);
+        Route::get('/api/v1/test-error', function () {
+            throw new RuntimeException('Internal diagnostic for this test');
+        });
+
+        $this->get('/api/v1/test-error')
+            ->assertInternalServerError()
+            ->assertExactJson(['message' => 'Server Error']);
     });
 });
 
