@@ -208,7 +208,8 @@ paths:
       description: |
         Google calls this endpoint. It redirects to `{FRONTEND_URL}/auth/google/callback` with either
         `?code=<one-time code>` or `?error=` one of `account_not_found` (sign_in, no account),
-        `account_already_exists` (sign_up, account exists), `email_not_verified`, `google_failed`.
+        `account_already_exists` (sign_up, account exists), `email_not_verified`, `google_failed`
+        (including when the email account is already linked to a different Google subject).
       security: []
       responses:
         '302':
@@ -221,7 +222,9 @@ paths:
       tags: [Auth]
       operationId: googleExchange
       summary: Trade the one-time code for a token
-      description: The code works once and expires after 5 minutes.
+      description: |
+        The code works once and expires after 5 minutes. A newer Google callback, successful
+        password reset, or account deletion invalidates the outstanding code.
       security: []
       requestBody:
         required: true
@@ -246,7 +249,7 @@ paths:
                 default:
                   $ref: '#/components/examples/TokenResponse'
         '422':
-          description: Invalid, used or expired code (reported on `code`).
+          description: Invalid, used, replaced, revoked or expired code (reported on `code`).
           content:
             application/json:
               schema:
@@ -343,7 +346,9 @@ paths:
       summary: Email a password reset link
       description: |
         Same answer whether or not the email has an account. The email links to
-        `{FRONTEND_URL}/reset-password?token=&email=`. Links last 60 minutes.
+        `{FRONTEND_URL}/reset-password?token=&email=`. Links last 60 minutes and are
+        valid only for the account associated with the address at issuance. The response acknowledges the
+        request even if the mail transport fails.
       security: []
       requestBody:
         required: true
@@ -371,7 +376,7 @@ paths:
       tags: [Auth]
       operationId: resetPassword
       summary: Set a new password with a reset token
-      description: Signs out every device (all tokens are revoked).
+      description: Revokes all bearer tokens for the account and invalidates its outstanding Google exchange code.
       security: []
       requestBody:
         required: true
@@ -410,6 +415,7 @@ paths:
       tags: [Me]
       operationId: getMe
       summary: The signed-in user
+      description: A request authorized before credential revocation may still complete.
       responses:
         '200':
           description: The current user, wrapped in `data`.

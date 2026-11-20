@@ -5,8 +5,10 @@ use App\Mail\VerifyEmailMail;
 use App\Models\User;
 use App\Services\EmailVerification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 
 uses(RefreshDatabase::class);
@@ -42,6 +44,21 @@ describe('email verification', function () {
         ])->assertCreated();
 
         $this->assertDatabaseHas('users', ['email' => 'sokha@example.com']);
+    });
+
+    it('rolls back registration and skips verification mail if the first bearer write fails', function () {
+        DB::connection()->beforeExecuting(function (string $sql) {
+            if (str_starts_with($sql, 'insert into "personal_access_tokens"')) {
+                throw new RuntimeException('Synthetic first bearer write failure.');
+            }
+        });
+        config(['app.debug' => false]);
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Sokha', 'email' => 'sokha@example.com', 'password' => 'correct-horse-battery', 'timezone' => 'UTC',
+        ])->assertInternalServerError()->assertExactJson(['message' => 'Server Error']);
+        $this->assertDatabaseMissing('users', ['email' => 'sokha@example.com']);
+        Mail::assertNothingSent();
     });
 
     it('verifies the email with the link from the mail', function () {
@@ -127,6 +144,28 @@ describe('password reset', function () {
         $b = $this->postJson('/api/v1/auth/password/forgot', ['email' => $known->email])->assertOk()->json();
 
         expect($a)->toBe($b);
+    });
+
+    it('keeps reset delivery errors generic and allows another delivery after the broker throttle', function () {
+        $user = User::factory()->create();
+        $mailFake = Mail::getFacadeRoot();
+        $failedToken = null;
+        Mail::shouldReceive('send')->once()->withArgs(function (ResetPasswordMail $mail) use (&$failedToken) {
+            $failedToken = linkParams($mail->url)['token'];
+
+            return true;
+        })->andThrow(new RuntimeException('Synthetic mail failure.'));
+
+        $this->postJson('/api/v1/auth/password/forgot', ['email' => $user->email])
+            ->assertOk()->assertExactJson(['message' => __('auth_flow.reset_link_sent')]);
+        expect($failedToken)->toBeString()->and(Password::tokenExists($user, $failedToken))->toBeTrue();
+        $this->postJson('/api/v1/auth/password/forgot', ['email' => $user->email])->assertOk();
+
+        $this->travel(config('auth.passwords.users.throttle') + 1)->seconds();
+        Mail::swap($mailFake);
+        $this->postJson('/api/v1/auth/password/forgot', ['email' => $user->email])->assertOk();
+        Mail::assertSent(ResetPasswordMail::class, 1);
+        expect(Password::tokenExists($user, $failedToken))->toBeFalse();
     });
 
     it('resets the password with the emailed token and signs out other devices', function () {

@@ -374,13 +374,15 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Release gate:** The [B-035 assessment](B-034-google-account-deletion-design.md#b-035-addendum-existing-password-recovery) remains under Q23. B-036 addresses the partial commit and records the remaining credential-lifecycle work.
 
 ### B-036: Password reset atomicity and credential safety
-- **Status:** review
+- **Status:** done ([PR #39](https://github.com/danishsary8/loomora_back/pull/39), merged at `24d4e7225fe212dfe73e41be9827e8509fe625ac`)
 - **Scope:** Make Laravel's database-backed token redemption, password save, Sanctum bearer revocation and reset-token consumption one transaction. Serialize redemption, password login, Google exchange and account deletion on the existing user row.
 - [x] Commit a RED regression and prove rollback, reset-token retry and another account's isolation on PostgreSQL and SQLite.
 - [x] Verify overlapping reset, sign-in, exchange and deletion with independent PostgreSQL connections. See the [B-036 verification](PROGRESS.md#2026-11-20-b-036-password-reset-atomicity-and-credential-safety).
 - **Release gate:** Q23 still requires planner approval of the recovery assurance model and paired staging verification. Q25 and QA-009 remain open.
 
-### B-037: Credential lifecycle across authentication boundaries (proposed)
-- **Status:** blocked (proposal pending planner approval)
+### B-037: Credential lifecycle across authentication boundaries
+- **Status:** review
 - **Scope:** Define how reset and deletion invalidate outstanding Google exchange grants. Coordinate reset-link issuance, Google callback/linking and registration with account lifecycle changes. Define the guarantee for protected requests that passed Sanctum authentication before revocation, and enforce it for any operations that must recheck authorization before committing.
-- **Acceptance:** Reproduce each approved race with separate PostgreSQL connections. Test stale grants and fresh Google sign-in, revoked bearers, superseded recovery credentials, account deletion and re-registration, and unrelated-account isolation. Keep Q23 and QA-009 open until the selected release flow passes staging.
+- **Acceptance:** Verify ordering with separate PostgreSQL connections. Cover stale grants and fresh Google sign-in, revoked bearers, superseded recovery credentials, account deletion and re-registration, and unrelated-account isolation.
+- **Verification:** Full PostgreSQL and SQLite suites, the dedicated PostgreSQL concurrency suite, static checks and the disposable production image smoke passed.
+- **Planner decision:** Review the scope of invalidation for an OAuth flow that has yet to resolve a Loomora account. Q23, Q25 and QA-009 remain open. [B-037 findings and verification](PROGRESS.md#2026-11-21-b-037-credential-lifecycle-across-authentication-boundaries)

@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 use RuntimeException;
 
@@ -19,6 +18,8 @@ use RuntimeException;
  * @property string $email
  * @property string|null $password
  * @property string|null $google_id
+ * @property string|null $google_exchange_digest
+ * @property Carbon|null $google_exchange_expires_at
  * @property Carbon|null $email_verified_at
  * @property string $timezone
  * @property string $time_format
@@ -80,6 +81,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'google_id',
+        'google_exchange_digest',
+        'google_exchange_expires_at',
     ];
 
     /**
@@ -89,6 +92,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'google_exchange_expires_at' => 'datetime',
             'password' => 'hashed',
             'survey_done' => 'boolean',
             'week_starts_on' => 'integer',
@@ -106,6 +110,13 @@ class User extends Authenticatable
         return $this->hasMany(Feedback::class);
     }
 
+    public function deletePasswordResetToken(): void
+    {
+        $broker = config('auth.defaults.passwords');
+        $this->getConnection()->table(config("auth.passwords.{$broker}.table"))
+            ->where('email', $this->email)->delete();
+    }
+
     /**
      * Delete the account and everything that belongs to it (docs/08 rule 10).
      * Rows with a user_id foreign key cascade in the database; tokens and
@@ -113,12 +124,11 @@ class User extends Authenticatable
      */
     public function deleteWithData(): void
     {
-        DB::transaction(function () {
+        $this->getConnection()->transaction(function () {
             $this->tokens()->delete();
 
-            $broker = config('auth.defaults.passwords');
-            DB::table(config("auth.passwords.{$broker}.table"))->where('email', $this->email)->delete();
-            DB::table('sessions')->where('user_id', $this->id)->delete();
+            $this->deletePasswordResetToken();
+            $this->getConnection()->table('sessions')->where('user_id', $this->id)->delete();
             if (! $this->delete()) {
                 throw new RuntimeException('Account deletion was cancelled.');
             }
