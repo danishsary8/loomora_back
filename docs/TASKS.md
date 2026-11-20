@@ -343,9 +343,18 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Deployment follow-up:** B-032 records the Q24 decision and tracks owner verification of the live configuration, Q25 and the unresolved Q23 release decision.
 
 ### B-032: Staging integration and release readiness
-- **Status:** review
+- **Status:** done
+- Merged into `v2-rebuild` at `65d29e4` in [PR #35](https://github.com/danishsary8/loomora_back/pull/35).
 - **Scope:** Compare the public API and frontend with the fetched source candidates. Record the local verification, blocked staging checks and redacted owner evidence needed for QA-009.
 - [x] Verify the B-031 merge, public API health and headers, the Vercel alias commit and the frontend/backend contract.
 - [x] Record local test and container results, update the Q24 deployment guidance and document Q23 and Q25 in the [B-032 assessment](PROGRESS.md#2026-11-20-b-032-staging-integration-and-release-readiness).
-- [ ] QA-009 sign-off requires an approved disposable frontend/API/database pair, exact deployed SHAs and owner evidence for Render, Neon, Google and Brevo.
+- **QA-009 follow-up:** Sign-off requires an approved disposable frontend/API/database pair, exact deployed SHAs and owner evidence for Render, Neon, Google and Brevo.
 - **Release recommendation:** NO-GO. Public app and auth deep links fail, the Render SHA and paired staging flows lack verification, and the planner must resolve Q23. QA-005 and QA-009 remain open.
+
+### B-033: Canonical frontend origin validation
+- **Status:** review
+- **Scope:** Validate one `FRONTEND_URL` at boot and use it for CORS, Google callback redirects, email verification and password reset.
+- **Done when:**
+  - [x] Regression tests cover invalid configuration, approved and unrelated origins, auth links, localhost and the configuration cache.
+  - [x] PostgreSQL, SQLite, both locked Composer audits, strict validation, Pint, Larastan, unused-code review, Redocly and Docker smoke results are recorded in the [B-033 progress entry](PROGRESS.md#2026-11-20-b-033-canonical-frontend-origin-validation).
+- **Deployment follow-up:** Q25 owner confirmation and QA-009 staging sign-off are pending. Q23 remains open.

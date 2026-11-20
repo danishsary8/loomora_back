@@ -1,8 +1,7 @@
 <?php
 
 /*
-| Only the Loomora web app may call the API from a browser. FRONTEND_URL can
-| hold several origins separated by commas (e.g. production and preview).
+| AppServiceProvider sets the exact allowed origin from app.frontend_url.
 | Auth uses bearer tokens, not cookies, so credentials stay off.
 */
 
@@ -12,10 +11,7 @@ return [
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => array_values(array_filter(array_map(
-        fn (string $origin) => rtrim(trim($origin), '/'),
-        explode(',', (string) env('FRONTEND_URL', '')),
-    ))),
+    'allowed_origins' => [],
 
     'allowed_origins_patterns' => [],
 

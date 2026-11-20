@@ -27,7 +27,7 @@ class EmailVerification
 
     public function urlFor(User $user): string
     {
-        return rtrim(config('app.frontend_url'), '/').'/verify-email?'.http_build_query($this->payloadFor($user));
+        return config('app.frontend_url').'/verify-email?'.http_build_query($this->payloadFor($user));
     }
 
     public function isValid(User $user, int $expires, string $signature): bool

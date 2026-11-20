@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\FrontendOrigin;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -25,6 +26,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Clear any old allowlist before validating cached configuration.
+        config([
+            'cors.allowed_origins' => [],
+            'cors.allowed_origins_patterns' => [],
+        ]);
+
+        $origin = FrontendOrigin::validate(config('app.frontend_url'));
+
+        // A literal one-entry list would emit its header on unrelated requests.
+        config(['cors.allowed_origins_patterns' => ['~\A'.preg_quote($origin, '~').'\z~']]);
+
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
 
         RateLimiter::for('verification', fn (Request $request) => Limit::perMinutes(10, 3)->by($request->user()?->id ?: $request->ip()));

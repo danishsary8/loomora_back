@@ -4,25 +4,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 describe('CORS', function () {
-    beforeEach(function () {
-        config(['cors.allowed_origins' => ['https://app.loomora.test', 'https://preview.loomora.test']]);
-    });
-
     it('lets the frontend origin through a preflight', function () {
         $this->call('OPTIONS', '/api/v1/todos', server: [
-            'HTTP_ORIGIN' => 'https://app.loomora.test',
+            'HTTP_ORIGIN' => config('app.frontend_url'),
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'PATCH',
             'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'authorization, content-type',
         ])
             ->assertNoContent()
-            ->assertHeader('Access-Control-Allow-Origin', 'https://app.loomora.test')
+            ->assertHeader('Access-Control-Allow-Origin', config('app.frontend_url'))
             ->assertHeaderMissing('Access-Control-Allow-Credentials');
     });
 
-    it('accepts every origin listed in FRONTEND_URL', function () {
-        $this->getJson('/api/v1/health', ['Origin' => 'https://preview.loomora.test'])
+    it('allows the frontend origin on an actual request', function () {
+        $this->getJson('/api/v1/health', ['Origin' => config('app.frontend_url')])
             ->assertOk()
-            ->assertHeader('Access-Control-Allow-Origin', 'https://preview.loomora.test');
+            ->assertHeader('Access-Control-Allow-Origin', config('app.frontend_url'))
+            ->assertHeaderMissing('Access-Control-Allow-Credentials');
     });
 
     it('does not allow any other origin', function () {
@@ -35,29 +32,24 @@ describe('CORS', function () {
             ->assertHeaderMissing('Access-Control-Allow-Origin');
     });
 
-    it('reads a comma-separated FRONTEND_URL', function () {
-        $before = [$_SERVER['FRONTEND_URL'] ?? null, $_ENV['FRONTEND_URL'] ?? null];
-        $_SERVER['FRONTEND_URL'] = $_ENV['FRONTEND_URL'] = 'https://a.test/, https://b.test';
-        $config = require config_path('cors.php');
-        [$_SERVER['FRONTEND_URL'], $_ENV['FRONTEND_URL']] = $before;
+    it('does not allow a lookalike origin with an extra host suffix', function () {
+        $parts = parse_url(config('app.frontend_url'));
+        $lookalike = $parts['scheme'].'://'.$parts['host'].'.example';
 
-        expect($config['allowed_origins'])->toBe(['https://a.test', 'https://b.test'])
-            ->and($config['supports_credentials'])->toBeFalse()
-            ->and($config['paths'])->toBe(['api/*']);
+        $this->getJson('/api/v1/health', ['Origin' => $lookalike])
+            ->assertHeaderMissing('Access-Control-Allow-Origin');
     });
 });
 
 describe('security headers and proxies', function () {
     it('adds security headers to HTTPS preflight responses', function () {
-        config(['cors.allowed_origins' => ['https://app.loomora.test']]);
-
         $this->call('OPTIONS', '/api/v1/todos', server: [
-            'HTTP_ORIGIN' => 'https://app.loomora.test',
+            'HTTP_ORIGIN' => config('app.frontend_url'),
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'PATCH',
             'HTTP_X_FORWARDED_PROTO' => 'https',
         ])
             ->assertNoContent()
-            ->assertHeader('Access-Control-Allow-Origin', 'https://app.loomora.test')
+            ->assertHeader('Access-Control-Allow-Origin', config('app.frontend_url'))
             ->assertHeader('X-Content-Type-Options', 'nosniff')
             ->assertHeader('X-Frame-Options', 'DENY')
             ->assertHeader('Referrer-Policy', 'no-referrer')

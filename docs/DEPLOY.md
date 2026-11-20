@@ -115,7 +115,9 @@ On the **loomora-api** service → **Environment** → for each name below, clic
 
 Set `APP_DEBUG=false` for production and hosted staging. Laravel also defaults to `false` when the setting is absent.
 
-Use one `FRONTEND_URL` per API environment. The same setting is the base URL for the Google callback to the frontend and for password reset and email verification links. A comma-separated list accepted by the CORS parser produces invalid auth links. Use a separate approved staging frontend, API and database for preview authentication.
+Set `FRONTEND_URL` to the frontend's exact browser origin. Use a lowercase scheme and host and include a port only when it differs from the scheme's default. Comma-separated lists, whitespace, credentials, paths (including a trailing `/`), query strings and fragments fail validation. Always set the approved HTTPS origin explicitly on Render. Local HTTP is supported on `localhost`, `127.0.0.1` and `[::1]`. An unset value defaults to `http://localhost:5173` for development and build tooling. An explicitly empty value fails validation.
+
+The API uses this origin for CORS, the Google callback to the frontend, password reset and email verification. Use a separate approved staging frontend, API and database for preview authentication. The Render owner confirms the actual configured origin as part of [Q25](PROGRESS.md#q25-owner-verification-checklist).
 
 Click **Save Changes**, then **Manual Deploy** → **Deploy latest commit**.
 
@@ -124,6 +126,8 @@ Click **Save Changes**, then **Manual Deploy** → **Deploy latest commit**.
 Run registration, mail and Google checks only on an approved, disposable staging pair with synthetic accounts and approved test recipients. On a shared public deployment, limit this assessment to read-only health, response headers, CORS and direct frontend route checks. Record the exact frontend and backend commits and attach the redacted provider evidence in the [release checklist](PROGRESS.md#q25-owner-verification-checklist).
 
 1. **Logs:** service → **Logs**. You should see the migrations, then Apache starting. If you see `FATAL: migrations failed after 3 attempts`, the database is unreachable: check `DB_URL` (direct, not `-pooler`, ends with `?sslmode=require`).
+   If the logs report `FRONTEND_URL must be one canonical frontend origin.`, correct the value before redeploying. Docker validates it during `php artisan config:cache`, before migrations and Apache startup. Restart or redeploy after changing the origin so Laravel rebuilds the cache.
+   For a local upgrade, an invalid value in an old cache also blocks Artisan commands. Correct `.env` and remove the generated `bootstrap/cache/config.php` file (or the generated file at `APP_CONFIG_CACHE` if set), then rerun the command.
 2. **Health:** open `https://<api-host>/api/v1/health` → `{"status":"ok"}`.
 3. **Database:** open `https://<api-host>/api/v1/health?deep=1` → `{"status":"ok","database":"ok"}`.
 4. **Staging registration and email:** use the approved staging API and test recipient.

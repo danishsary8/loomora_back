@@ -9,7 +9,9 @@ info:
     - Auth: Sanctum **bearer tokens** (`Authorization: Bearer <token>`), valid 30 days.
     - The user's local "today" is sent by the client as `?date=YYYY-MM-DD`.
     - Rate limits: `/auth/*` public routes 10 per minute per IP; signed-in routes 120 per minute per user.
-    - API responses, including CORS preflights, carry `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and `Content-Security-Policy`.
+    - CORS authorizes only the configured frontend origin and omits the credentials header. Google callback, email verification and password reset links use the same origin.
+    - An invalid frontend origin prevents startup. If HTTP reaches a misconfigured API instance, it responds with HTTP 500 and `{"message":"Server Error"}`.
+    - Once the API boots successfully, responses, including CORS preflights, carry `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and `Content-Security-Policy`.
       HTTPS responses also carry `Strict-Transport-Security`.
     - Errors always use `{ "message": "...", "errors": { "field": ["..."] } }` (`errors` only on 422).
   license:
@@ -204,7 +206,7 @@ paths:
       operationId: googleCallback
       summary: Google returns here
       description: |
-        Called by Google, not by the app. Always redirects to `{FRONTEND_URL}/auth/google/callback` with either
+        Google calls this endpoint. It redirects to `{FRONTEND_URL}/auth/google/callback` with either
         `?code=<one-time code>` or `?error=` one of `account_not_found` (sign_in, no account),
         `account_already_exists` (sign_up, account exists), `email_not_verified`, `google_failed`.
       security: []
