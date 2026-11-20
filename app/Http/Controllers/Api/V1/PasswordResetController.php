@@ -18,7 +18,7 @@ class PasswordResetController extends Controller
     public function forgot(ForgotPasswordRequest $request): JsonResponse
     {
         Password::sendResetLink($request->validated(), function (User $user, string $token) {
-            $url = rtrim(config('app.frontend_url'), '/').'/reset-password?'.http_build_query([
+            $url = config('app.frontend_url').'/reset-password?'.http_build_query([
                 'token' => $token,
                 'email' => $user->email,
             ]);

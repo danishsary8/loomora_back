@@ -142,7 +142,7 @@ class GoogleAuthController extends Controller
      */
     private function toFrontend(array $params): RedirectResponse
     {
-        return redirect()->away(rtrim(config('app.frontend_url'), '/').'/auth/google/callback?'.http_build_query($params));
+        return redirect()->away(config('app.frontend_url').'/auth/google/callback?'.http_build_query($params));
     }
 
     private function google(): GoogleProvider

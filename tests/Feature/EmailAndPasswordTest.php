@@ -13,7 +13,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Mail::fake();
-    config(['app.frontend_url' => 'https://app.loomora.test']);
 });
 
 /** Pull the query parameters out of the link in a sent mail. */
@@ -28,10 +27,11 @@ describe('email verification', function () {
     it('sends a verification email on register', function () {
         $this->postJson('/api/v1/auth/register', [
             'name' => 'Sokha', 'email' => 'sokha@example.com', 'password' => 'correct-horse-battery', 'timezone' => 'Asia/Phnom_Penh',
-        ])->assertCreated();
+        ])->assertCreated()
+            ->assertJsonStructure(['token', 'expires_at', 'user']);
 
         Mail::assertSent(VerifyEmailMail::class, fn (VerifyEmailMail $mail) => $mail->hasTo('sokha@example.com')
-            && str_starts_with($mail->url, 'https://app.loomora.test/verify-email?'));
+            && str_starts_with($mail->url, config('app.frontend_url').'/verify-email?'));
     });
 
     it('still registers when sending the email fails', function () {
@@ -112,10 +112,11 @@ describe('password reset', function () {
     it('emails a reset link that points to the frontend', function () {
         $user = User::factory()->create(['email' => 'sokha@example.com']);
 
-        $this->postJson('/api/v1/auth/password/forgot', ['email' => 'Sokha@Example.com'])->assertOk();
+        $this->postJson('/api/v1/auth/password/forgot', ['email' => 'Sokha@Example.com'])->assertOk()
+            ->assertExactJson(['message' => __('auth_flow.reset_link_sent')]);
 
         Mail::assertSent(ResetPasswordMail::class, fn (ResetPasswordMail $mail) => $mail->hasTo($user->email)
-            && str_starts_with($mail->url, 'https://app.loomora.test/reset-password?'));
+            && str_starts_with($mail->url, config('app.frontend_url').'/reset-password?'));
     });
 
     it('gives the same answer for an unknown email and sends nothing', function () {
