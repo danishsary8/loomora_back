@@ -352,9 +352,16 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Release recommendation:** NO-GO. Public app and auth deep links fail, the Render SHA and paired staging flows lack verification, and the planner must resolve Q23. QA-005 and QA-009 remain open.
 
 ### B-033: Canonical frontend origin validation
-- **Status:** review
+- **Status:** done
+- Merged into `v2-rebuild` at `bb19bc0` in [PR #36](https://github.com/danishsary8/loomora_back/pull/36).
 - **Scope:** Validate one `FRONTEND_URL` at boot and use it for CORS, Google callback redirects, email verification and password reset.
 - **Done when:**
   - [x] Regression tests cover invalid configuration, approved and unrelated origins, auth links, localhost and the configuration cache.
   - [x] PostgreSQL, SQLite, both locked Composer audits, strict validation, Pint, Larastan, unused-code review, Redocly and Docker smoke results are recorded in the [B-033 progress entry](PROGRESS.md#2026-11-20-b-033-canonical-frontend-origin-validation).
 - **Deployment follow-up:** Q25 owner confirmation and QA-009 staging sign-off are pending. Q23 remains open.
+
+### B-034: Google-only account deletion security design
+- **Status:** review (planner decision pending)
+- **Scope:** Q23 and QA-004. `DELETE /me` requires a current password and returns 422 for Google-only accounts without one. The [design proposal](B-034-google-account-deletion-design.md) compares Google reauthentication, verified email confirmation and restricting Google-only signup at launch. It specifies the recommended API, frontend integration and regression plan.
+- **Recommendation:** Use a purpose-bound Google confirmation with a signed recent authentication time and the original Sanctum session. Pending the provider capability check, keep Google-only signup outside public launch if the team cannot establish the required freshness.
+- **Planner decision:** Approve the proposed Google design and staged gate or explicitly choose a launch restriction or email confirmation. Q23 remains open. QA-004 disclosures, Q25 and QA-009 remain open.
