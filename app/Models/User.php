@@ -115,7 +115,9 @@ class User extends Authenticatable
     {
         DB::transaction(function () {
             $this->tokens()->delete();
-            DB::table('password_reset_tokens')->where('email', $this->email)->delete();
+
+            $broker = config('auth.defaults.passwords');
+            DB::table(config("auth.passwords.{$broker}.table"))->where('email', $this->email)->delete();
             DB::table('sessions')->where('user_id', $this->id)->delete();
             if (! $this->delete()) {
                 throw new RuntimeException('Account deletion was cancelled.');

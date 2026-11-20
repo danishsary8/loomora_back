@@ -13,6 +13,7 @@ use App\Services\EmailVerification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -37,16 +38,18 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->validated('email'))->first();
+        return DB::transaction(function () use ($request) {
+            $user = User::where('email', $request->validated('email'))->lockForUpdate()->first();
 
-        // Google-only accounts have no password and cannot log in this way.
-        if (! $user || ! $user->password || ! Hash::check($request->validated('password'), $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => [__('auth.failed')],
-            ]);
-        }
+            // Keep password verification and bearer issuance under the same user lock as reset.
+            if (! $user || ! $user->password || ! Hash::check($request->validated('password'), $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => [__('auth.failed')],
+                ]);
+            }
 
-        return $this->tokenResponse($user, 200);
+            return $this->tokenResponse($user, 200);
+        });
     }
 
     public function logout(Request $request): Response
