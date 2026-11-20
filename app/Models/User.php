@@ -11,6 +11,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
+use RuntimeException;
 
 /**
  * @property string $id
@@ -116,7 +117,9 @@ class User extends Authenticatable
             $this->tokens()->delete();
             DB::table('password_reset_tokens')->where('email', $this->email)->delete();
             DB::table('sessions')->where('user_id', $this->id)->delete();
-            $this->delete();
+            if (! $this->delete()) {
+                throw new RuntimeException('Account deletion was cancelled.');
+            }
         });
     }
 

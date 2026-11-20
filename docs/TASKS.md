@@ -296,3 +296,12 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   - [ ] Every fixture case passes and no inline local-date code is left
   - [ ] All earlier tests still pass; Pint, PHPStan and Redocly lint pass
 - **Files:** `app/Support/LocalDate.php`, the services and requests above, `tests/Fixtures/local-date-cases.json`, `tests/Feature/*`
+
+### B-028: Account security and deletion integrity
+- **Status:** review
+- **Scope:** QA-001 / QA-004 follow-up. Verify password confirmation, deletion rollback and cascades, bearer token revocation, resource ownership and API error responses. Preserve the Google-only deletion restriction pending Q23.
+- **Done when:**
+  - [x] Regression coverage checks failed deletion, successful deletion and authorization with real bearer tokens on disposable data.
+  - [x] OpenAPI and the API summary describe the deletion behavior and the Google-only restriction.
+  - [x] PostgreSQL and SQLite Pest suites, Pint, PHPStan, unused-code review, Redocly and Docker results are recorded.
+- **Files:** account deletion request and model, `tests/Feature/FeedbackAndAccountTest.php`, and API/task/progress docs.

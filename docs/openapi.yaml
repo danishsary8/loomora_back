@@ -261,6 +261,8 @@ paths:
           description: Signed out.
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/email/verify:
     post:
@@ -463,8 +465,8 @@ paths:
       operationId: deleteMe
       summary: Delete the account and all its data
       description: |
-        Needs the current password. Deletes the user, all tokens and every row they own, immediately.
-        Google-only accounts get 422 until Google re-auth is available.
+        Requires a bearer token and the current password. The signed-in account, its tokens, and its
+        associated database rows are deleted in one transaction. Google-only accounts without a password get 422.
       requestBody:
         required: true
         content:
@@ -483,11 +485,19 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
-          description: Wrong or missing password (reported on `password`).
+          description: Password validation failed or the account has no password (reported on `password`).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Deletion failed. Changes made by the deletion transaction are rolled back.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /me/survey:
     post:

@@ -2,6 +2,8 @@
 
 use App\Mail\FeedbackReceivedMail;
 use App\Models\Feedback;
+use App\Models\ScheduleItem;
+use App\Models\Todo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -125,6 +127,18 @@ describe('POST /me/survey', function () {
 });
 
 describe('DELETE /me', function () {
+    it('requires a valid bearer token before checking the password', function () {
+        $user = User::factory()->create(['password' => 'correct-horse-battery']);
+        $payload = ['password' => 'correct-horse-battery', 'user_id' => $user->id];
+
+        $this->delete('/api/v1/me', $payload)
+            ->assertUnauthorized()->assertExactJson(['message' => 'Unauthenticated.']);
+        $this->withToken('invalid-token')->delete('/api/v1/me', $payload)
+            ->assertUnauthorized()->assertExactJson(['message' => 'Unauthenticated.']);
+
+        $this->assertModelExists($user);
+    });
+
     it('needs the right password', function () {
         $user = User::factory()->create(['password' => 'correct-horse-battery']);
 
@@ -150,14 +164,25 @@ describe('DELETE /me', function () {
         $other = User::factory()->create();
 
         $token = $user->createToken('phone')->plainTextToken;
-        $user->createToken('laptop');
-        $other->createToken('theirs');
+        $secondToken = $user->createToken('laptop')->plainTextToken;
+        $otherToken = $other->createToken('theirs')->plainTextToken;
         DB::table('password_reset_tokens')->insert(['email' => $user->email, 'token' => 'x', 'created_at' => now()]);
         DB::table('sessions')->insert(['id' => 's1', 'user_id' => $user->id, 'payload' => '', 'last_activity' => 0]);
         (new Feedback(['message' => 'Mine']))->user()->associate($user)->save();
         (new Feedback(['message' => 'Theirs']))->user()->associate($other)->save();
+        $item = ScheduleItem::factory()->for($user)->create();
+        $exception = $item->exceptions()->create(['date' => '2026-11-20', 'type' => 'skip']);
+        $checkin = $item->checkins()->create(['date' => '2026-11-19', 'done_at' => now()]);
+        $user->dailyIntentions()->create(['local_date' => '2026-11-20', 'text' => 'My intention']);
+        $parent = Todo::factory()->for($user)->create();
+        $subtask = Todo::factory()->for($user)->create(['parent_id' => $parent->id]);
+        $subtask->delete();
+        $otherTodo = Todo::factory()->for($other)->create();
 
-        $this->withToken($token)->deleteJson('/api/v1/me', ['password' => 'correct-horse-battery'])->assertNoContent();
+        $this->withToken($token)->deleteJson('/api/v1/me', [
+            'password' => 'correct-horse-battery',
+            'user_id' => $other->id,
+        ])->assertNoContent();
 
         // Every table that can hold this user's data is empty of it.
         foreach (Schema::getTables() as $table) {
@@ -177,11 +202,39 @@ describe('DELETE /me', function () {
         }
 
         $this->assertModelMissing($user);
+        $this->assertModelMissing($exception);
+        $this->assertModelMissing($checkin);
         $this->assertModelExists($other);
+        $this->assertModelExists($otherTodo);
         expect(Feedback::where('user_id', $other->id)->count())->toBe(1)
             ->and($other->tokens()->count())->toBe(1);
 
+        foreach ([$token, $secondToken] as $revokedToken) {
+            $this->app['auth']->forgetGuards();
+            $this->withToken($revokedToken)->getJson('/api/v1/me')->assertUnauthorized();
+        }
+
         $this->app['auth']->forgetGuards();
-        $this->withToken($token)->getJson('/api/v1/me')->assertUnauthorized();
+        $this->withToken($otherToken)->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.id', $other->id);
+    });
+
+    it('rolls back cleanup when the user deletion is cancelled', function () {
+        $user = User::factory()->create(['password' => 'correct-horse-battery']);
+        $token = $user->createToken('phone');
+        DB::table('password_reset_tokens')->insert(['email' => $user->email, 'token' => 'reset', 'created_at' => now()]);
+        DB::table('sessions')->insert(['id' => 's1', 'user_id' => $user->id, 'payload' => '', 'last_activity' => 0]);
+        $todo = Todo::factory()->for($user)->create();
+        User::deleting(fn (User $deleting) => $deleting->is($user) ? false : null);
+
+        config(['app.debug' => false]);
+        $response = $this->withToken($token->plainTextToken)
+            ->deleteJson('/api/v1/me', ['password' => 'correct-horse-battery']);
+
+        $this->assertModelExists($user);
+        $this->assertModelExists($todo);
+        $this->assertModelExists($token->accessToken);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+        $this->assertDatabaseHas('sessions', ['id' => 's1', 'user_id' => $user->id]);
+        $response->assertInternalServerError()->assertJsonStructure(['message'])->assertJsonMissingPath('trace');
     });
 });

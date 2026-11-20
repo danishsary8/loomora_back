@@ -31,7 +31,7 @@ class DeleteMeRequest extends FormRequest
 
                 $user = $this->user();
 
-                // Google-only accounts have no password; their re-auth comes with B-015.
+                // Account deletion currently requires an existing password.
                 if ($user->password === null) {
                     $validator->errors()->add('password', __('account.google_reauth_required'));
                 } elseif (! Hash::check($this->input('password'), $user->password)) {

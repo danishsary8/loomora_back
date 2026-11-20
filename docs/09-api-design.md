@@ -20,7 +20,9 @@ Errors use one shape: `{ "message": "...", "errors": { "field": ["..."] } }` wit
 | GET | /me | current user |
 | PATCH | /me | name, timezone |
 | POST | /me/survey | goal, heard_from (skippable) |
-| DELETE | /me | delete account (password or Google re-auth confirmation) |
+| DELETE | /me | confirm with the current password, delete the account and revoke all its tokens |
+
+Google-only accounts with no password receive `422` on `DELETE /me`. The planner must decide how those accounts can be deleted before including Google signup in the public launch.
 
 ## To-dos
 | Method | Path | Purpose |
