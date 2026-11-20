@@ -324,9 +324,19 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Scope:** Backend production Composer dependencies. Frontend toolchain and browser hardening remain separate QA-005 work.
 
 ### B-030: Patch the backend development dependency advisory
-- **Status:** review
+- **Status:** done
+- Merged into `v2-rebuild` at `199ec25` in [PR #33](https://github.com/danishsary8/loomora_back/pull/33).
 - **Scope:** QA-001 / QA-005 follow-up for development-only `symfony/yaml` [GHSA-hwfg-qwvh-2wfx](https://github.com/symfony/symfony/security/advisories/GHSA-hwfg-qwvh-2wfx).
 - **Done when**
   - [x] The Pest lockfile regression fails on v7.4.21 and passes after a targeted update to v7.4.23.
   - [x] Both locked Composer audits report zero advisories and strict validation passes.
   - [x] PostgreSQL and SQLite Pest suites, Pint, Larastan, unused-code review, Redocly lint and Docker deep health are verified.
+
+### B-031: Backend security and secrets audit
+- **Status:** review
+- **Scope:** Remaining backend QA-005 checks from QA-001. Evidence and production blockers are recorded in the B-031 progress entry.
+- **Done when**
+  - [x] Redacted scans cover tracked files and locally reachable Git history, including fetched upstream branches.
+  - [x] Regression checks cover ignored environment files and security headers on HTTPS preflights. Debug-off errors, authorization and the existing API contract are verified in disposable environments.
+  - [x] Both locked Composer audits, strict validation, PostgreSQL and SQLite Pest, Pint, Larastan, unused-code review, Redocly and Docker deep health are recorded.
+- **Blocked deployment checks:** Q24 covers the canonical auth-link origin and preview policy. Q25 covers redacted Render, Neon, Google and Brevo sign-off for the exact candidate. QA-009 and the Google-only deletion decision in Q23 remain open.

@@ -31,6 +31,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check environment file ignore rules
+        run: |
+          for file in .env .env.local .env.testing .env.staging .env.production auth.json storage/oauth-private.key legacy/.env.local legacy/storage/oauth-private.key; do
+            git check-ignore -q --no-index -- "$file" || { echo "Expected Git to ignore $file"; exit 1; }
+          done
+          for file in .env.example legacy/.env.example legacy/.env.production.example; do
+            if git check-ignore -q --no-index -- "$file"; then
+              echo "Expected Git to allow $file"
+              exit 1
+            fi
+          done
+
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
