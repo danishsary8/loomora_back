@@ -17,6 +17,8 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
+- **Q23 (2026-11-20, B-028 / QA-004):** The API summary advertised Google reauthentication for `DELETE /me`, but the API requires a current password and returns `422` for accounts without one. What verified deletion path should be available for Google-only accounts, or should Google signup stay out of public launch until one is approved? The current restriction remains in force.
+
 - ~~**Q1**~~ Resolved 2026-10-24: B-002 (PR #2) merged, so B-003 onward branch from `v2-rebuild` as normal. Original question: These tasks need the Laravel app from B-002, which is still in review (PR #2). Branching them from `v2-rebuild` now gives no app to build or test. Should I wait for B-002 to merge (current choice), or stack the next branches on `feat/B-002-scaffold-laravel`?
 
 - **Q3 (2026-10-24, B-005):** docs/09 says register "sends a verification email", but the verify/resend endpoints and Brevo (needs `BREVO_API_KEY`) are not in B-005. Register does not send an email yet. Suggest a separate task for email verification + Brevo once the key exists.
@@ -287,3 +289,14 @@ _Questions that need the planner or Danish. Includes any place where code and do
 - **Questions:** none.
 
 - **Planner answers (2026-11-19, review 7):** B-026 and B-027 merged and done. **Q22:** keep the UTC-distance shift; Cambodia has no daylight saving, so no change now. Revisit only if a DST region becomes a target.
+
+### 2026-11-20: B-028 Account security and deletion integrity
+
+- Branch `feat/B-028-account-security` from `v2-rebuild` at `8442cbb`. Reviewed the local QA-001 report, including QA-004.
+- Eloquent can cancel a model delete by returning `false`. `User::deleteWithData()` previously ignored that result, committed token, reset-token and session cleanup, and returned `204` while the account survived. A test-only deletion listener confirmed the partial cleanup before the fix. The transaction now rolls back and the API returns a JSON `500` on cancellation.
+- The tests verify JSON `401` for missing or invalid bearer tokens, password confirmation, the signed-in account as the deletion target, and cascades through to-dos (including soft-deleted subtasks), schedules, exceptions, check-ins, intentions and feedback. Both deleted-account tokens return `401` and the other account keeps its data and access. Existing coverage verifies logout revokes only its current token, expired tokens return `401`, invalid login credentials return `422`, and to-dos, schedules, reminders, intentions and imports preserve ownership boundaries.
+- `docs/openapi.yaml` records deletion rollback and the existing rate-limit response on deletion and logout. `docs/09-api-design.md` now describes password-confirmed deletion and the current Google-only `422` response.
+- `php vendor/bin/pest` on disposable PostgreSQL 17.4 and `php -d extension=pdo_sqlite vendor/bin/pest` on in-memory SQLite each passed 368 tests with 1,499 assertions. The initial parallel runs produced warnings for the missing local `.env` and one SQLite Blade cache rename error on Windows. The final runs passed without warnings after environment setup.
+- `php vendor/bin/pint --test`, `php vendor/bin/phpstan analyse --no-progress --memory-limit=1G --debug`, the B-017 manual unused-code check of changed PHP, and `git diff --check` passed. `npx @redocly/cli lint docs/openapi.yaml` passed with the four existing warnings about localhost, the health operation's 4xx coverage, and the two redirect-only Google operations.
+- `docker build -t loomora-b028 .` passed. On an isolated Docker network, startup applied 15 migrations to disposable PostgreSQL 16 and `/api/v1/health?deep=1` reported the API and database healthy. With a missing database, the container logged the expected fatal error after three attempts and exited 1. The initial Docker probe required starting Docker Desktop, and the smoke harness required retrying the health probe while Apache started. The disposable containers and network were stopped and removed after the checks.
+- Q23 remains open. Keep Google signup out of the public release until the planner approves a verified deletion path or explicitly decides its launch scope.
