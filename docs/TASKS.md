@@ -305,3 +305,18 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   - [x] OpenAPI and the API summary describe the deletion behavior and the Google-only restriction.
   - [x] PostgreSQL and SQLite Pest suites, Pint, PHPStan, unused-code review, Redocly and Docker results are recorded.
 - **Files:** account deletion request and model, `tests/Feature/FeedbackAndAccountTest.php`, and API/task/progress docs.
+
+### B-029: Patch backend runtime dependencies
+- **Status:** review
+- **Audit:** QA-001 / QA-005. On the updated `v2-rebuild` at `5f0be5e`, `composer audit --locked --no-dev` reported 11 runtime advisories across seven packages.
+- **Triage:** QA-002 requires frontend routing and deployment work. QA-003 requires frontend guest persistence. QA-004 requires frontend disclosures and a planner decision on Google-only deletion (Q23). Password deletion integrity shipped in B-028 ([PR #31](https://github.com/danishsary8/loomora_back/pull/31)). QA-009 is the staged release sign-off gate.
+- **Plan:**
+  - Confirm each affected package and its first patched version in the supported release line.
+  - Add a deterministic Pest regression for the production lock and verify that the base versions fail.
+  - Update the affected Composer packages within the current PHP, Laravel and Symfony release lines.
+  - Rerun the production audit, database tests, code checks and Docker smoke tests. Record the results for planner review.
+- **Done when:**
+  - [x] The Pest lockfile regression fails on the original lock and passes with all affected packages patched.
+  - [x] `composer audit --locked --no-dev` reports zero advisories and the production Docker image installs the patched lock and boots on PHP 8.3.
+  - [x] PostgreSQL, SQLite, Pint, Larastan, the B-017 unused-code review, Redocly and Docker smoke tests pass. Existing API contracts and ownership tests pass.
+- **Scope:** Backend production Composer dependencies. Frontend toolchain and browser hardening remain separate QA-005 work.
