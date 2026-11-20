@@ -333,10 +333,19 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   - [x] PostgreSQL and SQLite Pest suites, Pint, Larastan, unused-code review, Redocly lint and Docker deep health are verified.
 
 ### B-031: Backend security and secrets audit
-- **Status:** review
+- **Status:** done
+- Merged into `v2-rebuild` at `2db49f9` in [PR #34](https://github.com/danishsary8/loomora_back/pull/34).
 - **Scope:** Remaining backend QA-005 checks from QA-001. Evidence and production blockers are recorded in the B-031 progress entry.
 - **Done when**
   - [x] Redacted scans cover tracked files and locally reachable Git history, including fetched upstream branches.
   - [x] Regression checks cover ignored environment files and security headers on HTTPS preflights. Debug-off errors, authorization and the existing API contract are verified in disposable environments.
   - [x] Both locked Composer audits, strict validation, PostgreSQL and SQLite Pest, Pint, Larastan, unused-code review, Redocly and Docker deep health are recorded.
-- **Blocked deployment checks:** Q24 covers the canonical auth-link origin and preview policy. Q25 covers redacted Render, Neon, Google and Brevo sign-off for the exact candidate. QA-009 and the Google-only deletion decision in Q23 remain open.
+- **Deployment follow-up:** B-032 records the Q24 decision and tracks owner verification of the live configuration, Q25 and the unresolved Q23 release decision.
+
+### B-032: Staging integration and release readiness
+- **Status:** review
+- **Scope:** Compare the public API and frontend with the fetched source candidates. Record the local verification, blocked staging checks and redacted owner evidence needed for QA-009.
+- [x] Verify the B-031 merge, public API health and headers, the Vercel alias commit and the frontend/backend contract.
+- [x] Record local test and container results, update the Q24 deployment guidance and document Q23 and Q25 in the [B-032 assessment](PROGRESS.md#2026-11-20-b-032-staging-integration-and-release-readiness).
+- [ ] QA-009 sign-off requires an approved disposable frontend/API/database pair, exact deployed SHAs and owner evidence for Render, Neon, Google and Brevo.
+- **Release recommendation:** NO-GO. Public app and auth deep links fail, the Render SHA and paired staging flows lack verification, and the planner must resolve Q23. QA-005 and QA-009 remain open.

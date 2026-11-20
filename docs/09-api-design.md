@@ -61,6 +61,6 @@ Google-only accounts with no password receive `422` on `DELETE /me`. The planner
 ## Rules
 - Every list and write endpoint is scoped to the authenticated user. Never accept `user_id` from the client.
 - Rate limits: auth routes 10 per minute per IP, others 120 per minute per user.
-- CORS allows only the frontend origins from the `FRONTEND_URL` env variable.
+- Set `FRONTEND_URL` to one canonical frontend origin per API environment. CORS and Google, verification and reset links use this setting. Preview auth uses a separate approved staging pair.
 - API resources return `id`, fields above and `created_at`. OpenAPI file at `docs/openapi.yaml`, kept in sync.
 - Later releases add endpoints (subtasks, repeats, reminders, timers, notes, analytics) in their own docs.

@@ -64,7 +64,7 @@ You need the API's address for this. Render gives it in Part 4 (step 4); it look
 1. Go to <https://console.cloud.google.com> → choose your project.
 2. Menu → **APIs & Services** → **Credentials**.
 3. Under **OAuth 2.0 Client IDs**, click your existing web client.
-4. **Authorized JavaScript origins:** add the frontend address (your Vercel URL, e.g. `https://loomora.vercel.app`).
+4. **Authorized JavaScript origins:** use the canonical frontend origin for this API environment. For production, use `https://loomora-craft.vercel.app`.
 5. **Authorized redirect URIs:** add exactly:
    `https://<api-host>/api/v1/auth/google/callback`
    for example `https://loomora-api.onrender.com/api/v1/auth/google/callback`.
@@ -102,7 +102,7 @@ On the **loomora-api** service → **Environment** → for each name below, clic
 |---|---|
 | `APP_KEY` | from "Make the app key" |
 | `APP_URL` | your Render address, e.g. `https://loomora-api.onrender.com` |
-| `FRONTEND_URL` | your Vercel address, e.g. `https://loomora.vercel.app` (several: separate with commas, no trailing `/`) |
+| `FRONTEND_URL` | One canonical frontend origin, with no path or trailing `/`. Production uses `https://loomora-craft.vercel.app`. |
 | `DB_CONNECTION` | `pgsql` |
 | `DB_URL` | Neon direct connection string (Part 1) |
 | `GOOGLE_CLIENT_ID` | Part 3 |
@@ -113,23 +113,27 @@ On the **loomora-api** service → **Environment** → for each name below, clic
 | `MAIL_FROM_ADDRESS` | Part 2 (the verified sender) |
 | `FEEDBACK_TO_EMAIL` | Part 2 |
 
-Do **not** add `APP_DEBUG`. When it is missing, Laravel uses `false`, which keeps error details private.
+Set `APP_DEBUG=false` for production and hosted staging. Laravel also defaults to `false` when the setting is absent.
+
+Use one `FRONTEND_URL` per API environment. The same setting is the base URL for the Google callback to the frontend and for password reset and email verification links. A comma-separated list accepted by the CORS parser produces invalid auth links. Use a separate approved staging frontend, API and database for preview authentication.
 
 Click **Save Changes**, then **Manual Deploy** → **Deploy latest commit**.
 
 ## Part 5: First-deploy checks
 
+Run registration, mail and Google checks only on an approved, disposable staging pair with synthetic accounts and approved test recipients. On a shared public deployment, limit this assessment to read-only health, response headers, CORS and direct frontend route checks. Record the exact frontend and backend commits and attach the redacted provider evidence in the [release checklist](PROGRESS.md#q25-owner-verification-checklist).
+
 1. **Logs:** service → **Logs**. You should see the migrations, then Apache starting. If you see `FATAL: migrations failed after 3 attempts`, the database is unreachable: check `DB_URL` (direct, not `-pooler`, ends with `?sslmode=require`).
 2. **Health:** open `https://<api-host>/api/v1/health` → `{"status":"ok"}`.
 3. **Database:** open `https://<api-host>/api/v1/health?deep=1` → `{"status":"ok","database":"ok"}`.
-4. **Register and email:** in a terminal:
+4. **Staging registration and email:** use the approved staging API and test recipient.
    ```bash
-   curl -X POST https://<api-host>/api/v1/auth/register \
+   curl -X POST https://<approved-staging-api-host>/api/v1/auth/register \
      -H "Content-Type: application/json" -H "Accept: application/json" \
-     -d '{"name":"Test","email":"YOUR_EMAIL","password":"a-long-test-password","timezone":"Asia/Phnom_Penh"}'
+     -d '{"name":"Test","email":"APPROVED_TEST_EMAIL","password":"a-long-test-password","timezone":"Asia/Phnom_Penh"}'
    ```
    You get a JSON reply with a `token`, and a "Confirm your email" message arrives (check spam). If no email arrives, check `BREVO_API_KEY` and that `MAIL_FROM_ADDRESS` is verified in Brevo.
-5. **Google:** once the frontend is deployed, try "Sign in with Google". A `redirect_uri_mismatch` error from Google means the redirect URI in Part 3 does not exactly match `GOOGLE_REDIRECT_URI`.
+5. **Staging Google sign-in:** use an approved test account on the paired staging frontend. A `redirect_uri_mismatch` error from Google means the redirect URI in Part 3 does not exactly match `GOOGLE_REDIRECT_URI`.
 6. **CORS:** the web app should load data without "CORS" errors in the browser console. If it shows them, check that `FRONTEND_URL` exactly matches the address in the browser bar (https, no trailing `/`).
 
 ## Good to know

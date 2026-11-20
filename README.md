@@ -82,8 +82,8 @@ Values are never committed. Locally they go in `.env`; in production they go in 
 |---|---|
 | `APP_KEY` | Laravel's encryption key (`base64:...`). Encrypts the Google sign-in state and signs email links. |
 | `APP_URL` | Public URL of this API, e.g. `https://loomora-api.onrender.com`. |
-| `APP_DEBUG` | `true` only on your machine. Leave it unset (false) in production so errors never show stack traces. |
-| `FRONTEND_URL` | Web app origin(s) allowed by CORS and used in email links. Comma-separated, no trailing slash. |
+| `APP_DEBUG` | Use `false` in production and hosted staging to keep stack traces private. |
+| `FRONTEND_URL` | One canonical HTTPS frontend origin per hosted API environment, with no path or trailing slash. CORS and auth links use this setting. Production uses `https://loomora-craft.vercel.app`. |
 | `DB_CONNECTION` | `pgsql` (or `sqlite` locally). |
 | `DB_URL` | Database connection string. In production: Neon's **direct** (not pooled) connection string. |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID. |
