@@ -298,7 +298,8 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** `app/Support/LocalDate.php`, the services and requests above, `tests/Fixtures/local-date-cases.json`, `tests/Feature/*`
 
 ### B-028: Account security and deletion integrity
-- **Status:** review
+- **Status:** done
+- Merged into `v2-rebuild` at `5f0be5e` in [PR #31](https://github.com/danishsary8/loomora_back/pull/31).
 - **Scope:** QA-001 / QA-004 follow-up. Verify password confirmation, deletion rollback and cascades, bearer token revocation, resource ownership and API error responses. Preserve the Google-only deletion restriction pending Q23.
 - **Done when:**
   - [x] Regression coverage checks failed deletion, successful deletion and authorization with real bearer tokens on disposable data.
@@ -307,7 +308,8 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Files:** account deletion request and model, `tests/Feature/FeedbackAndAccountTest.php`, and API/task/progress docs.
 
 ### B-029: Patch backend runtime dependencies
-- **Status:** review
+- **Status:** done
+- Merged into `v2-rebuild` at `926a15a` in [PR #32](https://github.com/danishsary8/loomora_back/pull/32).
 - **Audit:** QA-001 / QA-005. On the updated `v2-rebuild` at `5f0be5e`, `composer audit --locked --no-dev` reported 11 runtime advisories across seven packages.
 - **Triage:** QA-002 requires frontend routing and deployment work. QA-003 requires frontend guest persistence. QA-004 requires frontend disclosures and a planner decision on Google-only deletion (Q23). Password deletion integrity shipped in B-028 ([PR #31](https://github.com/danishsary8/loomora_back/pull/31)). QA-009 is the staged release sign-off gate.
 - **Plan:**
@@ -320,3 +322,11 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   - [x] `composer audit --locked --no-dev` reports zero advisories and the production Docker image installs the patched lock and boots on PHP 8.3.
   - [x] PostgreSQL, SQLite, Pint, Larastan, the B-017 unused-code review, Redocly and Docker smoke tests pass. Existing API contracts and ownership tests pass.
 - **Scope:** Backend production Composer dependencies. Frontend toolchain and browser hardening remain separate QA-005 work.
+
+### B-030: Patch the backend development dependency advisory
+- **Status:** review
+- **Scope:** QA-001 / QA-005 follow-up for development-only `symfony/yaml` [GHSA-hwfg-qwvh-2wfx](https://github.com/symfony/symfony/security/advisories/GHSA-hwfg-qwvh-2wfx).
+- **Done when**
+  - [x] The Pest lockfile regression fails on v7.4.21 and passes after a targeted update to v7.4.23.
+  - [x] Both locked Composer audits report zero advisories and strict validation passes.
+  - [x] PostgreSQL and SQLite Pest suites, Pint, Larastan, unused-code review, Redocly lint and Docker deep health are verified.
