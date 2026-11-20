@@ -2,7 +2,11 @@
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
+use Laravel\Socialite\Two\User as GoogleUser;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 
@@ -26,6 +30,19 @@ if (isset($fixture['pause_before'])) {
     });
 }
 
+if (isset($fixture['google'])) {
+    $google = (new GoogleUser)->setRaw(['email_verified' => true])->map($fixture['google']);
+    $provider = Mockery::mock(GoogleProvider::class);
+    $provider->shouldReceive('stateless')->andReturnSelf();
+    $provider->shouldReceive('user')->andReturn($google);
+    Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+    $state = Crypt::encryptString(json_encode([
+        'intent' => $fixture['intent'],
+        'expires' => now()->addMinutes(10)->timestamp,
+    ], JSON_THROW_ON_ERROR));
+    $fixture['path'] .= '?'.http_build_query(['state' => $state]);
+}
+
 $request = Request::create($fixture['path'], $fixture['method'], server: [
     'CONTENT_TYPE' => 'application/json',
     'HTTP_ACCEPT' => 'application/json',
@@ -38,4 +55,5 @@ $kernel->terminate($request, $response);
 echo json_encode([
     'status' => $response->getStatusCode(),
     'body' => json_decode($response->getContent(), true),
+    'location' => $response->headers->get('Location'),
 ], JSON_THROW_ON_ERROR).PHP_EOL;

@@ -8,16 +8,18 @@ use App\Http\Requests\Auth\GoogleExchangeRequest;
 use App\Http\Requests\Auth\GoogleRedirectRequest;
 use App\Models\User;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -59,61 +61,95 @@ class GoogleAuthController extends Controller
 
         try {
             $google = $this->google()->stateless()->user();
-        } catch (Throwable $e) {
-            report($e);
+        } catch (Throwable) {
+            Log::warning('Google sign-in provider request failed.');
 
             return $this->toFrontend(['error' => 'google_failed']);
         }
 
         $email = strtolower((string) $google->getEmail());
-        $emailVerified = (bool) ($google->user['email_verified'] ?? false);
+        $subject = (string) $google->getId();
+        $emailVerified = ($google->user['email_verified'] ?? false) === true;
+
+        if ($subject === '') {
+            return $this->toFrontend(['error' => 'google_failed']);
+        }
 
         if ($email === '' || ! $emailVerified) {
             return $this->toFrontend(['error' => 'email_not_verified']);
         }
 
-        $user = User::where('google_id', $google->getId())->first()
-            ?? User::where('email', $email)->first();
+        try {
+            $params = DB::transaction(function () use ($google, $email, $subject, $state) {
+                // Resolve one account from one snapshot, with an existing subject taking precedence.
+                $id = User::where('google_id', $subject)->orWhere('email', $email)
+                    ->orderByRaw('case when google_id = ? then 0 else 1 end', [$subject])
+                    ->value('id');
 
-        if ($state['intent'] === 'sign_in' && ! $user) {
-            return $this->toFrontend(['error' => 'account_not_found']);
+                $signingIn = $state['intent'] === 'sign_in';
+                // If this UUID disappeared while waiting, never fall back to another email match.
+                $user = $signingIn && $id !== null ? User::lockForUpdate()->find($id) : null;
+                if ($state['expires'] < now()->getTimestamp()) {
+                    return ['error' => 'google_failed'];
+                }
+
+                if ($signingIn) {
+                    if (! $user) {
+                        return ['error' => 'account_not_found'];
+                    }
+
+                    if ($user->google_id !== null && $user->google_id !== $subject) {
+                        return ['error' => 'google_failed'];
+                    }
+                } else {
+                    if ($id !== null) {
+                        return ['error' => 'account_already_exists'];
+                    }
+
+                    $user = User::create([
+                        'name' => $google->getName() ?: Str::before($email, '@'),
+                        'email' => $email,
+                        'timezone' => $state['timezone'] ?: 'UTC',
+                    ]);
+                    $user->deletePasswordResetToken();
+                }
+
+                $code = Str::random(64);
+                if (! $user->forceFill([
+                    'google_id' => $subject,
+                    'email_verified_at' => $user->email_verified_at ?? now(),
+                    'google_exchange_digest' => hash('sha256', $code),
+                    'google_exchange_expires_at' => now()->addSeconds(self::CODE_TTL_SECONDS),
+                ])->save()) {
+                    throw new RuntimeException('Google exchange grant creation was cancelled.');
+                }
+
+                return ['code' => $code];
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Another signup or link won. Reusing it would change the callback's intent or identity.
+            $params = ['error' => $state['intent'] === 'sign_up' ? 'account_already_exists' : 'google_failed'];
         }
 
-        if ($state['intent'] === 'sign_up' && $user) {
-            return $this->toFrontend(['error' => 'account_already_exists']);
-        }
-
-        if (! $user) {
-            $user = User::create([
-                'name' => $google->getName() ?: Str::before($email, '@'),
-                'email' => $email,
-                'timezone' => $state['timezone'] ?: 'UTC',
-            ]);
-        }
-
-        // Google confirmed this address, so it counts as verified, and the account is linked.
-        $user->forceFill([
-            'google_id' => $user->google_id ?? $google->getId(),
-            'email_verified_at' => $user->email_verified_at ?? now(),
-        ])->save();
-
-        $code = Str::random(64);
-        Cache::put($this->cacheKey($code), $user->id, self::CODE_TTL_SECONDS);
-
-        return $this->toFrontend(['code' => $code]);
+        return $this->toFrontend($params);
     }
 
     public function exchange(GoogleExchangeRequest $request): JsonResponse
     {
-        $key = $this->cacheKey($request->validated('code'));
-        $userId = Cache::get($key);
+        $digest = hash('sha256', $request->validated('code'));
 
-        return DB::transaction(function () use ($key, $userId) {
-            $user = $userId ? User::lockForUpdate()->find($userId) : null;
+        return DB::transaction(function () use ($digest) {
+            $user = User::where('google_exchange_digest', $digest)->lockForUpdate()->first();
 
-            // Claim the code for this account while issuance is serialized with reset and deletion.
-            if (! $user || Cache::pull($key) !== $user->id) {
+            if (! $user || ! $user->google_exchange_expires_at?->isFuture()) {
                 throw ValidationException::withMessages(['code' => [__('google.code_invalid')]]);
+            }
+
+            if (! $user->forceFill([
+                'google_exchange_digest' => null,
+                'google_exchange_expires_at' => null,
+            ])->save()) {
+                throw new RuntimeException('Google exchange grant consumption was cancelled.');
             }
 
             return $this->tokenResponse($user);
@@ -121,7 +157,7 @@ class GoogleAuthController extends Controller
     }
 
     /**
-     * @return array{intent: string, timezone: ?string}|null
+     * @return array{intent: string, timezone: ?string, expires: int}|null
      */
     private function readState(mixed $state): ?array
     {
@@ -135,11 +171,12 @@ class GoogleAuthController extends Controller
             return null;
         }
 
-        if (! in_array($data['intent'] ?? null, ['sign_in', 'sign_up'], true) || ($data['expires'] ?? 0) < now()->getTimestamp()) {
+        $expires = $data['expires'] ?? null;
+        if (! in_array($data['intent'] ?? null, ['sign_in', 'sign_up'], true) || ! is_int($expires) || $expires < now()->getTimestamp()) {
             return null;
         }
 
-        return ['intent' => $data['intent'], 'timezone' => $data['timezone'] ?? null];
+        return ['intent' => $data['intent'], 'timezone' => $data['timezone'] ?? null, 'expires' => $expires];
     }
 
     /**
@@ -156,10 +193,5 @@ class GoogleAuthController extends Controller
         assert($driver instanceof GoogleProvider);
 
         return $driver;
-    }
-
-    private function cacheKey(string $code): string
-    {
-        return 'google-code:'.hash('sha256', $code);
     }
 }

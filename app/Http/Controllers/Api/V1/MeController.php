@@ -2,54 +2,48 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Concerns\WithActiveAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\DeleteMeRequest;
 use App\Http\Requests\Account\SurveyRequest;
 use App\Http\Requests\Account\UpdateMeRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class MeController extends Controller
 {
+    use WithActiveAccount;
+
     public function update(UpdateMeRequest $request): UserResource
     {
-        $request->user()->update($request->validated());
+        return $this->withActiveAccount($request->user(), function (User $user) use ($request) {
+            $user->update($request->validated());
 
-        return new UserResource($request->user());
+            return new UserResource($user);
+        });
     }
 
     /** Skippable: an empty submit still marks the survey as done. */
     public function survey(SurveyRequest $request): UserResource
     {
-        $user = $request->user();
-        $user->fill([
-            'goal' => $request->validated('goal'),
-            'heard_from' => $request->validated('heard_from'),
-        ]);
-        $user->forceFill(['survey_done' => true])->save();
+        return $this->withActiveAccount($request->user(), function (User $user) use ($request) {
+            $user->fill([
+                'goal' => $request->validated('goal'),
+                'heard_from' => $request->validated('heard_from'),
+            ]);
+            $user->forceFill(['survey_done' => true])->save();
 
-        return new UserResource($user);
+            return new UserResource($user);
+        });
     }
 
     /** Confirm, then delete everything immediately (docs/07 S14). */
     public function destroy(DeleteMeRequest $request): Response
     {
-        $userId = $request->user()->id;
-        $bearerId = data_get($request->user()->currentAccessToken(), 'id');
-
-        DB::transaction(function () use ($userId, $bearerId, $request) {
-            $user = User::lockForUpdate()->find($userId);
-
-            // Sanctum can authenticate the request before a concurrent reset revokes its bearer.
-            if (! $user || ($bearerId !== null && ! $user->tokens()->whereKey($bearerId)->exists())) {
-                throw new AuthenticationException;
-            }
-
+        $this->withActiveAccount($request->user(), function (User $user) use ($request) {
             if ($user->password === null) {
                 throw ValidationException::withMessages(['password' => [__('account.google_reauth_required')]]);
             }

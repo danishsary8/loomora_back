@@ -3,6 +3,8 @@
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
@@ -111,6 +113,16 @@ describe('callback', function () {
         expect($user->google_id)->toBe('g-123')->and($user->email_verified_at)->not->toBeNull();
     });
 
+    it('preserves an existing Google subject when the verified email matches a different subject', function () {
+        $user = User::factory()->unverified()->create(['email' => 'sokha@gmail.com', 'google_id' => 'other-subject']);
+        fakeGoogle();
+
+        expect(callbackParams($this, googleState('sign_in')))->toBe(['error' => 'google_failed'])
+            ->and($user->fresh()->google_id)->toBe('other-subject')
+            ->and($user->fresh()->email_verified_at)->toBeNull()
+            ->and($user->tokens()->count())->toBe(0);
+    });
+
     it('signs a password-enabled linked user in by Google id even if their Google email changed', function () {
         $user = User::factory()->create(['email' => 'old@example.com', 'google_id' => 'g-123']);
         $passwordHash = $user->password;
@@ -151,6 +163,22 @@ describe('callback', function () {
 
         expect(callbackParams($this, googleState('sign_in')))->toBe(['error' => 'google_failed']);
     });
+
+    it('declines a callback when the state expires during the provider request', function () {
+        $provider = Mockery::mock(GoogleProvider::class);
+        $provider->shouldReceive('stateless')->andReturnSelf();
+        $provider->shouldReceive('user')->andReturnUsing(function () {
+            $this->travel(2)->seconds();
+
+            return (new GoogleUser)->setRaw(['email_verified' => true])->map([
+                'id' => 'g-123', 'email' => 'sokha@gmail.com', 'name' => 'Sokha',
+            ]);
+        });
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        expect(callbackParams($this, googleState('sign_up', ttl: 1)))->toBe(['error' => 'google_failed'])
+            ->and(User::count())->toBe(0);
+    });
 });
 
 describe('exchange', function () {
@@ -180,6 +208,75 @@ describe('exchange', function () {
         $this->postJson('/api/v1/auth/google/exchange', ['code' => $code])->assertUnprocessable();
         $this->postJson('/api/v1/auth/google/exchange', ['code' => str_repeat('x', 64)])->assertUnprocessable();
         $this->postJson('/api/v1/auth/google/exchange', ['code' => 'short'])->assertUnprocessable();
+    });
+
+    it('keeps only the latest grant and allows a fresh sign-in after password reset', function () {
+        fakeGoogle();
+        $first = callbackParams($this, googleState('sign_up'))['code'];
+        $pending = callbackParams($this, googleState('sign_in'))['code'];
+        $user = User::sole();
+        expect($user->google_exchange_digest)->toBe(hash('sha256', $pending));
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $first])
+            ->assertUnprocessable()->assertJsonValidationErrors('code');
+
+        $other = User::factory()->create();
+        $otherBearer = $other->createToken('unrelated')->accessToken;
+        $this->postJson('/api/v1/auth/password/reset', [
+            'email' => $user->email, 'token' => Password::createToken($user), 'password' => 'replacement-password',
+        ])->assertOk();
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $pending])
+            ->assertUnprocessable()->assertJsonValidationErrors('code');
+
+        $fresh = callbackParams($this, googleState('sign_in'))['code'];
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $fresh])
+            ->assertOk()->assertJsonPath('user.id', $user->id)->assertJsonPath('user.has_password', true);
+        $this->assertModelExists($otherBearer);
+    });
+
+    it('keeps deleted-account credentials invalid after the email is registered again', function () {
+        $user = User::factory()->create(['email' => 'sokha@gmail.com', 'google_id' => 'g-123', 'password' => 'original-password']);
+        fakeGoogle();
+        $code = callbackParams($this, googleState('sign_in'))['code'];
+        $resetToken = Password::createToken($user);
+
+        $this->withToken($user->createToken('delete')->plainTextToken)
+            ->deleteJson('/api/v1/me', ['password' => 'original-password'])->assertNoContent();
+        $this->flushHeaders();
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $code])
+            ->assertUnprocessable()->assertJsonValidationErrors('code');
+
+        $replacement = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Replacement', 'email' => $user->email, 'password' => 'replacement-password', 'timezone' => 'UTC',
+        ])->assertCreated();
+        expect($replacement->json('user.id'))->not->toBe($user->id);
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $code])
+            ->assertUnprocessable()->assertJsonValidationErrors('code');
+        $this->postJson('/api/v1/auth/password/reset', [
+            'email' => $user->email, 'token' => $resetToken, 'password' => 'other-password',
+        ])->assertUnprocessable()->assertJsonValidationErrors('token');
+        $this->app['auth']->forgetGuards();
+        $this->withToken($replacement->json('token'))->getJson('/api/v1/me')
+            ->assertOk()->assertJsonPath('data.id', $replacement->json('user.id'));
+    });
+
+    it('rolls back grant consumption when bearer issuance fails and allows a retry', function () {
+        fakeGoogle();
+        $code = callbackParams($this, googleState('sign_up'))['code'];
+        $fails = true;
+        DB::connection()->beforeExecuting(function (string $sql) use (&$fails) {
+            if ($fails && str_starts_with($sql, 'insert into "personal_access_tokens"')) {
+                $fails = false;
+                throw new RuntimeException('Synthetic bearer write failure.');
+            }
+        });
+        config(['app.debug' => false]);
+
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $code])
+            ->assertInternalServerError()->assertExactJson(['message' => 'Server Error']);
+        expect(PersonalAccessToken::count())->toBe(0);
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $code])->assertOk();
+        $this->postJson('/api/v1/auth/google/exchange', ['code' => $code])->assertUnprocessable();
+        expect(PersonalAccessToken::count())->toBe(1);
     });
 
     it('lets a Google-only user sign in again but not with a password', function () {
