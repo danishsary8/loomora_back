@@ -4,7 +4,7 @@
 
 ## Candidate and task reconciliation
 
-The original audit used the B-037 merge `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`. The B-040 branch now includes the latest fetched `origin/v2-rebuild`, `6df3ed9a6610d915a9d9128d5359eaed08691b3f`, which contains B-038 and B-039. B-040 is open for planner review. [Original baseline CI](https://github.com/danishsary8/loomora_back/actions/runs/44788985651)
+The original audit used the B-037 merge `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`. The B-040 branch incorporated `6df3ed9a6610d915a9d9128d5359eaed08691b3f`, which contains B-038 and B-039. B-040 merged into `v2-rebuild` at `7ff0b4c66985a8eb4f94292ebe2941eea7fc00da`. [Original baseline CI](https://github.com/danishsary8/loomora_back/actions/runs/44788985651)
 
 | Work | Status | Evidence and pending acceptance |
 |---|---|---|
@@ -16,7 +16,7 @@ The original audit used the B-037 merge `1188595d4aa0b3c5ab2638b4ee6db0d2829640e
 | B-034–B-037 | DONE AND MERGED | Google-only deletion design, existing recovery characterization, atomic reset and serialized credential changes. B-037's tracker label was stale. The pending OAuth state policy and Q23 remain planner decisions. [B-037 PR #40](https://github.com/danishsary8/loomora_back/pull/40) |
 | B-038 | DONE AND MERGED | PR #41 merged at `2ce5deac64f14189b53fa16751d82ba1ba2da353`. The merged harness and runbook record the populated upgrade and cutover. [PR #41](https://github.com/danishsary8/loomora_back/pull/41) |
 | B-039 | DONE AND MERGED | PR #42 merged at `6df3ed9a6610d915a9d9128d5359eaed08691b3f`. The merged matrix records local HTTP verification and frontend contract parity. Test and Docker checks passed on its resolved tip. [PR #42](https://github.com/danishsary8/loomora_back/pull/42) |
-| B-040 | PR PENDING | PR #43 contains the audit and tracker update for planner review. [PR #43](https://github.com/danishsary8/loomora_back/pull/43) |
+| B-040 | DONE AND MERGED | PR #43 contains the audit and tracker update. [PR #43](https://github.com/danishsary8/loomora_back/pull/43) |
 | Q23, Q25, QA-004, hosted QA-005 and QA-009 | BLOCKED BY OWNER | Approve deletion assurance and launch scope, verify configuration and logs, complete frontend disclosures and sign off on the deployed pair. |
 | Hosted upgrade, paired browser and real provider tests | NOT TESTED | No approved isolated deployed pair or owner backup/restore evidence was available. |
 
@@ -45,7 +45,7 @@ The integration preserves one entry for each of B-038, B-039 and B-040. B-031–
 
 **Medium, confirmed on the local baseline image.** Apache 2.4.71 uses a combined access log containing the full request line and Referer. `Dockerfile` leaves the inherited log format in place. The access log goes to stdout. One benign query marker on the local health request appeared in this stream. Apache therefore retains request query data at the container boundary, including on a credential-related route if present. The audit did not inspect hosted log content, access rights or retention. [Apache logging documentation](https://httpd.apache.org/docs/current/logs.html) · [Apache format directives](https://httpd.apache.org/docs/current/en/mod/mod_log_config.html)
 
-Track a separate logging hardening task. Its source scope is `Dockerfile` and the Apache site/log configuration, with the operators responsible for Render/Vercel, proxy and application log streams. Use path-only request logging and omit or safely redact Referer values. Acceptance uses inert markers to verify method, sanitized path and status remain available while query and Referer data are excluded from emitted and collected logs. The owner must confirm minimum log access and retention and close Q25 with redacted evidence. Treat hosted logging readiness as blocked until logging controls and collection behavior are verified.
+B-041 addresses the container finding with path-only access logging and removes the default Referer suffix from Apache errors. Its Docker regression verifies the shipped image using inert markers. The owner must still confirm request-data handling in Render, proxy and other collected streams, restrict log access, and record retention under Q25. [B-041 verification](PROGRESS.md#2026-11-21-b-041-sensitive-access-log-redaction)
 
 ## Data preservation, startup and rollback
 
@@ -125,14 +125,14 @@ Local API and disposable Docker integration are **VERIFIED LOCALLY**. Exact host
 
 | Finding | Scope and acceptance | Decision and release impact |
 |---|---|---|
-| HTTP access-log query handling, medium | Use the inert health-query check recorded above. Modify the Apache configuration shipped by `Dockerfile`. Verify safe access logging and provider-side collection on the approved staging pair. | Operations must approve log access and retention and provide redacted Q25 evidence before rollout. |
+| HTTP access-log query handling, medium | B-041 verifies the repaired container. Verify provider-side collection on the approved staging pair. | Operations must approve log access and retention and provide redacted Q25 evidence before rollout. |
 | Guest import transaction boundary, medium | Compare [data model rule 9](08-data-model.md), `app/Services/ImportService.php` and the frontend `src/lib/storage/saveGuestPlan.ts` and `src/features/auth/useSavePlan.ts`. Test an interrupted later chunk, preserved guest data and a duplicate-free retry on the approved pair. Add whole-save rollback coverage if the planner requires an atomic save. | The planner owns the required guarantee and approves any behavior change. Resolve the scope and confirm failure/retry behavior for QA-009. |
 | Frontend contract copy drift, low | Parse both repos' `docs/openapi.yaml` at the recorded revisions. Copy the canonical backend revision and verify status and error parity for logout and account deletion. | Frontend contract owner approves the sync and exercises errors in QA-009. Backend endpoint shapes and status documentation already exist. |
 
 ## Integration and exact owner actions
 
-1. Review B-040 in PR #43. Before approving integration, verify that merging into `v2-rebuild` cannot trigger an unauthorized production deployment. If Render watches this branch, the owner must control that trigger.
-2. Preserve the B-038, B-039 and B-040 task and progress entries. B-038 and B-039 are already integrated. Check the B-040 PR verification and rerun CI on the final integration tip.
-3. Decide Q23, the scope of invalidation for provider flows that have yet to resolve a Loomora account, and the whole-import transaction requirement. B-037's established policy allows already-admitted reads and ordinary resource actions to finish. A stronger guarantee requires a separate planner-approved task. Assign the access-log follow-up and frontend contract sync, and verify the applicable QA-004 and QA-005 frontend obligations on the candidate.
+1. Review B-041, the container logging follow-up to merged PR #43. Before approving integration, verify that merging into `v2-rebuild` cannot trigger an unauthorized production deployment. If Render watches this branch, the owner must control that trigger.
+2. Preserve the B-038, B-039 and B-040 task and progress entries. All three are integrated. Check the B-041 PR verification and rerun CI on the final integration tip.
+3. Decide Q23, the scope of invalidation for provider flows that have yet to resolve a Loomora account, and the whole-import transaction requirement. B-037's established policy allows already-admitted reads and ordinary resource actions to finish. A stronger guarantee requires a separate planner-approved task. Assign the frontend contract sync and verify the applicable QA-004 and QA-005 frontend obligations on the candidate.
 4. Provision and explicitly approve the disposable candidate pair. Complete Q25 and rehearse the credential cutover, backup/restore and compatible rollback. Execute QA-009 against the recorded pair, including real providers and browser checks.
 5. Consider a separately authorized production promotion only after the planner signs off on the exact candidate and evidence. The current decision remains **NO-GO**.

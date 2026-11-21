@@ -22,6 +22,11 @@ EXPOSE 10000
 RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
       /etc/apache2/sites-available/*.conf /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/apache/loomora-logging.conf /etc/apache2/conf-available/loomora-logging.conf
+RUN a2disconf other-vhosts-access-log \
+    && a2enconf loomora-logging
+
 WORKDIR /var/www/html
 COPY --from=vendor /app /var/www/html
 COPY docker/entrypoint.sh /usr/local/bin/loomora-entrypoint

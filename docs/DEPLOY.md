@@ -142,6 +142,14 @@ Run registration, mail and Google checks only on an approved, disposable staging
 
 ## Good to know
 
+### Production container logs
+
+Apache writes one access record per request to container stdout using `%t %m %U %>s %B` (timestamp, method, path without a query string, final status and response body bytes excluding headers). The access record omits Referer, Authorization and Cookie headers. The path remains visible, so keep credentials out of URL path segments. When Apache cannot parse a field, it can emit a dash.
+
+Apache keeps its diagnostics on stderr and omits the formatter's automatic Referer suffix. Apache, PHP and Laravel diagnostics can contain values included by the reporting code itself, such as a full request target in an Apache URI parsing diagnostic. Laravel's default stack writes to `storage/logs/laravel.log`. The Docker regression uses synthetic requests and checks stdout, stderr and regular log files in the container. It exercises a successful health check, a rejected OAuth callback, unauthorized and malformed requests, and an Apache 403 diagnostic.
+
+Under [Q25](PROGRESS.md#q25-owner-verification-checklist), the owner verifies the actual Render, reverse-proxy, frontend and other collected log streams on the approved staging pair. Record redacted evidence of which request data each stream captures, who can access those logs and how long they are retained. Q23 and QA-009 remain open.
+
 For an existing deployment crossing from B-036 to B-037, follow the [credential cutover and rollback runbook](B-038-credential-cutover-runbook.md) before a push or manual deploy reaches the service. The two versions require a single-version credential traffic cutover.
 
 - **Free plan sleep:** Render's free service sleeps after 15 minutes without traffic. The next request takes up to about a minute while it wakes up. Neon also sleeps; the app retries migrations three times to cover this.
