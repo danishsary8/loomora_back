@@ -386,3 +386,12 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Acceptance:** Verify ordering with separate PostgreSQL connections. Cover stale grants and fresh Google sign-in, revoked bearers, superseded recovery credentials, account deletion and re-registration, and unrelated-account isolation.
 - **Verification:** Full PostgreSQL and SQLite suites, the dedicated PostgreSQL concurrency suite, static checks and the disposable production image smoke passed.
 - **Planner decision:** Review the scope of invalidation for an OAuth flow that has yet to resolve a Loomora account. Q23, Q25 and QA-009 remain open. [B-037 findings and verification](PROGRESS.md#2026-11-21-b-037-credential-lifecycle-across-authentication-boundaries)
+
+### B-039: Backend staging integration and API contract verification
+
+- **Status:** review
+- **Scope:** Verify the B-037 candidate on a production-style API and disposable PostgreSQL 16. Compare the fetched frontend OpenAPI snapshot and record owner-only release gates.
+- [x] Run actual HTTP checks of auth, account lifecycle, planner workflows, throttling, CORS, and database outage and recovery.
+- [x] Compare 32 paths and 42 operations and document the frontend snapshot drift.
+- [x] Record both database suites, PostgreSQL concurrency, static checks, locked audits, Redocly and Docker setup guards in the [integration matrix](B-039-backend-integration-matrix.md).
+- **Release gate:** Q23, Q25 and QA-009 remain open. Local verification is ready for planner review.

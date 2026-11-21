@@ -17,6 +17,8 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
+- **B-039 guest import clarification (2026-11-21).** Rule 9 in `docs/08-data-model.md` describes one import call and an all-or-nothing outcome. The current frontend intentionally sends bounded, ordered chunks and retains the guest copy until all succeed. The API commits each successful request and an already accepted chunk remains safe to retry. Should the data-model rule explicitly state per-request atomicity and whole-plan guest retention, or does the planner require a different end-to-end guarantee? Keep the current behavior pending that decision.
+
 - **Q24 (2026-11-20, B-032 / B-033), code-level validation resolved.** The planner chose one canonical frontend origin per API environment. Production uses `https://loomora-craft.vercel.app`. Preview authentication requires a separate approved frontend, API and database. Confirmation of the actual Render setting remains part of Q25.
 - **Q25 (2026-11-20, B-031 / QA-005 and QA-009), blocked:** Who can verify the exact Render candidate branch and SHA, HTTPS `APP_URL`, the configured canonical `FRONTEND_URL`, debug disabled, a stable environment-specific `APP_KEY`, and proxy-only ingress with trustworthy client IP and HTTPS forwarding? The owner also needs to confirm Neon uses a direct TLS-required `DB_URL`, the Google client secret was replaced as planned and the candidate callback is registered, and Brevo has an environment-specific key and verified sender. Record redacted pass/fail evidence from real Google consent and delivered verification/reset links on the paired staging candidate using synthetic accounts.
 
@@ -515,3 +517,11 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 | Composer | Strict validation and both locked audits passed. Both audits reported zero advisories. |
 | OpenAPI | Redocly passed with the four existing localhost, health and redirect warnings. |
 | Production Docker | Build passed with vendor deprecation warnings in the Composer stage. PHP 8.3.37 applied all 16 migrations to disposable PostgreSQL. Deep health returned 200 with database `ok`. Registration returned 201, deletion returned empty 204 and the old bearer returned 401. |
+
+### 2026-11-21: B-039 backend staging integration and API contract verification
+
+- **Branch:** `feat/B-039-backend-staging-verification` into `v2-rebuild` at `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`.
+- **Evidence:** The production image applied all 16 migrations. Actual HTTP confirmed credential lifecycles, two-account isolation, planner and import flows, feedback mail capture, account cleanup and rate limits. Deep health returned 503 during interruption, authenticated HTTP returned a generic 500, and reconnection restored deep health to 200 while preserving the migrated schema and witness row. The synthetic Google-only recovery sequence used the existing API, preserved the account, and required a separate deletion request.
+- **Verification:** Focused PostgreSQL Pest 153 passed (957 assertions), PostgreSQL concurrency 24 passed (179 assertions), full PostgreSQL 448 passed (2,143 assertions), SQLite 424 passed (1,964 assertions, 24 PostgreSQL cases skipped). Pint, Larastan, scoped unused-code review, strict Composer validation, both locked audits and Redocly passed. Redocly reported four existing warnings. No app or contract changes were needed for this audit.
+- **Contract:** Frontend snapshot at `98a9b79c155a9c2bb23330245687bad4a6b859b7` omits logout 429 and deletion 429/500 and has stale descriptions. Synchronize it from the verified backend OpenAPI revision. The [integration matrix](B-039-backend-integration-matrix.md) records the exact differences, test details and owner checklist.
+- **Questions:** Q23 needs the assurance and launch-scope decision. Q25 and QA-009 need owner evidence for the approved paired deployment. The guest-import transaction boundary needs the clarification under Open questions.
