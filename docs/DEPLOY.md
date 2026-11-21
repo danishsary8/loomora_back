@@ -92,7 +92,7 @@ You need the API's address for this. Render gives it in Part 4 (step 4); it look
 - PHP on your computer, in this repo: `php artisan key:generate --show`
 - or Docker: `docker run --rm php:8.3-cli php -r "echo 'base64:'.base64_encode(random_bytes(32)).PHP_EOL;"`
 
-Copy the whole line, including `base64:`, as **APP_KEY**. Generate it once and keep it: changing it later logs everyone out and breaks links in emails already sent.
+Copy the whole line, including `base64:`, as **APP_KEY**. Generate a separate key for each environment and keep it stable. Changing it can invalidate in-progress Google sign-in state and outstanding signed email verification links. Existing Sanctum bearer tokens remain subject to their own expiry and database-backed revocation.
 
 ### Fill in the environment variables
 
