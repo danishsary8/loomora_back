@@ -4,7 +4,7 @@
 
 ## Candidate and task reconciliation
 
-The freshly fetched `origin/v2-rebuild` and audit parent are both `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`, the B-037 merge. GitHub's baseline push run completed both `test` and `docker` successfully. B-040 changes audit documentation on `feat/B-040-backend-release-audit`. The reviewed earlier drafts each start at the same merge. A local ancestry check returned false for both draft tips. [Baseline CI](https://github.com/danishsary8/loomora_back/actions/runs/44788985651)
+The original audit used the B-037 merge `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`. The B-040 branch now includes the latest fetched `origin/v2-rebuild`, `6df3ed9a6610d915a9d9128d5359eaed08691b3f`, which contains B-038 and B-039. B-040 is open for planner review. [Original baseline CI](https://github.com/danishsary8/loomora_back/actions/runs/44788985651)
 
 | Work | Status | Evidence and pending acceptance |
 |---|---|---|
@@ -14,13 +14,13 @@ The freshly fetched `origin/v2-rebuild` and audit parent are both `1188595d4aa0b
 | B-014, B-025, B-028–B-031 | DONE AND MERGED | Feedback, profile/survey, password availability, transactional deletion, dependency patches and security audit. QA-004 and hosted QA-005 acceptance are pending. |
 | B-032, B-033 | DONE AND MERGED | Readiness assessment and one canonical frontend origin per API environment. Q24's implementation is complete. B-032's public URL failures are historical observations. Hosted evidence remains Q25 and QA-009. |
 | B-034–B-037 | DONE AND MERGED | Google-only deletion design, existing recovery characterization, atomic reset and serialized credential changes. B-037's tracker label was stale. The pending OAuth state policy and Q23 remain planner decisions. [B-037 PR #40](https://github.com/danishsary8/loomora_back/pull/40) |
-| B-038 | PR PENDING | Draft tip `068bde16cbdffb2f183c6690f99ce855bd056ac2`. The diff adds a disposable upgrade harness and cutover guidance. GitHub `test` and `docker` succeeded. [PR #41](https://github.com/danishsary8/loomora_back/pull/41) · [CI](https://github.com/danishsary8/loomora_back/actions/runs/44852852887) |
-| B-039 | PR PENDING | Draft tip `f5786af0004b36dd9baf86891ad3cdde3f8b127a`. The three-file documentation diff records local HTTP and frontend contract evidence. GitHub `test` and `docker` succeeded. [PR #42](https://github.com/danishsary8/loomora_back/pull/42) · [CI](https://github.com/danishsary8/loomora_back/actions/runs/44855055333) |
-| B-040 | VERIFIED LOCALLY | This report and tracker correction are ready for review. Combined verification on an integrated candidate is pending. |
+| B-038 | DONE AND MERGED | PR #41 merged at `2ce5deac64f14189b53fa16751d82ba1ba2da353`. The merged harness and runbook record the populated upgrade and cutover. [PR #41](https://github.com/danishsary8/loomora_back/pull/41) |
+| B-039 | DONE AND MERGED | PR #42 merged at `6df3ed9a6610d915a9d9128d5359eaed08691b3f`. The merged matrix records local HTTP verification and frontend contract parity. Test and Docker checks passed on its resolved tip. [PR #42](https://github.com/danishsary8/loomora_back/pull/42) |
+| B-040 | PR PENDING | PR #43 contains the audit and tracker update for planner review. [PR #43](https://github.com/danishsary8/loomora_back/pull/43) |
 | Q23, Q25, QA-004, hosted QA-005 and QA-009 | BLOCKED BY OWNER | Approve deletion assurance and launch scope, verify configuration and logs, complete frontend disclosures and sign off on the deployed pair. |
 | Hosted upgrade, paired browser and real provider tests | NOT TESTED | No approved isolated deployed pair or owner backup/restore evidence was available. |
 
-No duplicate B-038, B-039 or B-040 scope was queued in the base. B-031–B-033 assess and harden the deploy surface. B-038 verifies preservation across a populated upgrade, B-039 records application-level HTTP and contract parity, and B-040 records sign-off gaps. There were no failures in the final local quality runs. The confirmed logging behavior and source/document mismatch are tracked below.
+The integration preserves one entry for each of B-038, B-039 and B-040. B-031–B-033 assess and harden the deploy surface. B-038 verifies preservation across a populated upgrade, B-039 records application-level HTTP and contract parity, and B-040 records sign-off gaps. There were no failures in the final local quality runs. The confirmed logging behavior and source/document mismatch are tracked below.
 
 ## R1 features and API
 
@@ -50,12 +50,12 @@ Track a separate logging hardening task. Its source scope is `Dockerfile` and th
 ## Data preservation, startup and rollback
 
 - **Fresh database.** The production entrypoint caches configuration and routes, runs up to three migration attempts and hands control to Apache via `exec` only after success. It refused invalid DB startup with exit 1. Normal startup applied all 16 migrations to a fresh disposable PostgreSQL 16.16 database. Shallow health verifies the web process. The blueprint uses this cheap check, so the cutover runbook also requires deep database health and a synthetic authenticated smoke on an approved environment. [Dockerfile](../Dockerfile) · [Entrypoint](../docker/entrypoint.sh) · [Blueprint](../render.yaml)
-- **Upgrade from B-036.** B-038 verified the transition from `24d4e7225fe212dfe73e41be9827e8509fe625ac` to the B-037 merge using two real images and a populated disposable database. The new migration adds a nullable digest and expiry and a unique digest index. Eight original tables matched pre- and post-upgrade, including soft deletion and FKs. Three existing bearers retained their original identities. Legacy cached grants returned 422 and a fresh grant exchanged once. A pre-upgrade reset link worked for the verified continuous synthetic owner. These findings are specific to the disposable rehearsal and draft evidence. [B-038 PR #41](https://github.com/danishsary8/loomora_back/pull/41)
+- **Upgrade from B-036.** B-038 verified the transition from `24d4e7225fe212dfe73e41be9827e8509fe625ac` to the B-037 merge using two real images and a populated disposable database. The new migration adds a nullable digest and expiry and a unique digest index. Eight original tables matched pre- and post-upgrade, including soft deletion and FKs. Three existing bearers retained their original identities. Legacy cached grants returned 422 and a fresh grant exchanged once. A pre-upgrade reset link worked for the verified continuous synthetic owner. These findings are specific to the disposable rehearsal. [B-038 PR #41](https://github.com/danishsary8/loomora_back/pull/41)
 - **Cutover.** Confirm the deployed starting SHA and schema, restore backup/PITR to an isolated target, measure migration/index lock impact on realistic staging data, fence new credential traffic at all entrances, drain admitted handlers and stop old writers. Record the last possible old issuance. Allow the five-minute legacy Google grant lifetime to age out if old-route reachability is uncertain. If historical reset-row ownership cannot be established, keep reset issuance/redemption fenced through the 60-minute broker expiry plus clock margin. The email-keyed schema carries no historical user UUID.
 - **Rollback.** Retain the additive migration. Prefer a compatible repaired image under a write fence, validate shallow/deep health and credential behavior, and reopen traffic only under the authorized procedure. Old credential handlers use a different grant store and weaker invalidation guarantees. Mixed-version serving and resuming older handlers can compromise the cutover. A historical restore can restore revoked credentials or deleted accounts. The database, application and security owners must approve any such recovery and document how to reconcile account and credential state.
 - **Build and automation.** The exact archive built locally with locked Composer dependencies and a PHP 8.3 runtime. Composer and PHP image tags and OS packages can advance, so record resolved digests to identify the tested artifact and pin or mirror them if deterministic rebuilds are required. The entrypoint delegates process signals to Apache. The local container stopped gracefully on SIGWINCH with exit 0. Hosted shutdown timing and rollout overlap remain unverified. GitHub CI covers PHP 8.3, disposable PostgreSQL, Pint, Larastan, Pest, Docker boot and invalid-DB refusal. Local SQLite, explicit advisory scans, contract lint, deep health and paired staging supplement CI. The blueprint states the runtime and variable names. Operator verification is required for the live branch, settings and deployment triggers. [Deployment guide](DEPLOY.md) · [CI workflow](../.github/workflows/ci.yml) · [README](../README.md)
 
-## Verification on the merged baseline
+## Original verification on the B-037 merged baseline
 
 The suites used PHP 8.3.37 with `pdo_pgsql` and `pdo_sqlite`. PostgreSQL 16.16 used RAM-backed data and separate suite and HTTP databases on an internal-only Docker network. The local API listened inside the container, used generated synthetic accounts and log mail, and never used hosted mail, OAuth or database services. The Composer lock SHA-256 was `4129d6d7ab8466f64a0f1c5db87e5201f5890b2108c9e47997889cbba0d9693f`. A locked dry run confirmed the existing installed dependencies matched and required no changes. The isolated container lacked Packagist DNS for an advisory filter during the dry run. Both explicit online locked audits passed independently.
 
@@ -74,6 +74,14 @@ The suites used PHP 8.3.37 with `pdo_pgsql` and `pdo_sqlite`. PostgreSQL 16.16 u
 | Public read-only observations | API shallow/deep health and frontend `/`, `/app`, `/verify-email` and `/reset-password` returned 200. These samples establish reachability for those paths. Hosted SHAs, frontend rendering, browser auth, TLS to the database and provider config remain unverified. |
 
 B-040 has no application regression fix or RED claim. The local log observation characterizes the existing image. The local test engine briefly needed to restart after an interruption. The reported suite and fresh DB startup checks were rerun after it became available.
+
+## Verification after integrating B-038 and B-039
+
+The B-040 update includes `origin/v2-rebuild` at `6df3ed9a6610d915a9d9128d5359eaed08691b3f`. Verification ran against the resolved worktree using PHP 8.3 and disposable PostgreSQL 16. The review diff is limited to documentation.
+
+- Full PostgreSQL Pest passed 448 tests and 2,143 assertions. The dedicated concurrency run passed 24 tests and 179 assertions. SQLite passed 424 tests and 1,964 assertions, with 24 PostgreSQL-only skips.
+- Locked Composer install, strict validation, both audits, Pint (279 files), Larastan, Git diff checks and the staged secret scan passed. OpenAPI lint passed with four existing warnings. Parity still found 32 paths, 42 operations and the same three missing frontend responses.
+- The B-038 upgrade rehearsal passed again. The resolved production image applied all 16 migrations to a separate fresh local database. Deep health, synthetic signup, reset, session revocation and explicit deletion passed. Invalid database configuration caused exit 1 after three attempts. The cutover rehearsal also verified a sanitized 500 during an isolated outage.
 
 ## Q23 — deletion assurance and launch scope
 
@@ -123,8 +131,8 @@ Local API and disposable Docker integration are **VERIFIED LOCALLY**. Exact host
 
 ## Integration and exact owner actions
 
-1. Review B-038, B-039, then B-040. Before any owner merge, establish that merging into the target cannot trigger an unauthorized production deployment. If the target is watched by auto-deploy, the owner must control that trigger before integrating. No deployment settings were changed by this audit.
-2. Keep B-038 → B-039 → B-040 for integration. Their queue and progress changes overlap. Resolve the two Markdown files by keeping all three entries, the B-037 status correction and every open question. Re-fetch the combined tip and rerun CI, both database suites, the B-038 disposable rehearsal, Docker smoke, and contract parity. Combined verification remains pending.
+1. Review B-040 in PR #43. Before approving integration, verify that merging into `v2-rebuild` cannot trigger an unauthorized production deployment. If Render watches this branch, the owner must control that trigger.
+2. Preserve the B-038, B-039 and B-040 task and progress entries. B-038 and B-039 are already integrated. Check the B-040 PR verification and rerun CI on the final integration tip.
 3. Decide Q23, the scope of invalidation for provider flows that have yet to resolve a Loomora account, and the whole-import transaction requirement. B-037's established policy allows already-admitted reads and ordinary resource actions to finish. A stronger guarantee requires a separate planner-approved task. Assign the access-log follow-up and frontend contract sync, and verify the applicable QA-004 and QA-005 frontend obligations on the candidate.
 4. Provision and explicitly approve the disposable candidate pair. Complete Q25 and rehearse the credential cutover, backup/restore and compatible rollback. Execute QA-009 against the recorded pair, including real providers and browser checks.
 5. Consider a separately authorized production promotion only after the planner signs off on the exact candidate and evidence. The current decision remains **NO-GO**.

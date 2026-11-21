@@ -142,6 +142,8 @@ Run registration, mail and Google checks only on an approved, disposable staging
 
 ## Good to know
 
+For an existing deployment crossing from B-036 to B-037, follow the [credential cutover and rollback runbook](B-038-credential-cutover-runbook.md) before a push or manual deploy reaches the service. The two versions require a single-version credential traffic cutover.
+
 - **Free plan sleep:** Render's free service sleeps after 15 minutes without traffic. The next request takes up to about a minute while it wakes up. Neon also sleeps; the app retries migrations three times to cover this.
 - **Every push to the deployed branch redeploys** automatically, and migrations run on start.
 - **Changing a secret:** edit it in Render → **Environment** → **Save Changes**. Render restarts the service.
