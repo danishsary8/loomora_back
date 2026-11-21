@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Cache\Repository;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -48,10 +50,14 @@ class RequireGoogleDeletionContext
 
     private function countAttempt(string $key, int $limit): void
     {
+        $repository = Cache::store(config('cache.limiter'));
+        $store = $repository instanceof Repository ? $repository->getStore() : null;
+        abort_unless($store instanceof LockProvider, 503, __('account.google_deletion_unavailable'));
+
         try {
             // Serialize the check and increment across workers. This lock covers
             // only the counter, so provider and deletion work run after release.
-            Cache::store(config('cache.limiter'))->lock('rate-limit:'.$key, 10)->block(2, function () use ($key, $limit) {
+            $store->lock('rate-limit:'.$key, 10)->block(2, function () use ($key, $limit) {
                 if (RateLimiter::tooManyAttempts($key, $limit)) {
                     $this->throttled(max(1, RateLimiter::availableIn($key)));
                 }
