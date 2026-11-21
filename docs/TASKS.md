@@ -381,8 +381,15 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Release gate:** Q23 still requires planner approval of the recovery assurance model and paired staging verification. Q25 and QA-009 remain open.
 
 ### B-037: Credential lifecycle across authentication boundaries
-- **Status:** review
+- **Status:** done ([PR #40](https://github.com/danishsary8/loomora_back/pull/40), merged at `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`)
 - **Scope:** Define how reset and deletion invalidate outstanding Google exchange grants. Coordinate reset-link issuance, Google callback/linking and registration with account lifecycle changes. Define the guarantee for protected requests that passed Sanctum authentication before revocation, and enforce it for any operations that must recheck authorization before committing.
 - **Acceptance:** Verify ordering with separate PostgreSQL connections. Cover stale grants and fresh Google sign-in, revoked bearers, superseded recovery credentials, account deletion and re-registration, and unrelated-account isolation.
 - **Verification:** Full PostgreSQL and SQLite suites, the dedicated PostgreSQL concurrency suite, static checks and the disposable production image smoke passed.
 - **Planner decision:** Review the scope of invalidation for an OAuth flow that has yet to resolve a Loomora account. Q23, Q25 and QA-009 remain open. [B-037 findings and verification](PROGRESS.md#2026-11-21-b-037-credential-lifecycle-across-authentication-boundaries)
+
+### B-040: Backend release audit and R1 handoff
+- **Status:** review
+- **Scope:** Audit the merged R1 backend and assess the independent B-038 and B-039 drafts. Reconcile the task queue and record security, cutover, operator and staging evidence.
+- [x] Run full PostgreSQL and SQLite suites, static and dependency checks, OpenAPI lint and disposable Docker verification.
+- [x] Record known findings, integration order and owner-only gates in the [release audit](B-040-backend-release-readiness.md).
+- **Release recommendation:** NO-GO pending Q23, Q25, QA-009, verified log handling and owner-approved cutover and rollback. B-038 and B-039 remain draft PRs.
