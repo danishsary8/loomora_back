@@ -63,3 +63,11 @@ Hard-coded passwords and tokens appear only in automated tests and the user fact
 - Exposed secrets: **0**.
 - The repo is public. History is clean, so no history rewrite is needed.
 - Follow-ups: R1 to R4 above. R3 needs the owner (secrets and host dashboards).
+
+## 4. B-041 production container request logging
+
+**Medium, reproduced on the B-040 merge image.** Apache's inherited `combined` virtual-host access format emitted query data and Referer on stdout, including synthetic OAuth `code` and `state` and a query on a malformed request. Its default error formatter also appended Referer to a 403 diagnostic on stderr. The disposable reproduction used inert markers.
+
+B-041 configures one global access sink with `%t %m %U %>s %B` and removes the inherited virtual-host and fallback sinks. The access format excludes query strings and request headers. Apache error diagnostics retain their messages, severity and destination and omit the automatic Referer suffix. The Docker regression checks the tested fields across stdout, stderr, and regular Apache and Laravel log files. URL path data remains visible, and diagnostic messages carry whatever information the emitting code includes.
+
+The [Q25 owner verification](PROGRESS.md#q25-owner-verification-checklist) covers hosted collection on Render and each proxy or other collector, minimum log access and retention. Q23 and QA-009 also remain open. [B-041 verification](PROGRESS.md#2026-11-21-b-041-sensitive-access-log-redaction)

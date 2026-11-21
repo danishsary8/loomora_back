@@ -115,6 +115,11 @@ jobs:
           docker logs api
           exit 1
 
+      - name: Apache syntax and access-log redaction
+        run: |
+          docker exec api apache2ctl configtest
+          bash tests/Docker/access-logs.sh api http://127.0.0.1:10000
+
       - name: Container refuses to start when migrations fail
         run: |
           set +e

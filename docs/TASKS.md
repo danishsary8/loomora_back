@@ -403,8 +403,16 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Release gate:** Q23, Q25 and QA-009 remain open. Local verification is ready for planner review.
 
 ### B-040: Backend release audit and R1 handoff
-- **Status:** review
+- **Status:** done ([PR #43](https://github.com/danishsary8/loomora_back/pull/43), merged at `7ff0b4c66985a8eb4f94292ebe2941eea7fc00da`)
 - **Scope:** Audit the merged R1 backend and assess the merged B-038 and B-039 evidence. Reconcile the task queue and record security, cutover, operator and staging evidence.
 - [x] Run full PostgreSQL and SQLite suites, static and dependency checks, OpenAPI lint and disposable Docker verification.
 - [x] Record known findings, integration order and owner-only gates in the [release audit](B-040-backend-release-readiness.md).
 - **Release recommendation:** NO-GO pending Q23, Q25, QA-009, verified log handling and owner-approved cutover and rollback. B-038 and B-039 are merged.
+
+### B-041: Sensitive access-log redaction
+
+- **Status:** review
+- **Scope:** Ship one Apache access log for the production container with timestamp, method, query-free path, final status and response body size. Keep Apache diagnostics on stderr and omit the raw Referer suffix.
+- [x] Reproduce the baseline exposure with synthetic markers and verify the same HTTP smoke test against the repaired image.
+- [x] Add the access-log smoke to the Docker CI job and document the container's logging behavior and limits.
+- **Release gate:** Q23, Q25 and QA-009 remain open. Render and proxy log collection, access permissions and retention require redacted owner evidence under Q25. See the [verification record](PROGRESS.md#2026-11-21-b-041-sensitive-access-log-redaction).
