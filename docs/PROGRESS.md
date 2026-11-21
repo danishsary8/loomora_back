@@ -518,6 +518,24 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 | OpenAPI | Redocly passed with the four existing localhost, health and redirect warnings. |
 | Production Docker | Build passed with vendor deprecation warnings in the Composer stage. PHP 8.3.37 applied all 16 migrations to disposable PostgreSQL. Deep health returned 200 with database `ok`. Registration returned 201, deletion returned empty 204 and the old bearer returned 401. |
 
+### 2026-11-21 B-038 credential cutover and rollback readiness
+
+- **Branch:** `feat/B-038-credential-cutover-readiness`, based directly on B-037 merge `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`. The verified B-036 parent is `24d4e7225fe212dfe73e41be9827e8509fe625ac`.
+- **Upgrade evidence:** The two production images ran sequentially against one disposable PostgreSQL 16.16 database. The candidate applied only the sixteenth migration. All original columns on eight synthetic identity, credential and planner tables matched, including the soft-deleted to-do. All three original sessions authenticated their original UUIDs. Both grant columns started null. An unexpired B-036 reset for a known continuous owner succeeded. The old Google grant was still present in cache and returned 422 with no bearer issued. [Rehearsal and compatibility matrix](B-038-credential-cutover-runbook.md)
+- **Release impact:** Old and new writers use independent Google grant stores. Traffic fencing and drainage precede the change. A historical reset row has no original account UUID. If continuous ownership cannot be shown, age out historical links with issuance and redemption fenced before reopening. Use a B-037-compatible application for recovery and retain the additive schema. Hosted backup/restore evidence, Q23, Q25 and QA-009 remain owner gates.
+- **Coverage:** Existing behavior passed characterization. The change adds a test-only two-image rehearsal and an operator runbook. The application, migration, dependencies and API contract are unchanged.
+
+| Check | Local result |
+|---|---|
+| Focused Google, recovery, reset and email Pest | 42 passed, 441 assertions, 12.30 s |
+| Dedicated PostgreSQL concurrency Pest | 24 passed, 179 assertions, 20.62 s |
+| Full Pest on PostgreSQL 16.16, PHP 8.3.37 | 448 passed, 2,143 assertions, zero skips or failures, 55.11 s |
+| Full Pest on in-memory SQLite, PHP 8.3.37 | 424 passed, 1,964 assertions, 24 PostgreSQL-only skips, zero failures, 29.73 s |
+| Production Docker | Deep health returned 200. Fresh Google exchange, replay rejection, reset/revocation, registration, deletion and re-registration passed. A database outage returned only the standard HTTP 500 message. Invalid DB configuration exhausted three migration attempts and exited 1 before serving. |
+| Repository checks | Locked Composer install, strict validation, full and production-only locked audits, Pint, Larastan level 6, B-017 unused-code and staged diff review passed. Both audits reported zero advisories. Redocly validated OpenAPI with its four existing warnings. |
+
+**Question for the release owner.** Which ingress gate and drain evidence will establish a single serving revision, and can historical ownership of outstanding reset links be established for this deployment? Record the restore rehearsal and the chosen reset-window treatment with Q25 and QA-009 before promotion.
+
 ### 2026-11-21: B-039 backend staging integration and API contract verification
 
 - **Branch:** `feat/B-039-backend-staging-verification` into `v2-rebuild` at `1188595d4aa0b3c5ab2638b4ee6db0d2829640e7`.

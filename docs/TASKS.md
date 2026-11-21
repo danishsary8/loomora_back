@@ -387,6 +387,12 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Verification:** Full PostgreSQL and SQLite suites, the dedicated PostgreSQL concurrency suite, static checks and the disposable production image smoke passed.
 - **Planner decision:** Review the scope of invalidation for an OAuth flow that has yet to resolve a Loomora account. Q23, Q25 and QA-009 remain open. [B-037 findings and verification](PROGRESS.md#2026-11-21-b-037-credential-lifecycle-across-authentication-boundaries)
 
+### B-038: Credential cutover and rollback readiness
+- **Status:** done ([PR #41](https://github.com/danishsary8/loomora_back/pull/41), merged at `2ce5deac64f14189b53fa16751d82ba1ba2da353`)
+- **Scope:** Rehearse the B-036 to B-037 upgrade on disposable PostgreSQL 16 and document data preservation, credential compatibility, release ordering and recovery.
+- **Verification:** The two-image rehearsal preserved the populated baseline and established how old bearers, recovery links and Google grants behave on B-037. See the [operator runbook](B-038-credential-cutover-runbook.md) and [test results](PROGRESS.md#2026-11-21-b-038-credential-cutover-and-rollback-readiness).
+- **Release gate:** Owner evidence for traffic fencing, backup restoration, historical reset-link treatment, Q23, Q25 and QA-009 remains open.
+
 ### B-039: Backend staging integration and API contract verification
 
 - **Status:** review
