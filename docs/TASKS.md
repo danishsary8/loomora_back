@@ -416,3 +416,10 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Reproduce the baseline exposure with synthetic markers and verify the same HTTP smoke test against the repaired image.
 - [x] Add the access-log smoke to the Docker CI job and document the container's logging behavior and limits.
 - **Release gate:** Q23, Q25 and QA-009 remain open. Render and proxy log collection, access permissions and retention require redacted owner evidence under Q25. See the [verification record](PROGRESS.md#2026-11-21-b-041-sensitive-access-log-redaction).
+
+### B-042: Google-only account deletion
+
+- **Status:** review
+- **Scope:** Implement the planner-approved [B-034 Option A](B-034-google-account-deletion-design.md#proposed-option-a-contract). Bind the signed Google authentication time to a single-use deletion challenge and reuse B-037 account locking and revocation.
+- **Backend:** Challenge and verify endpoints and explicit Google confirmation on DELETE /me. Password confirmation remains required for accounts with a password. The Google flow is off by default.
+- **Release gate:** Google documents signed session-age claims for eligible configured clients. The Loomora staging client, dedicated callback, paired frontend, and fresh-versus-stale provider evidence are pending under Q23, Q25 and QA-009. See the [B-042 verification record](PROGRESS.md#2026-11-22-b-042-google-only-account-deletion).

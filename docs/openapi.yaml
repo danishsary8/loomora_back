@@ -475,27 +475,65 @@ paths:
       operationId: deleteMe
       summary: Delete the account and all its data
       description: |
-        Requires a bearer token and the current password. The signed-in account, its tokens, and its
-        associated database rows are deleted in one transaction. Google-only accounts without a password get 422.
+        Requires the current password when the account has one, including linked Google accounts.
+        Eligible Google-only accounts use a confirmed Google deletion challenge with the original
+        bearer and browser verifier. The Google method is disabled by default and requires the
+        canonical frontend Origin and a JSON body. A password-only request without a configured
+        password returns 422 on password. The account and its database credentials and data are
+        deleted in one transaction. Google final submissions are limited to five attempts per
+        account and 30 per IP in ten minutes.
+      parameters:
+        - name: Origin
+          in: header
+          description: Required for Google confirmation. Must exactly match the canonical frontend origin.
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [password]
-              properties:
-                password:
-                  type: string
-            example:
-              password: correct-horse-battery
+              oneOf:
+                - type: object
+                  required: [password]
+                  properties:
+                    google_confirmation: false
+                    password:
+                      type: string
+                - type: object
+                  required: [google_confirmation]
+                  properties:
+                    password: false
+                    google_confirmation:
+                      type: object
+                      additionalProperties: false
+                      required: [challenge_id, browser_verifier]
+                      properties:
+                        challenge_id:
+                          type: string
+                          format: uuid
+                        browser_verifier:
+                          $ref: '#/components/schemas/GoogleDeletionBrowserSecret'
+            examples:
+              password:
+                value:
+                  password: correct-horse-battery
+              google:
+                value:
+                  google_confirmation:
+                    challenge_id: 0a067241-1242-4689-99aa-65c3b937fceb
+                    browser_verifier: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA
       responses:
         '204':
           description: Deleted.
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/GoogleDeletionForbidden'
+        '415':
+          $ref: '#/components/responses/GoogleDeletionJsonRequired'
         '422':
-          description: Password validation failed or the account has no password (reported on `password`).
+          description: Invalid input, incompatible methods, password validation failure, or invalid Google confirmation.
           content:
             application/json:
               schema:
@@ -508,7 +546,136 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/GoogleDeletionUnavailable'
 
+  /me/deletion/google/challenge:
+    post:
+      tags: [Me]
+      operationId: startGoogleDeletion
+      summary: Start Google authentication for account deletion
+      description: |
+        Creates a five-minute challenge and supersedes the account's prior attempt. The authorization
+        URL redirects through Google to the fixed frontend /auth/google/deletion/callback route.
+        Only accounts linked to Google with no Loomora password are eligible.
+        Limited to three starts per account and ten per IP in ten minutes.
+        Disabled until paired staging verifies the callback and signed Google authentication time.
+      parameters:
+        - $ref: '#/components/parameters/GoogleDeletionOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [browser_challenge]
+              properties:
+                browser_challenge:
+                  allOf:
+                    - $ref: '#/components/schemas/GoogleDeletionBrowserSecret'
+                  description: Base64url SHA-256 digest of the initiating tab's verifier string.
+      responses:
+        '201':
+          description: Challenge created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, authorization_url, expires_at]
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      authorization_url:
+                        type: string
+                        format: uri
+                      expires_at:
+                        type: string
+                        format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/GoogleDeletionForbidden'
+        '415':
+          $ref: '#/components/responses/GoogleDeletionJsonRequired'
+        '422':
+          $ref: '#/components/responses/GoogleDeletionValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/GoogleDeletionFailure'
+        '503':
+          $ref: '#/components/responses/GoogleDeletionUnavailable'
+
+  /me/deletion/google/verify:
+    post:
+      tags: [Me]
+      operationId: verifyGoogleDeletion
+      summary: Confirm Google authentication for account deletion
+      description: |
+        Exchanges the code and verifies a signed Google ID token with a recent auth_time.
+        The request must come from the initiating tab and carry the original bearer.
+        Limited to five attempts per account and 30 per IP in ten minutes, independently from final DELETE.
+        Disabled until paired staging verifies the callback and signed Google authentication time.
+      parameters:
+        - $ref: '#/components/parameters/GoogleDeletionOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, code, state, browser_verifier]
+              properties:
+                challenge_id:
+                  type: string
+                  format: uuid
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 2048
+                  description: Google authorization code received on the dedicated callback.
+                state:
+                  $ref: '#/components/schemas/GoogleDeletionBrowserSecret'
+                browser_verifier:
+                  $ref: '#/components/schemas/GoogleDeletionBrowserSecret'
+      responses:
+        '200':
+          description: Confirmed. An explicit final DELETE is still required.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, expires_at]
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      expires_at:
+                        type: string
+                        format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/GoogleDeletionForbidden'
+        '415':
+          $ref: '#/components/responses/GoogleDeletionJsonRequired'
+        '422':
+          $ref: '#/components/responses/GoogleDeletionValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/GoogleDeletionFailure'
+        '503':
+          $ref: '#/components/responses/GoogleDeletionUnavailable'
   /me/survey:
     post:
       tags: [Me]
@@ -1559,6 +1726,15 @@ components:
       description: Sanctum personal access token from register or login. Expires after 30 days.
 
   parameters:
+    GoogleDeletionOrigin:
+      name: Origin
+      in: header
+      required: true
+      description: Exact canonical frontend origin.
+      schema:
+        type: string
+
+
     DateQuery:
       name: date
       in: query
@@ -1592,6 +1768,13 @@ components:
         format: uuid
 
   schemas:
+    GoogleDeletionBrowserSecret:
+      type: string
+      minLength: 43
+      maxLength: 43
+      pattern: '^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$'
+      description: Unpadded base64url encoding of 32 bytes.
+
     Occurrence:
       type: object
       required: [item_id, date, title, category, start_time, end_time, done, overridden]
@@ -1917,6 +2100,42 @@ components:
               type: string
 
   responses:
+    GoogleDeletionForbidden:
+      description: The Google deletion operation requires the exact canonical frontend Origin.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    GoogleDeletionJsonRequired:
+      description: The Google deletion operation requires a JSON request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    GoogleDeletionFailure:
+      description: The Google deletion operation failed unexpectedly.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    GoogleDeletionUnavailable:
+      description: Google deletion is disabled, missing provider configuration or temporarily unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    GoogleDeletionValidationError:
+      description: The submitted fields are malformed or the Google confirmation is invalid or expired.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+
     CheckinResponse:
       description: The check-in.
       content:

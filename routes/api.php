@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\DailyIntentionController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\FeedbackController;
 use App\Http\Controllers\Api\V1\GoogleAuthController;
+use App\Http\Controllers\Api\V1\GoogleDeletionController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\MeController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\V1\ScheduleItemController;
 use App\Http\Controllers\Api\V1\StreakController;
 use App\Http\Controllers\Api\V1\TodoController;
 use App\Http\Controllers\Api\V1\TodoRestoreController;
+use App\Http\Middleware\RequireGoogleDeletionContext;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -43,7 +45,12 @@ Route::prefix('v1')->group(function () {
         Route::get('me', [AuthController::class, 'me'])->name('me');
         Route::patch('me', [MeController::class, 'update'])->name('me.update');
         Route::post('me/survey', [MeController::class, 'survey'])->name('me.survey');
-        Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
+        Route::post('me/deletion/google/challenge', [GoogleDeletionController::class, 'start'])
+            ->middleware(RequireGoogleDeletionContext::class.':start')->name('me.deletion.google.challenge');
+        Route::post('me/deletion/google/verify', [GoogleDeletionController::class, 'verify'])
+            ->middleware(RequireGoogleDeletionContext::class.':verify')->name('me.deletion.google.verify');
+        Route::delete('me', [MeController::class, 'destroy'])
+            ->middleware(RequireGoogleDeletionContext::class.':final')->name('me.destroy');
 
         Route::post('import', [ImportController::class, 'store'])->name('import');
 

@@ -18,6 +18,10 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'no-referrer');
         $response->headers->set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
 
+        if ($request->attributes->getBoolean('google_deletion')) {
+            $response->headers->set('Cache-Control', 'no-store, private');
+        }
+
         if ($request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
