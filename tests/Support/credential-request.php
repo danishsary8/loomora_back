@@ -4,9 +4,11 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 use Laravel\Socialite\Two\User as GoogleUser;
+use Tests\Support\GoogleDeletionProvider;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 
@@ -16,6 +18,33 @@ $kernel->bootstrap();
 
 $fixture = json_decode($argv[1], true, flags: JSON_THROW_ON_ERROR);
 $connection = DB::connection();
+if (isset($fixture['origin'])) {
+    config([
+        'app.frontend_url' => $fixture['origin'],
+        'services.google.deletion_enabled' => true,
+        'services.google.client_id' => 'synthetic-client',
+        'services.google.client_secret' => 'synthetic-secret',
+    ]);
+    Http::preventStrayRequests();
+}
+
+if (isset($fixture['deletion_nonce'])) {
+    [$assertion, $jwks] = GoogleDeletionProvider::assertion($fixture['deletion_nonce']);
+    Http::fake([
+        GoogleDeletionProvider::TOKEN_URL => function () use ($connection, $fixture, $assertion) {
+            if (! empty($fixture['pause_exchange'])) {
+                if ($connection->transactionLevel() !== 0) {
+                    throw new RuntimeException('Provider exchange must run outside a database transaction.');
+                }
+                $connection->selectOne('select pg_advisory_lock(36036)');
+            }
+
+            return Http::response(['id_token' => $assertion]);
+        },
+        GoogleDeletionProvider::JWKS_URL => Http::response($jwks),
+    ]);
+}
+
 echo $connection->selectOne('select pg_backend_pid() as pid')->pid.PHP_EOL;
 flush();
 
@@ -46,6 +75,7 @@ if (isset($fixture['google'])) {
 $request = Request::create($fixture['path'], $fixture['method'], server: [
     'CONTENT_TYPE' => 'application/json',
     'HTTP_ACCEPT' => 'application/json',
+    'HTTP_ORIGIN' => $fixture['origin'] ?? '',
     'HTTP_AUTHORIZATION' => isset($fixture['bearer']) ? 'Bearer '.$fixture['bearer'] : '',
 ], content: json_encode($fixture['body'], JSON_THROW_ON_ERROR));
 

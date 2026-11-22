@@ -9,6 +9,7 @@ use App\Http\Requests\Account\SurveyRequest;
 use App\Http\Requests\Account\UpdateMeRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\GoogleDeletionProof;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -41,20 +42,30 @@ class MeController extends Controller
     }
 
     /** Confirm, then delete everything immediately (docs/07 S14). */
-    public function destroy(DeleteMeRequest $request): Response
+    public function destroy(DeleteMeRequest $request, GoogleDeletionProof $proof): Response
     {
-        $this->withActiveAccount($request->user(), function (User $user) use ($request) {
-            if ($user->password === null) {
-                throw ValidationException::withMessages(['password' => [__('account.google_reauth_required')]]);
-            }
-
-            if (! Hash::check($request->validated('password'), $user->password)) {
-                throw ValidationException::withMessages(['password' => [__('account.wrong_password')]]);
+        $this->withActiveAccount($request->user(), function (User $user) use ($request, $proof) {
+            $confirmation = $request->validated('google_confirmation');
+            if ($confirmation !== null) {
+                $proof->consume($user, $confirmation['challenge_id'], $confirmation['browser_verifier']);
+            } else {
+                $this->verifyDeletionPassword($user, $request->validated('password'));
             }
 
             $user->deleteWithData();
         });
 
         return response()->noContent();
+    }
+
+    private function verifyDeletionPassword(User $user, #[\SensitiveParameter] string $password): void
+    {
+        if ($user->password === null) {
+            throw ValidationException::withMessages(['password' => [__('account.google_reauth_required')]]);
+        }
+
+        if (! Hash::check($password, $user->password)) {
+            throw ValidationException::withMessages(['password' => [__('account.wrong_password')]]);
+        }
     }
 }

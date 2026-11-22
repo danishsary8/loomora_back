@@ -26,7 +26,7 @@ trait WithActiveAccount
 
             $bearerId = data_get($authenticated->currentAccessToken(), 'id');
             if ($bearerId !== null) {
-                $current = $user->tokens()->find($bearerId);
+                $current = $user->tokens()->lockForUpdate()->find($bearerId);
                 $expiration = config('sanctum.expiration');
                 if (! $current || $current->expires_at?->isPast()
                     || ($expiration && ! $current->created_at->gt(now()->subMinutes($expiration)))) {

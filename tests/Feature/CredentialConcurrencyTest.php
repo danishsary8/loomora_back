@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\GoogleDeletionChallenge;
 use App\Models\Todo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
@@ -8,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
+use Tests\Support\GoogleDeletionProvider;
 
 uses(DatabaseMigrations::class);
 
@@ -25,7 +27,7 @@ function credentialRequestProcess(array $fixture): Process
         'APP_DEBUG' => 'false',
         'APP_KEY' => config('app.key'),
         'BCRYPT_ROUNDS' => '4',
-        'CACHE_STORE' => 'array',
+        'CACHE_STORE' => $fixture['cache_store'] ?? 'array',
         'DB_CONNECTION' => 'pgsql',
         'DB_URL' => $database['url'] ?? '',
         'DB_HOST' => $database['host'],
@@ -46,7 +48,7 @@ function waitForCredentialRequestLock(Process $process, int $blockerPid): int
     $deadline = microtime(true) + 30;
     do {
         $process->checkTimeout();
-        $pid = (int) strtok($process->getOutput(), "\r\n");
+        $pid = (int) strtok($process->getOutput(), "\n");
         if ($pid && DB::selectOne('select ? = any(pg_blocking_pids(?)) as blocked', [$blockerPid, $pid])->blocked) {
             return $pid;
         }
@@ -424,3 +426,129 @@ it('commits one account and one initial bearer for overlapping signups', functio
         ->and($user->tokens()->count())->toBe(1);
     $this->withToken($accepted['body']['token'])->getJson('/api/v1/me')->assertOk()->assertJsonPath('data.id', $user->id);
 })->with(['another email registration' => false, 'Google signup' => true]);
+
+function googleDeletionRaceFixtures(User $user): array
+{
+    $bearer = $user->createToken('delete')->plainTextToken;
+    $verifier = GoogleDeletionProvider::base64Url(random_bytes(32));
+    $context = ['bearer' => $bearer, 'origin' => config('app.frontend_url')];
+    $start = [
+        ...$context,
+        'method' => 'POST',
+        'path' => '/api/v1/me/deletion/google/challenge',
+        'body' => ['browser_challenge' => GoogleDeletionProvider::base64Url(hash('sha256', $verifier, true))],
+    ];
+    $started = credentialResponse(credentialRequestProcess($start));
+    expect($started['status'])->toBe(201);
+    $id = $started['body']['data']['id'];
+    parse_str(parse_url($started['body']['data']['authorization_url'], PHP_URL_QUERY), $params);
+
+    return [
+        $start,
+        [
+            ...$context,
+            'method' => 'POST',
+            'path' => '/api/v1/me/deletion/google/verify',
+            'body' => [
+                'challenge_id' => $id, 'browser_verifier' => $verifier,
+                'state' => $params['state'], 'code' => 'synthetic-code',
+            ],
+            'deletion_nonce' => $params['nonce'],
+        ],
+        [
+            ...$context,
+            'method' => 'DELETE',
+            'path' => '/api/v1/me',
+            'body' => ['google_confirmation' => ['challenge_id' => $id, 'browser_verifier' => $verifier]],
+        ],
+    ];
+}
+
+it('rechecks the reserved Google deletion attempt after a concurrent operation during code exchange', function (string $operation, int $expected) {
+    $account = User::factory()->create(['password' => null, 'google_id' => 'linked-subject']);
+    [$start, $verify, $final] = googleDeletionRaceFixtures($account);
+    $id = $verify['body']['challenge_id'];
+    $coordinator = DB::selectOne('select pg_backend_pid() as pid')->pid;
+    DB::selectOne('select pg_advisory_lock(36036)');
+    try {
+        $request = credentialRequestProcess([...$verify, 'pause_exchange' => true]);
+        waitForCredentialRequestLock($request, $coordinator);
+        $this->assertDatabaseHas('google_deletion_challenges', ['id' => $id, 'status' => 'verifying', 'state_digest' => null]);
+
+        match ($operation) {
+            'duplicate verify' => expect(credentialResponse(credentialRequestProcess($verify))['status'])->toBe(422),
+            'replacement' => expect(credentialResponse(credentialRequestProcess($start))['status'])->toBe(201),
+            'logout' => expect(credentialResponse(credentialRequestProcess([
+                ...$start, 'path' => '/api/v1/auth/logout', 'body' => [],
+            ]))['status'])->toBe(204),
+            'password reset' => expect(credentialResponse(credentialRequestProcess(concurrentResetFixture($account)))['status'])->toBe(200),
+            'subject change' => DB::transaction(fn () => User::lockForUpdate()->findOrFail($account->id)
+                ->forceFill(['google_id' => 'changed-subject'])->save()),
+            'expiry' => GoogleDeletionChallenge::whereKey($id)->update(['expires_at' => now()->subSecond()]),
+        };
+
+        DB::selectOne('select pg_advisory_unlock(36036)');
+        expect(credentialResponse($request)['status'])->toBe($expected);
+        if ($operation === 'replacement') {
+            $this->assertDatabaseMissing('google_deletion_challenges', ['id' => $id]);
+            $this->assertDatabaseHas('google_deletion_challenges', ['user_id' => $account->id, 'status' => 'pending']);
+        }
+        if ($expected !== 200) {
+            expect(credentialResponse(credentialRequestProcess($final))['status'])->toBe($expected);
+        }
+        $this->assertModelExists($account);
+    } finally {
+        ($request ?? null)?->stop(0);
+        DB::selectOne('select pg_advisory_unlock(36036)');
+    }
+})->with([
+    ['duplicate verify', 200], ['replacement', 422], ['logout', 401], ['password reset', 401], ['subject change', 422], ['expiry', 422],
+]);
+
+it('commits Google deletion once and serializes it with credential writers', function (string $contender, int $rejection) {
+    $account = User::factory()->create(['password' => null, 'google_id' => 'linked-subject']);
+    [, $verify, $final] = googleDeletionRaceFixtures($account);
+    expect(credentialResponse(credentialRequestProcess($verify))['status'])->toBe(200);
+    $existing = $account->createToken('another-session');
+    $race = match ($contender) {
+        'second delete' => $final,
+        'logout' => [...$final, 'method' => 'POST', 'path' => '/api/v1/auth/logout', 'body' => []],
+        'bearer issuance' => concurrentGoogleExchangeFixture($account),
+    };
+
+    [$deleted, $lost] = overlapCredentialRequests([...$final, 'pause_before' => 'delete from "personal_access_tokens"'], $race);
+
+    expect($deleted['status'])->toBe(204)->and($lost['status'])->toBe($rejection);
+    $this->assertModelMissing($account);
+    $this->assertModelMissing($existing->accessToken);
+    $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $account->id]);
+    $this->assertDatabaseMissing('google_deletion_challenges', ['user_id' => $account->id]);
+})->with([['second delete', 401], ['logout', 401], ['bearer issuance', 422]]);
+
+it('enforces the Google challenge start limit across independent API processes', function () {
+    $account = User::factory()->create(['password' => null, 'google_id' => 'linked-subject']);
+    $bearer = $account->createToken('delete')->plainTextToken;
+    $fixture = [
+        'bearer' => $bearer,
+        'origin' => config('app.frontend_url'),
+        'cache_store' => 'database',
+        'method' => 'POST',
+        'path' => '/api/v1/me/deletion/google/challenge',
+        'body' => ['browser_challenge' => GoogleDeletionProvider::base64Url(random_bytes(32))],
+    ];
+    $requests = [];
+    try {
+        foreach (range(1, 7) as $attempt) {
+            $requests[] = credentialRequestProcess($fixture);
+        }
+
+        $statuses = array_column(array_map(credentialResponse(...), $requests), 'status');
+        sort($statuses);
+        expect($statuses)->toBe([201, 201, 201, 429, 429, 429, 429]);
+        $this->assertDatabaseCount('google_deletion_challenges', 1);
+    } finally {
+        foreach ($requests as $request) {
+            $request->stop(0);
+        }
+    }
+});

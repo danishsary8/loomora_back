@@ -150,7 +150,7 @@ describe('DELETE /me', function () {
         $this->assertModelExists($user);
     });
 
-    it('refuses Google-only accounts until Google re-auth exists', function () {
+    it('rejects a password-only deletion request from a Google-only account', function () {
         $user = User::factory()->create(['password' => null, 'google_id' => 'g-1']);
 
         $this->actingAs($user, 'sanctum')->deleteJson('/api/v1/me', ['password' => 'anything'])
