@@ -17,6 +17,15 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
+- **B-043 Focus sessions (2026-11-23), blocked on planner approval.** The full proposal and trade-offs are in [B-043-focus-session-design.md](B-043-focus-session-design.md#open-decisions-also-in-docsprogressmd-open-questions).
+  - **Q-B043-0:** Approach A (one immutable `POST` per finished session, running state stays in the browser) versus a server-side lifecycle or later edits.
+  - **Q-B043-1:** Does paused or break time count toward tracked Focus minutes? Proposal: only active `focus` segment time; breaks are stored as `break_ms` and pauses as `paused_ms`.
+  - **Q-B043-2:** Same-UUID retry with a changed payload. Proposal: identical gives 200 with the stored row, different gives 409 and the stored row is unchanged (import keeps "skip, server wins").
+  - **Q-B043-3:** Minimum saved duration for an early finish. Proposal: 422 when `focus_ms` is under 60 s (research D12 threshold, applied to the whole session).
+  - **Q-B043-4:** Link behavior after deletion. Proposal: soft-deleted to-do keeps the link and is accepted on create; a hard-deleted schedule item sets the link to null and keeps the session and its `label`; missing or other-user ids are 422.
+  - **Q-B043-5:** Guest history transfer and capacity. Proposal: no account cap, at most 1000 sessions per import call, and the `focus_sessions` import key follows once B-044 settles import chunking and atomicity.
+  - **Q-B043-6:** 404 (I7 style) rather than 403 (Q7c style) for another user's session.
+
 - **B-039 guest import clarification (2026-11-21).** Rule 9 in `docs/08-data-model.md` describes one import call and an all-or-nothing outcome. The current frontend intentionally sends bounded, ordered chunks and retains the guest copy until all succeed. The API commits each successful request and an already accepted chunk remains safe to retry. Should the data-model rule explicitly state per-request atomicity and whole-plan guest retention, or does the planner require a different end-to-end guarantee? Keep the current behavior pending that decision.
 
 - **Q24 (2026-11-20, B-032 / B-033), code-level validation resolved.** The planner chose one canonical frontend origin per API environment. Production uses `https://loomora-craft.vercel.app`. Preview authentication requires a separate approved frontend, API and database. Confirmation of the actual Render setting remains part of Q25.
@@ -570,3 +579,10 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - **GREEN.** GitHub CI on implementation commit 87d6576 passed all 496 PostgreSQL tests (2,734 assertions). The separate PostgreSQL concurrency suite passed all 34 cases (280 assertions). SQLite passed 462 tests (2,454 assertions) with the 34 PostgreSQL-only cases skipped. The new cases cover signed claim failures, competing verifications, replacement and credential changes during exchange, concurrent final submits, and shared rate-limit admission. The provider fixtures and accounts are synthetic. [GitHub Actions run](https://github.com/danishsary8/loomora_back/actions/runs/44959113131)
 - **Other checks.** Pint, level-6 Larastan, B-017's scoped unused-code review, Git diff checks, strict Composer validation, and both locked Composer audits passed. Both audits reported zero advisories. Redocly passed with the four baseline warnings. CI built the production image and passed migration startup, Apache syntax, access-log redaction, and refusal to start with an invalid database. A disposable PostgreSQL 16 production-style smoke passed deep health, returned 503 for all three Google operations with the gate off, and confirmed password deletion and bearer revocation.
 - **Planner handoff.** The draft targets v2-rebuild. The paired frontend, callback registration, live signed claim checks, and launch sign-off are pending. Keep the Google deletion gate off until those checks are complete. [Draft PR #45](https://github.com/danishsary8/loomora_back/pull/45)
+
+### 2026-11-23: B-043 R3 Focus session API contract (design proposal)
+- **Branch / PR:** `feat/B-043-focus-sessions` from `v2-rebuild` at `c9a7acf0e03a0a3ee5f60cc38198634fd0f58e3d`, docs-only PR to `v2-rebuild`.
+- **What changed:** Added [B-043-focus-session-design.md](B-043-focus-session-design.md). It covers approaches, the proposed `/focus-sessions` contract, the `focus_sessions` table (Laravel's `sessions` table already exists), units (integer ms), idempotency, links, errors, import implications and the frontend handoff. Added B-043 to `TASKS.md` as blocked and listed Q-B043-0 to Q-B043-6 under Open questions. No code, migration, route or `openapi.yaml` change, because no authoritative doc defines timer endpoints (docs/09 defers them) and research is not approved policy.
+- **How it was verified:** `git diff --check`. No PHP or API changes, so Pest, Pint, PHPStan and Redocly have nothing new to check; CI on the PR runs them against the unchanged code.
+- **Problems:** The frontend repo has a provisional, conflicting "B-043" (R2 import capacity); the planner proposes renumbering it B-044.
+- **Questions:** Q-B043-0 to Q-B043-6 above.
