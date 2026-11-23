@@ -17,6 +17,8 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
+- **Q-B044 guest import capacity (2026-11-24), blocked, needs the planner.** `POST /import` rejects any guest plan with more than 500 to-dos, and any plan that would take the account past 500, even when the extra rows were created by repeats. DECISIONS I5 / Q17 let repeats pass 500 only at check-off; no rule covers import. Decisions needed (Q-B044-1 to 4) are in the [B-044 entry](#2026-11-24-b-044-lossless-guest-import-investigation).
+
 - **B-043 Focus sessions (2026-11-23), answered by the planner.** Approved: Q-B043-0 (Option A), Q-B043-1, Q-B043-2, Q-B043-4 (with safeguards) and Q-B043-6. Amended: Q-B043-3 (no 60 s minimum; any `focus_ms > 0` is saved). Deferred: Q-B043-5 (no import change in B-043; coordinate with B-044). Later approved (2026-11-23): exact segment durations (`active_ms` may not exceed its segment's wall time, no 1 s tolerance) and no server-clock limit on `ended_at`. See the [B-043 design](B-043-focus-session-design.md#approved-decisions).
 
 - **B-039 guest import clarification (2026-11-21).** Rule 9 in `docs/08-data-model.md` describes one import call and an all-or-nothing outcome. The current frontend intentionally sends bounded, ordered chunks and retains the guest copy until all succeed. The API commits each successful request and an already accepted chunk remains safe to retry. Should the data-model rule explicitly state per-request atomicity and whole-plan guest retention, or does the planner require a different end-to-end guarantee? Keep the current behavior pending that decision.
@@ -607,3 +609,28 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - **Tests:** a session two hours ahead of the server clock and one queued offline for over a year are both saved. Exact bounds are tested: 200 segments, 1000 laps and a 120-character label accepted unchanged, one more gives a 422 with an explicit message. Active time equal to the segment is accepted and 1 ms more is rejected. Replay after the linked schedule item or to-do is deleted returns 200 with the stored session, and dropping the link on a stored session gives 409. A pending session with a deleted schedule item gets 422, then recovers with the same id and a null link (201), then replays (200).
 - **How it was verified:** PostgreSQL 567 passed; SQLite 526 passed, 41 skipped. Pint, PHPStan, Redocly, the Composer audit and GitHub CI (`test` and `docker`) passed.
 - **Questions:** none. The planner approved removing the server-clock limit and enforcing exact segment durations (2026-11-23).
+
+### 2026-11-24: B-044 Lossless guest import investigation
+- **Branch / PR:** `feat/B-044-lossless-guest-import` from `origin/v2-rebuild` at `2dfc976` (B-043 PR #47 merged). No PR yet; the task is blocked before implementation.
+- **What changed:** Docs only: the B-044 task entry and this investigation. No code changed.
+- **Root cause:**
+  1. `ImportRequest` limits `todos` to `max:500` (`Todo::MAX_PER_USER`) per request.
+  2. `ImportRequest::checkLimits()` rejects an import if the user's live to-dos plus the new rows exceed 500.
+  3. Neither check knows which rows were made by a repeat. A guest who reaches 500 and then checks off a repeating to-do has 501 or more rows (DECISIONS I5 lets the device pass 500). Every save then returns 422 and cannot succeed. Splitting into chunks only gets past (1); (2) still blocks the rest. The frontend keeps the guest copy on 422 (QA-023), so no data is lost, but the plan can never move to the account.
+- **Current behavior vs the approved docs:**
+  - docs/08 rule 11 says at most 500 to-dos per user (R1 limit). DECISIONS I5 / Q17 say a repeat check-off may go past 500. Neither says whether import may go past 500.
+  - docs/08 rule 9 says one import call in one transaction. The frontend sends ordered chunks, each committed separately, and safely retried by UUID. This is still open as the B-039 question above.
+  - **Already met:** client UUIDs are kept, and every to-do field is imported. Repeat and subtask links must exist already or be in the same request. Ids that already exist (including the user's own deleted ones) are skipped, so retries do not duplicate. Another user's id gives a 422. Each request runs in one transaction. The `ImportTest` suite covers these.
+  - **Small mismatch found:** `checkLimits()` counts the user's matching ids from live to-dos only. The service skips deleted ones too (I8). So a retry that includes an id the user has deleted counts as new, and can wrongly hit the limit. Fixing this follows I8 and can ship with B-044.
+- **How it was verified:** Read `ImportRequest`, `ImportService`, `StoreTodoRequest`, docs/08 rules 9 and 11, DECISIONS I5 and I8, Q17, and the frontend QA-023 evidence (read-only, `loomora-front-QA-023`). QA-023 reproduced the issue on a disposable backend: 501 rows gave 422 with no writes; 499 rows were accepted, a second 2-row chunk got 422, and a retry of the 499 skipped them all.
+- **Questions for the planner (implementation stops until answered):**
+  - **Q-B044-1, which rows count toward 500 on import?**
+    - **(A, recommended)** Same as I5: rows created by a repeat are exempt. That is a to-do another row points to with `next_todo_id` (in the payload or the account), plus its subtasks. Manual rows still count, and manual creation stays at 500.
+    - **(B)** Import is never limited by the 500 cap; the cap only applies to manual creation.
+    - **(C)** Keep the cap. Import up to capacity and report the rest, leaving them on the device. This is not lossless.
+  - **Q-B044-2, request size cap?** With A or B, `todos` needs a new per-request maximum instead of 500, for example 5000 (same as `exceptions`). The frontend already splits arrays into chunks.
+  - **Q-B044-3, multi-request atomicity?**
+    - **(A, recommended)** Keep the current behavior: each request is all-or-nothing. A chunk that already succeeded stays, and a retry with the same UUIDs skips it. The guest copy is cleared only after every chunk succeeds. Update docs/08 rule 9 to say so (this also answers the B-039 question).
+    - **(B)** Whole-plan atomicity using an import session id with server-side staging. This means new endpoints, a table, and expiry rules.
+  - **Q-B044-4, do soft-deleted account rows count?** Confirm I8 for import: deleted rows do not count toward the cap, and their ids are skipped (fixing the mismatch above).
+- **Problems:** `gh` is not logged in on this machine, so a PR needs `gh auth login` first.

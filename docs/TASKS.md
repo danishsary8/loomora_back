@@ -434,3 +434,12 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Clock policy correction: sessions are never rejected against the server clock. Approved together with exact segment durations (2026-11-23).
 - [ ] Planner review of PR #47.
 - **Note:** the frontend repository's provisional "B-043" for R2 import capacity is renumbered B-044 by the planner.
+
+### B-044: Lossless guest-to-account import
+
+- **Status:** blocked (planner decision needed: [Q-B044](PROGRESS.md#2026-11-24-b-044-lossless-guest-import-investigation))
+- **Scope:** `POST /import` must accept a full guest plan whose repeat-generated to-dos take it past 500 rows. Keep client UUIDs, every to-do field, repeat rules and links, and parent/subtask links. Retries must not create duplicates, account isolation must hold, and nothing may be silently skipped. The 500-row manual-creation limit stays. This replaces the frontend's provisional "B-043" (QA-023).
+- [x] Find the root cause and compare current behavior with the documented rules.
+- [ ] Planner decision on Q-B044-1 to Q-B044-4.
+- [ ] Implementation, Pest tests (499/500/501/>500 repeat-generated rows, existing data, retries, rollback, links, cross-account ids) and `openapi.yaml`.
+- **Out of scope:** B-043 Focus API, guest Focus history import, R4 analytics, frontend changes.
