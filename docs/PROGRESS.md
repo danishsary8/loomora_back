@@ -17,7 +17,7 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
-- **B-043 Focus sessions (2026-11-23), answered by the planner.** Approved: Q-B043-0 (Option A), Q-B043-1, Q-B043-2, Q-B043-4 (with safeguards) and Q-B043-6. Amended: Q-B043-3 (no 60 s minimum; any `focus_ms > 0` is saved). Deferred: Q-B043-5 (no import change in B-043; coordinate with B-044). One implementation choice for review: `active_ms` may not exceed its segment's wall time (the proposal's 1 s tolerance was dropped so the totals always add up). See the [B-043 design](B-043-focus-session-design.md#approved-decisions).
+- **B-043 Focus sessions (2026-11-23), answered by the planner.** Approved: Q-B043-0 (Option A), Q-B043-1, Q-B043-2, Q-B043-4 (with safeguards) and Q-B043-6. Amended: Q-B043-3 (no 60 s minimum; any `focus_ms > 0` is saved). Deferred: Q-B043-5 (no import change in B-043; coordinate with B-044). Later approved (2026-11-23): exact segment durations (`active_ms` may not exceed its segment's wall time, no 1 s tolerance) and no server-clock limit on `ended_at`. See the [B-043 design](B-043-focus-session-design.md#approved-decisions).
 
 - **B-039 guest import clarification (2026-11-21).** Rule 9 in `docs/08-data-model.md` describes one import call and an all-or-nothing outcome. The current frontend intentionally sends bounded, ordered chunks and retains the guest copy until all succeed. The API commits each successful request and an already accepted chunk remains safe to retry. Should the data-model rule explicitly state per-request atomicity and whole-plan guest retention, or does the planner require a different end-to-end guarantee? Keep the current behavior pending that decision.
 
@@ -581,7 +581,7 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - **Questions:** Q-B043-0 to Q-B043-6 above.
 
 ### 2026-11-23: B-043 R3 Focus session API (implementation)
-- **Branch / PR:** `feat/B-043-focus-sessions`, [draft PR #46](https://github.com/danishsary8/loomora_back/pull/46) to `v2-rebuild`.
+- **Branch / PR:** first committed as `d607ca7` on `feat/B-043-focus-sessions`, after [PR #46](https://github.com/danishsary8/loomora_back/pull/46) had already merged as docs-only. Shipped in [PR #47](https://github.com/danishsary8/loomora_back/pull/47) (see the integration correction below).
 - **What changed:**
   - `focus_sessions` migration with PostgreSQL check constraints: allowed `mode` and `end_reason`, `ended_at >= started_at`, `focus_ms > 0`, non-negative break and paused time, at most one link.
   - `FocusSession` model and `User::focusSessions()`.
@@ -601,9 +601,9 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - **Questions:** Planner review of the strict `active_ms` rule (no 1 s tolerance) and the kept payload bounds (200 segments, 1000 laps, 120-character label), all from the approved proposal.
 
 ### 2026-11-23: B-043 integration correction
-- **Branch / PR:** PR #46 merged as docs-only (`33338a0`). The implementation commit `d607ca7` was cherry-picked cleanly onto `v2-rebuild` as `fb4aa35` on `feat/B-043-focus-sessions-implementation`, with a new implementation PR. The merged design proposal was preserved; no documentation is duplicated.
+- **Branch / PR:** PR #46 merged as docs-only (`33338a0`). The implementation commit `d607ca7` was cherry-picked cleanly onto `v2-rebuild` as `fb4aa35` on `feat/B-043-focus-sessions-implementation`, in [PR #47](https://github.com/danishsary8/loomora_back/pull/47). The merged design proposal was preserved; no documentation is duplicated.
 - **What changed:**
   - **Clock policy:** removed the 5-minute future-`ended_at` rule (`MAX_CLOCK_SKEW_MS`, `focus.end_in_future`) so a fast device clock can never make a finished offline session fail. Sessions are validated for internal consistency only, like every other client timestamp ([Clock policy](B-043-focus-session-design.md#clock-policy-planner-correction-2026-11-23)).
   - **Tests:** a session two hours ahead of the server clock and one queued offline for over a year are both saved. Exact bounds are tested: 200 segments, 1000 laps and a 120-character label accepted unchanged, one more gives a 422 with an explicit message. Active time equal to the segment is accepted and 1 ms more is rejected. Replay after the linked schedule item or to-do is deleted returns 200 with the stored session, and dropping the link on a stored session gives 409. A pending session with a deleted schedule item gets 422, then recovers with the same id and a null link (201), then replays (200).
-- **How it was verified:** see the PR.
-- **Questions:** Planner review of the clock policy (no server-clock comparison).
+- **How it was verified:** PostgreSQL 567 passed; SQLite 526 passed, 41 skipped. Pint, PHPStan, Redocly, the Composer audit and GitHub CI (`test` and `docker`) passed.
+- **Questions:** none. The planner approved removing the server-clock limit and enforcing exact segment durations (2026-11-23).

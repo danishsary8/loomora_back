@@ -1,6 +1,6 @@
 # B-043: R3 Focus Session API Contract and Persistence
 
-**Status:** contract approved by the planner with amendments (2026-11-23). It is implemented on `feat/B-043-focus-sessions` (PR #46). `docs/openapi.yaml` is the exact contract. This document records the decisions and the reasons for them.
+**Status:** contract approved by the planner with amendments (2026-11-23). The design proposal merged in [PR #46](https://github.com/danishsary8/loomora_back/pull/46) (docs only). The implementation is on `feat/B-043-focus-sessions-implementation` in [PR #47](https://github.com/danishsary8/loomora_back/pull/47). `docs/openapi.yaml` is the exact contract. This document records the decisions and the reasons for them.
 
 **Base:** `v2-rebuild` at `c9a7acf0e03a0a3ee5f60cc38198634fd0f58e3d`.
 
@@ -63,7 +63,7 @@ Request and response examples are in `docs/openapi.yaml` (`recordFocusSession`, 
 
 Over-bound payloads (201 segments, 1001 laps, a 121-character label) are a 422 on that field ("must not have more than …"). Nothing is ever truncated.
 
-## Clock policy (planner correction, 2026-11-23)
+## Clock policy (approved by the planner, 2026-11-23)
 
 The proposal rejected an `ended_at` more than 5 minutes ahead of the server clock. A fast device clock could then make a finished offline session fail every retry until the server caught up, and the client could not fix the payload. That rule was removed. It is not in the authoritative docs, and no other Loomora endpoint compares client timestamps with the server clock (import takes `done_at` and `created_at` as sent).
 
@@ -71,7 +71,7 @@ The proposal rejected an `ended_at` more than 5 minutes ahead of the server cloc
 - Times are stored as the device recorded them. `local_date` comes from that `started_at`, the same as every other client timestamp in the app.
 - Tests: a session two hours ahead of the server clock and one from more than a year ago are both saved with 201.
 
-**Note for the planner:** the proposal allowed `active_ms` to exceed its segment's wall time by 1 s. The implementation has no tolerance. This keeps `focus_ms + break_ms + paused_ms` exactly equal to the wall time, and `paused_ms` never negative, which is the "internally consistent totals" rule. Clients clamp `active_ms` to the segment's own timestamps.
+**Exact segment durations (approved by the planner, 2026-11-23):** the proposal allowed `active_ms` to exceed its segment's wall time by 1 s. The implementation has no tolerance. This keeps `focus_ms + break_ms + paused_ms` exactly equal to the wall time, and `paused_ms` never negative, which is the "internally consistent totals" rule. Clients clamp `active_ms` to the segment's own timestamps.
 
 ## Idempotency and concurrency
 

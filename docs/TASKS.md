@@ -426,11 +426,11 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-043: R3 Focus session API contract and persistence
 
-- **Status:** review ([draft PR #47](https://github.com/danishsary8/loomora_back/pull/47); [PR #46](https://github.com/danishsary8/loomora_back/pull/46) merged the design proposal only)
+- **Status:** review ([PR #47](https://github.com/danishsary8/loomora_back/pull/47), implementation; [PR #46](https://github.com/danishsary8/loomora_back/pull/46) merged the design proposal only)
 - **Scope:** Store each finished Focus session (countdown with break cycles, or stopwatch with laps) once, linked to an optional to-do or schedule item, with client UUIDs and idempotent retries. The browser timer engine and UI are out of scope. The contract is in the [B-043 design](B-043-focus-session-design.md) and `openapi.yaml`.
 - [x] Inspect existing structures and write the contract proposal.
 - [x] Planner approved Q-B043-0 to Q-B043-6 with amendments (2026-11-23): no 60 s minimum, guest import deferred.
 - [x] Migration, model, request, service, controller, resource, routes, Pest tests (SQLite and PostgreSQL, including a real race) and `openapi.yaml`.
-- [x] Clock policy correction: sessions are never rejected against the server clock.
+- [x] Clock policy correction: sessions are never rejected against the server clock. Approved together with exact segment durations (2026-11-23).
 - [ ] Planner review of PR #47.
 - **Note:** the frontend repository's provisional "B-043" for R2 import capacity is renumbered B-044 by the planner.
