@@ -17,14 +17,7 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
-- **B-043 Focus sessions (2026-11-23), blocked on planner approval.** The full proposal and trade-offs are in [B-043-focus-session-design.md](B-043-focus-session-design.md#open-decisions-also-in-docsprogressmd-open-questions).
-  - **Q-B043-0:** Approach A (one immutable `POST` per finished session, running state stays in the browser) versus a server-side lifecycle or later edits.
-  - **Q-B043-1:** Does paused or break time count toward tracked Focus minutes? Proposal: only active `focus` segment time; breaks are stored as `break_ms` and pauses as `paused_ms`.
-  - **Q-B043-2:** Same-UUID retry with a changed payload. Proposal: identical gives 200 with the stored row, different gives 409 and the stored row is unchanged (import keeps "skip, server wins").
-  - **Q-B043-3:** Minimum saved duration for an early finish. Proposal: 422 when `focus_ms` is under 60 s (research D12 threshold, applied to the whole session).
-  - **Q-B043-4:** Link behavior after deletion. Proposal: soft-deleted to-do keeps the link and is accepted on create; a hard-deleted schedule item sets the link to null and keeps the session and its `label`; missing or other-user ids are 422.
-  - **Q-B043-5:** Guest history transfer and capacity. Proposal: no account cap, at most 1000 sessions per import call, and the `focus_sessions` import key follows once B-044 settles import chunking and atomicity.
-  - **Q-B043-6:** 404 (I7 style) rather than 403 (Q7c style) for another user's session.
+- **B-043 Focus sessions (2026-11-23), answered by the planner.** Approved: Q-B043-0 (Option A), Q-B043-1, Q-B043-2, Q-B043-4 (with safeguards) and Q-B043-6. Amended: Q-B043-3 (no 60 s minimum; any `focus_ms > 0` is saved). Deferred: Q-B043-5 (no import change in B-043; coordinate with B-044). Later approved (2026-11-23): exact segment durations (`active_ms` may not exceed its segment's wall time, no 1 s tolerance) and no server-clock limit on `ended_at`. See the [B-043 design](B-043-focus-session-design.md#approved-decisions).
 
 - **B-039 guest import clarification (2026-11-21).** Rule 9 in `docs/08-data-model.md` describes one import call and an all-or-nothing outcome. The current frontend intentionally sends bounded, ordered chunks and retains the guest copy until all succeed. The API commits each successful request and an already accepted chunk remains safe to retry. Should the data-model rule explicitly state per-request atomicity and whole-plan guest retention, or does the planner require a different end-to-end guarantee? Keep the current behavior pending that decision.
 
@@ -586,3 +579,31 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - **How it was verified:** `git diff --check`. No PHP or API changes, so Pest, Pint, PHPStan and Redocly have nothing new to check; CI on the PR runs them against the unchanged code.
 - **Problems:** The frontend repo has a provisional, conflicting "B-043" (R2 import capacity); the planner proposes renumbering it B-044.
 - **Questions:** Q-B043-0 to Q-B043-6 above.
+
+### 2026-11-23: B-043 R3 Focus session API (implementation)
+- **Branch / PR:** first committed as `d607ca7` on `feat/B-043-focus-sessions`, after [PR #46](https://github.com/danishsary8/loomora_back/pull/46) had already merged as docs-only. Shipped in [PR #47](https://github.com/danishsary8/loomora_back/pull/47) (see the integration correction below).
+- **What changed:**
+  - `focus_sessions` migration with PostgreSQL check constraints: allowed `mode` and `end_reason`, `ended_at >= started_at`, `focus_ms > 0`, non-negative break and paused time, at most one link.
+  - `FocusSession` model and `User::focusSessions()`.
+  - `FocusSessionPayload`, which normalises a request to UTC milliseconds and fingerprints it.
+  - `StoreFocusSessionRequest` (shape and consistency) and `FocusSessionDayRequest`.
+  - `FocusSessionService` (replay check, link ownership `FOR SHARE`, `INSERT … ON CONFLICT DO NOTHING`), `FocusSessionResource` and `FocusSessionController`.
+  - Routes `GET/POST /focus-sessions` and `GET /focus-sessions/{focusSession}`, messages in `lang/en/focus.php`, and `docs/openapi.yaml` (Focus tag, three operations, four schemas).
+  - `POST /import` is unchanged (Q-B043-5).
+- **How it was verified:**
+  - **New tests:** `FocusSessionTest` covers countdown cycles, stopwatch laps, an early finish of 1.234 s, zero Focus time, pause and break accounting, identical and reformatted replays, changed payloads, another account's UUID, ignored `user_id`, 404 isolation, the day list, 401, midnight and time zones, links (soft-deleted to-do, deleted schedule item, unknown or foreign link, both links), 29 validation cases, account deletion, rollback and PostgreSQL constraints. `FocusSessionConcurrencyTest` runs two real PostgreSQL races: an identical retry gives 200 and one row; a changed payload gives 409 and the winner is kept.
+  - **New-test results:** PostgreSQL 16 passed 65 (272 assertions). SQLite passed 58 (254 assertions) with 7 PostgreSQL-only cases skipped.
+  - **Full suites:** PostgreSQL passed 561 tests (3,007 assertions). SQLite passed 520 (2,709 assertions) with 41 skipped.
+  - **Mutation checks:** removing the fingerprint compare, checking links before the replay, or using a plain insert each made the tests fail.
+  - **Other checks:** Pint passed. PHPStan reported no errors. `composer validate --strict` passed. `composer audit --locked` (with and without dev packages) reported no advisories. Redocly reported the file valid with the 4 existing warnings. `git diff --check` was clean. The unused-code pass removed an unused `FocusSession::user()` relation.
+  - Docker was not built locally; CI's `docker` job runs it.
+- **Problems:** `composer install` cannot download GitHub zipballs here (403 from api.github.com). Packages were installed with `--prefer-source`, and `phpstan/phpstan` came from a zip built from its locked commit with `git archive`. No lock or manifest change.
+- **Questions:** Planner review of the strict `active_ms` rule (no 1 s tolerance) and the kept payload bounds (200 segments, 1000 laps, 120-character label), all from the approved proposal.
+
+### 2026-11-23: B-043 integration correction
+- **Branch / PR:** PR #46 merged as docs-only (`33338a0`). The implementation commit `d607ca7` was cherry-picked cleanly onto `v2-rebuild` as `fb4aa35` on `feat/B-043-focus-sessions-implementation`, in [PR #47](https://github.com/danishsary8/loomora_back/pull/47). The merged design proposal was preserved; no documentation is duplicated.
+- **What changed:**
+  - **Clock policy:** removed the 5-minute future-`ended_at` rule (`MAX_CLOCK_SKEW_MS`, `focus.end_in_future`) so a fast device clock can never make a finished offline session fail. Sessions are validated for internal consistency only, like every other client timestamp ([Clock policy](B-043-focus-session-design.md#clock-policy-planner-correction-2026-11-23)).
+  - **Tests:** a session two hours ahead of the server clock and one queued offline for over a year are both saved. Exact bounds are tested: 200 segments, 1000 laps and a 120-character label accepted unchanged, one more gives a 422 with an explicit message. Active time equal to the segment is accepted and 1 ms more is rejected. Replay after the linked schedule item or to-do is deleted returns 200 with the stored session, and dropping the link on a stored session gives 409. A pending session with a deleted schedule item gets 422, then recovers with the same id and a null link (201), then replays (200).
+- **How it was verified:** PostgreSQL 567 passed; SQLite 526 passed, 41 skipped. Pint, PHPStan, Redocly, the Composer audit and GitHub CI (`test` and `docker`) passed.
+- **Questions:** none. The planner approved removing the server-clock limit and enforcing exact segment durations (2026-11-23).

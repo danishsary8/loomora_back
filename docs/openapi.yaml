@@ -41,6 +41,8 @@ tags:
     description: Things the user sets for a single day.
   - name: Streak
     description: Days in a row with something checked off.
+  - name: Focus
+    description: Finished Focus sessions (countdown with breaks, or stopwatch with laps).
 security:
   - bearerAuth: []
 
@@ -1541,6 +1543,126 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /focus-sessions:
+    get:
+      tags: [Focus]
+      operationId: listFocusSessions
+      summary: Focus sessions for one local day
+      description: |
+        The user's own sessions whose `local_date` is `date`, oldest `started_at` first. A session that crosses
+        local midnight belongs to the day it started. No pagination: one day's sessions.
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+      responses:
+        '200':
+          description: The day's sessions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FocusSession'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    post:
+      tags: [Focus]
+      operationId: recordFocusSession
+      summary: Record one finished Focus session
+      description: |
+        Stores a finished session (completed or ended early) once. The browser runs the timer; this endpoint
+        never starts, pauses or resumes one. The client-generated `id` is the idempotency key:
+
+        - a new `id` stores the session: **201**;
+        - the same `id` with an identical payload returns the stored session unchanged: **200** (equal instants
+          and UUIDs written differently, such as `Z` and `+00:00`, are identical);
+        - the same `id` with any other payload, or an `id` that belongs to another account: **409**, nothing changes.
+
+        Durations are integer milliseconds. `focus_ms` (the tracked Focus time) is the sum of `active_ms` over
+        `focus` segments; `break_ms` over break segments; `paused_ms` is the rest of the wall time. A session needs
+        `focus_ms > 0`; there is no other minimum. Timestamps come from the client clock and are never compared
+        with the server clock: a session recorded on a device whose clock is ahead or behind, or queued offline
+        for a long time, is accepted as recorded. Only its internal consistency is validated. Payload bounds: 200
+        segments, 1000 laps, a 120-character label; one more is a 422 on that field, never a silent truncation. `todo_id` must be the user's own to-do (a soft-deleted one is
+        accepted). `schedule_item_id` must be the user's own existing schedule item. An unknown or another
+        account's link is a 422 with the same message. The linked rows are checked after the replay check, so
+        retrying an already stored session still returns 200 after its schedule item was deleted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FocusSessionInput'
+            examples:
+              countdown:
+                summary: 25 min focus, 5 min break, 25 min focus
+                value:
+                  id: 6f1c2a8e-3b4d-4e5f-8a9b-0c1d2e3f4a5b
+                  mode: countdown
+                  started_at: '2026-11-23T02:00:00.000Z'
+                  ended_at: '2026-11-23T03:02:30.000Z'
+                  end_reason: completed
+                  planned_focus_ms: 1500000
+                  todo_id: 1a2b3c4d-0000-4000-8000-000000000001
+                  schedule_item_id: null
+                  label: Read chapter 4
+                  segments:
+                    - {type: focus, started_at: '2026-11-23T02:00:00.000Z', ended_at: '2026-11-23T02:27:00.000Z', active_ms: 1500000}
+                    - {type: short_break, started_at: '2026-11-23T02:27:00.000Z', ended_at: '2026-11-23T02:32:00.000Z', active_ms: 300000}
+                    - {type: focus, started_at: '2026-11-23T02:32:00.000Z', ended_at: '2026-11-23T03:02:30.000Z', active_ms: 1500000}
+                  laps: null
+              stopwatch:
+                summary: Stopwatch with three laps
+                value:
+                  id: 0b6f7a52-8f4c-4c1e-9d5a-3e2f1a0b9c8d
+                  mode: stopwatch
+                  started_at: '2026-11-23T02:00:00.000Z'
+                  ended_at: '2026-11-23T02:03:10.010Z'
+                  end_reason: completed
+                  planned_focus_ms: null
+                  label: null
+                  segments:
+                    - {type: focus, started_at: '2026-11-23T02:00:00.000Z', ended_at: '2026-11-23T02:03:10.010Z', active_ms: 190010}
+                  laps: [61230, 125470, 190010]
+      responses:
+        '201':
+          $ref: '#/components/responses/FocusSessionResponse'
+        '200':
+          $ref: '#/components/responses/FocusSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The `id` already holds a different session, or belongs to another account. Do not retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: A different session was already saved with this id.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /focus-sessions/{focusSession}:
+    parameters:
+      - $ref: '#/components/parameters/FocusSessionId'
+    get:
+      tags: [Focus]
+      operationId: getFocusSession
+      summary: One Focus session
+      description: An unknown session and another user's session both return 404.
+      responses:
+        '200':
+          $ref: '#/components/responses/FocusSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /streak:
     get:
       tags: [Streak]
@@ -1755,6 +1877,14 @@ components:
       in: path
       required: true
       description: Schedule item UUID. A value that is not a UUID returns 404.
+      schema:
+        type: string
+        format: uuid
+    FocusSessionId:
+      name: focusSession
+      in: path
+      required: true
+      description: Focus session UUID. A value that is not a UUID returns 404.
       schema:
         type: string
         format: uuid
@@ -2079,6 +2209,116 @@ components:
           items:
             $ref: '#/components/schemas/Todo'
 
+    FocusSessionSegment:
+      type: object
+      additionalProperties: false
+      required: [type, started_at, ended_at, active_ms]
+      description: |
+        One phase. Segments are in order, do not overlap and stay inside the session. `active_ms` excludes pauses
+        and is at most `ended_at - started_at` of the segment.
+      properties:
+        type:
+          type: string
+          enum: [focus, short_break, long_break]
+          description: Breaks are allowed in countdown sessions only.
+        started_at:
+          $ref: '#/components/schemas/FocusTimestamp'
+        ended_at:
+          $ref: '#/components/schemas/FocusTimestamp'
+        active_ms:
+          type: integer
+          minimum: 0
+
+    FocusTimestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 with an explicit offset (`Z` or `+07:00`), millisecond precision. Responses are UTC with milliseconds.
+      example: '2026-11-23T02:00:00.000Z'
+
+    FocusSessionInput:
+      type: object
+      required: [id, mode, started_at, ended_at, end_reason, segments]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Generated by the client when the timer starts; reuse it for every retry.
+        mode:
+          type: string
+          enum: [countdown, stopwatch]
+        started_at:
+          $ref: '#/components/schemas/FocusTimestamp'
+        ended_at:
+          allOf:
+            - $ref: '#/components/schemas/FocusTimestamp'
+          description: Not before `started_at`. Never compared with the server clock (see the operation description).
+        end_reason:
+          type: string
+          enum: [completed, ended_early]
+        planned_focus_ms:
+          type: [integer, 'null']
+          minimum: 1
+          description: Countdown only (required); the length of one focus phase, such as 1500000 for a 25 min preset. Stopwatch sends null or leaves it out.
+        todo_id:
+          type: [string, 'null']
+          format: uuid
+          description: The user's own to-do. Only one of `todo_id` and `schedule_item_id` may be set.
+        schedule_item_id:
+          type: [string, 'null']
+          format: uuid
+          description: The user's own existing schedule item.
+        label:
+          type: [string, 'null']
+          maxLength: 120
+          description: Snapshot of the linked item's title, kept if the link goes away.
+        segments:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/FocusSessionSegment'
+        laps:
+          type: [array, 'null']
+          maxItems: 1000
+          description: Stopwatch only. Cumulative active milliseconds, strictly increasing, the last at most `focus_ms`.
+          items:
+            type: integer
+            minimum: 1
+
+    FocusSession:
+      type: object
+      required: [id, mode, end_reason, started_at, ended_at, local_date, planned_focus_ms, focus_ms, break_ms, paused_ms, todo_id, schedule_item_id, label, segments, laps, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        mode: {type: string, enum: [countdown, stopwatch]}
+        end_reason: {type: string, enum: [completed, ended_early]}
+        started_at:
+          $ref: '#/components/schemas/FocusTimestamp'
+        ended_at:
+          $ref: '#/components/schemas/FocusTimestamp'
+        local_date:
+          type: string
+          format: date
+          description: The local date of `started_at` in the user's time zone.
+        planned_focus_ms: {type: [integer, 'null']}
+        focus_ms:
+          type: integer
+          description: Tracked Focus time; active time in focus segments only.
+        break_ms: {type: integer}
+        paused_ms: {type: integer}
+        todo_id: {type: [string, 'null'], format: uuid}
+        schedule_item_id:
+          type: [string, 'null']
+          format: uuid
+          description: Becomes null when the schedule item is deleted; the session stays.
+        label: {type: [string, 'null']}
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/FocusSessionSegment'
+        laps: {type: [array, 'null'], items: {type: integer}}
+        created_at: {type: string, format: date-time}
+
     Error:
       type: object
       required: [message]
@@ -2230,6 +2470,37 @@ components:
             properties:
               data:
                 $ref: '#/components/schemas/Todo'
+    FocusSessionResponse:
+      description: One Focus session.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/FocusSession'
+          example:
+            data:
+              id: 6f1c2a8e-3b4d-4e5f-8a9b-0c1d2e3f4a5b
+              mode: countdown
+              end_reason: completed
+              started_at: '2026-11-23T02:00:00.000Z'
+              ended_at: '2026-11-23T03:02:30.000Z'
+              local_date: '2026-11-23'
+              planned_focus_ms: 1500000
+              focus_ms: 3000000
+              break_ms: 300000
+              paused_ms: 450000
+              todo_id: 1a2b3c4d-0000-4000-8000-000000000001
+              schedule_item_id: null
+              label: Read chapter 4
+              segments:
+                - {type: focus, started_at: '2026-11-23T02:00:00.000Z', ended_at: '2026-11-23T02:27:00.000Z', active_ms: 1500000}
+                - {type: short_break, started_at: '2026-11-23T02:27:00.000Z', ended_at: '2026-11-23T02:32:00.000Z', active_ms: 300000}
+                - {type: focus, started_at: '2026-11-23T02:32:00.000Z', ended_at: '2026-11-23T03:02:30.000Z', active_ms: 1500000}
+              laps: null
+              created_at: '2026-11-23T03:02:31Z'
     ValidationError:
       description: Invalid input.
       content:

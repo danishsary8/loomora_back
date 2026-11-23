@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DailyIntentionController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\FeedbackController;
+use App\Http\Controllers\Api\V1\FocusSessionController;
 use App\Http\Controllers\Api\V1\GoogleAuthController;
 use App\Http\Controllers\Api\V1\GoogleDeletionController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -37,7 +38,7 @@ Route::prefix('v1')->group(function () {
         Route::post('password/reset', [PasswordResetController::class, 'reset'])->name('auth.password.reset');
     });
 
-    Route::middleware(['auth:sanctum', 'throttle:api'])->whereUuid(['item', 'todo'])->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:api'])->whereUuid(['item', 'todo', 'focusSession'])->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::post('auth/email/resend', [EmailVerificationController::class, 'resend'])
             ->middleware('throttle:verification')
@@ -66,6 +67,10 @@ Route::prefix('v1')->group(function () {
         Route::post('todos/{todo}/restore', TodoRestoreController::class)->name('todos.restore');
         Route::post('todos/{todo}/done', [TodoController::class, 'markDone'])->name('todos.done');
         Route::delete('todos/{todo}/done', [TodoController::class, 'markUndone'])->name('todos.undone');
+
+        Route::get('focus-sessions', [FocusSessionController::class, 'index'])->name('focus-sessions.index');
+        Route::post('focus-sessions', [FocusSessionController::class, 'store'])->name('focus-sessions.store');
+        Route::get('focus-sessions/{focusSession}', [FocusSessionController::class, 'show'])->name('focus-sessions.show');
 
         Route::get('reminders/due', [ReminderController::class, 'due'])->name('reminders.due');
         Route::post('todos/{todo}/reminder/dismiss', [ReminderController::class, 'dismiss'])->name('reminders.dismiss');
