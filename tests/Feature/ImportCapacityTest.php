@@ -35,18 +35,21 @@ function manualRows(int $count): array
 /**
  * A guest plan: `$manual` manual rows, the first of them a daily repeat that was checked off
  * `$generated` times, so it heads a chain of `$generated` successors, each with `$subtasks` copied subtasks.
- * Rows are ordered newest successor first (subtasks right after their parent), then the original,
- * then the other manual rows, so every chunk only points at rows already sent or in the same chunk.
+ *
+ * The chain follows the B-044 ordering contract: newest successor first, down to the original, and
+ * each successor's subtasks right after that successor's predecessor. Every reference then points at
+ * a row sent earlier or in the same chunk, and at most one successor per chain (without subtasks)
+ * waits for its predecessor in a later chunk.
  *
  * @return list<array<string, mixed>>
  */
-function guestPlan(int $manual, int $generated, int $subtasks = 0): array
+function guestPlan(int $manual, int $generated, int $subtasks = 0, bool $manualFirst = false): array
 {
     $ids = array_map(fn () => (string) Str::uuid(), range(0, $generated));
     $chain = [];
-    foreach ($ids as $i => $id) {
+    for ($i = $generated; $i >= 0; $i--) {
         $chain[] = [
-            'id' => $id,
+            'id' => $ids[$i],
             'title' => 'Stretch',
             'due_date' => Carbon::parse('2026-01-01')->addDays($i)->toDateString(),
             'done_at' => $i < $generated ? '2026-10-01T00:00:00Z' : null,
@@ -55,25 +58,33 @@ function guestPlan(int $manual, int $generated, int $subtasks = 0): array
             'priority' => 'high',
             'notes' => "Day {$i}",
         ];
-        if ($i > 0) {
-            for ($s = 1; $s <= $subtasks; $s++) {
-                $chain[] = ['id' => (string) Str::uuid(), 'title' => "Step {$s}", 'parent_id' => $id];
-            }
+        for ($s = 1; $i < $generated && $s <= $subtasks; $s++) {
+            $chain[] = ['id' => (string) Str::uuid(), 'title' => "Step {$s}", 'parent_id' => $ids[$i + 1]];
         }
     }
 
-    $original = array_shift($chain);
-    // Newest successor first, keeping each successor's subtasks right after it.
-    $groups = [];
-    foreach ($chain as $row) {
-        empty($row['parent_id']) ? $groups[] = [$row] : $groups[count($groups) - 1][] = $row;
-    }
+    return $manualFirst ? [...manualRows($manual - 1), ...$chain] : [...$chain, ...manualRows($manual - 1)];
+}
 
-    return [
-        ...array_merge(...array_reverse($groups ?: [[]])),
-        $original,
-        ...manualRows($manual - 1),
-    ];
+/**
+ * The request the current frontend sends (`saveGuestPlan.ts`, `toImportBody` and `chunkImportBody`):
+ * every to-do in the first call, in IndexedDB key (id) order, top-level to-dos before subtasks.
+ *
+ * @return array{todos: list<array<string, mixed>>}
+ */
+function frontendRequest(array $plan): array
+{
+    usort($plan, fn (array $a, array $b) => strcmp($a['id'], $b['id']));
+    usort($plan, fn (array $a, array $b) => empty($b['parent_id']) <=> empty($a['parent_id']));
+
+    return ['todos' => $plan];
+}
+
+/** No to-do points at a missing next to-do or parent. */
+function brokenReferences(): int
+{
+    return Todo::withTrashed()->whereNotNull('next_todo_id')->whereNotIn('next_todo_id', Todo::withTrashed()->select('id'))->count()
+        + Todo::withTrashed()->whereNotNull('parent_id')->whereNotIn('parent_id', Todo::withTrashed()->select('id'))->count();
 }
 
 /** Sends the plan in chunks of at most 500 rows, the request cap. */
@@ -185,6 +196,58 @@ describe('repeat-generated rows', function () {
             ['id' => $existing->id, 'title' => 'Stretch', 'due_date' => '2026-10-26', 'repeat_rule' => ['type' => 'daily'], 'next_todo_id' => $claimed['id']],
         ]])->assertUnprocessable()->assertJsonValidationErrors('todos');
         expect(Todo::find($claimed['id']))->toBeNull();
+    });
+});
+
+describe('chunk order near capacity', function () {
+    it('imports the contract order when manual rows come first and the account is almost full', function () {
+        // 301 account + 199 guest manual = 500. The first chunk holds 198 manual rows and the newest
+        // 100 successors, ending on a successor whose predecessor is in the next chunk.
+        Todo::factory()->for($this->user)->count(301)->create();
+        $plan = guestPlan(199, 600, 2, manualFirst: true);
+
+        importInChunks($plan);
+
+        expect($this->user->todos()->count())->toBe(301 + count($plan))
+            ->and(brokenReferences())->toBe(0);
+    });
+});
+
+describe('the current frontend request', function () {
+    it('imports a plan that fits one request into an almost full account, and replays it', function () {
+        Todo::factory()->for($this->user)->count(450)->create();
+        $plan = guestPlan(50, 150, 2); // 50 manual + 450 generated = 500 rows, 500 manual in total
+
+        $this->postJson('/api/v1/import', frontendRequest($plan))->assertOk()->assertJsonPath('data.todos.created', 500);
+        $this->postJson('/api/v1/import', frontendRequest($plan))->assertOk()->assertJsonPath('data.todos', ['created' => 0, 'skipped' => 500]);
+
+        expect($this->user->todos()->count())->toBe(950)->and(brokenReferences())->toBe(0);
+        foreach ($plan as $row) {
+            expect(Todo::find($row['id'])->next_todo_id)->toBe($row['next_todo_id'] ?? null)
+                ->and(Todo::find($row['id'])->parent_id)->toBe($row['parent_id'] ?? null);
+        }
+    });
+
+    it('still refuses one manual row too many in that request', function () {
+        Todo::factory()->for($this->user)->count(451)->create();
+
+        $this->postJson('/api/v1/import', frontendRequest(guestPlan(50, 150, 2)))
+            ->assertUnprocessable()->assertJsonValidationErrors('todos');
+        expect($this->user->todos()->count())->toBe(451);
+    });
+
+    it('refuses 500 manual rows plus generated rows in one request, then imports them in contract chunks', function () {
+        $plan = guestPlan(500, 3, 2);
+
+        // The current frontend sends all 509 to-dos at once: over the request cap, nothing written.
+        $this->postJson('/api/v1/import', frontendRequest($plan))
+            ->assertUnprocessable()->assertJsonValidationErrors('todos');
+        expect(Todo::count())->toBe(0);
+
+        importInChunks($plan);
+        importInChunks($plan);
+
+        expect(Todo::count())->toBe(509)->and(brokenReferences())->toBe(0);
     });
 });
 

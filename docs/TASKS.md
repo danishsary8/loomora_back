@@ -442,6 +442,8 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Find the root cause and compare current behavior with the documented rules.
 - [x] Planner decision on Q-B044-1 to Q-B044-4.
 - [x] Implementation (DECISIONS I9), Pest tests (499/500/501/>500 repeat-generated rows, existing data, retries, rollback, links, cross-account ids), docs/08 rules 9 and 11 and `openapi.yaml`.
-- [ ] Planner review, including the subtask-provenance limit (all subtasks of a successor are exempt).
-- **Frontend handoff:** keep chunks of at most 500 to-dos. Send each successor in the same chunk as its predecessor or in an earlier chunk, and each subtask with or after its parent. Keep the guest copy until every chunk succeeds.
+- [x] Subtask provenance (all subtasks of a successor are exempt) approved as a schema limitation (2026-11-24).
+- [x] Final review follow-up: corrected chunk-order contract, checked against the real frontend, regression tests added.
+- [ ] Planner review of PR #48.
+- **Frontend follow-up required:** the current `saveGuestPlan.ts` sends every to-do in the first request. A plan of more than 500 to-dos (for example 500 manual plus any generated) is refused by the 500-row request cap. It must split to-dos into requests of at most 500 in the order in `openapi.yaml` (`POST /import`) and keep the guest copy until every request succeeds. See the [follow-up entry](PROGRESS.md#2026-11-24-b-044-final-review-follow-up).
 - **Out of scope:** B-043 Focus API, guest Focus history import, R4 analytics, frontend changes.

@@ -1720,8 +1720,13 @@ paths:
         per call. Per user, at most 500 manual to-dos and 100 schedule items in total (reported on `todos` or
         `schedule_items`). A repeat successor (a to-do another of the user's to-dos points at with `next_todo_id`,
         in the account or as a new row in the payload) and its subtasks do not count toward the 500; a `repeat_rule`
-        alone does not exempt a to-do. Deleted to-dos never count, and re-sending one is `skipped`. A successor sent
-        in an earlier call than its predecessor counts as manual until the predecessor arrives. Exceptions and check-ins must point at an item in the payload or one the user has.
+        alone does not exempt a to-do. Deleted to-dos never count, and re-sending one is `skipped`.
+        Splitting to-dos across calls: `parent_id` and `next_todo_id` must point at a row the user already has or one
+        in the same call, so a successor goes in the same call as its predecessor or an earlier one. A successor
+        whose predecessor is not yet on the account or in the same call counts as manual for that call, and so do
+        its subtasks. An order that always fits whenever the whole plan does: each repeat chain from the newest
+        successor down to the original, each successor's subtasks right after that successor's predecessor, other
+        to-dos anywhere with their subtasks after them, then cut into calls of at most 500 to-dos. Exceptions and check-ins must point at an item in the payload or one the user has.
         A to-do's `parent_id` must point at a top-level to-do in the payload or one the user has (in any order in the
         payload), and a subtask cannot have a `due_date` or a `repeat_rule`. A to-do with a `repeat_rule` needs a
         `due_date`. `next_todo_id` must point at a to-do in the payload or one the user has. A subtask cannot have a
