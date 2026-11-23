@@ -437,9 +437,11 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-044: Lossless guest-to-account import
 
-- **Status:** blocked (planner decision needed: [Q-B044](PROGRESS.md#2026-11-24-b-044-lossless-guest-import-investigation))
+- **Status:** review (planner decisions Q-B044-1 to 4 approved 2026-11-24; see [implementation](PROGRESS.md#2026-11-24-b-044-lossless-guest-import-implementation))
 - **Scope:** `POST /import` must accept a full guest plan whose repeat-generated to-dos take it past 500 rows. Keep client UUIDs, every to-do field, repeat rules and links, and parent/subtask links. Retries must not create duplicates, account isolation must hold, and nothing may be silently skipped. The 500-row manual-creation limit stays. This replaces the frontend's provisional "B-043" (QA-023).
 - [x] Find the root cause and compare current behavior with the documented rules.
-- [ ] Planner decision on Q-B044-1 to Q-B044-4.
-- [ ] Implementation, Pest tests (499/500/501/>500 repeat-generated rows, existing data, retries, rollback, links, cross-account ids) and `openapi.yaml`.
+- [x] Planner decision on Q-B044-1 to Q-B044-4.
+- [x] Implementation (DECISIONS I9), Pest tests (499/500/501/>500 repeat-generated rows, existing data, retries, rollback, links, cross-account ids), docs/08 rules 9 and 11 and `openapi.yaml`.
+- [ ] Planner review, including the subtask-provenance limit (all subtasks of a successor are exempt).
+- **Frontend handoff:** keep chunks of at most 500 to-dos. Send each successor in the same chunk as its predecessor or in an earlier chunk, and each subtask with or after its parent. Keep the guest copy until every chunk succeeds.
 - **Out of scope:** B-043 Focus API, guest Focus history import, R4 analytics, frontend changes.
