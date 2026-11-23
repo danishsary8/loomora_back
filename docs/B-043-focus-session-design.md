@@ -54,12 +54,22 @@ Request and response examples are in `docs/openapi.yaml` (`recordFocusSession`, 
 | `id` | required UUID. Compared case-insensitively and stored in lower case. |
 | `mode` | `countdown` \| `stopwatch` |
 | `end_reason` | `completed` \| `ended_early` |
-| `started_at`, `ended_at`, `segments[].started_at`/`ended_at` | ISO 8601 with an explicit offset. Instants are compared in UTC at millisecond precision, and finer digits are dropped. `ended_at >= started_at`. `ended_at` may be at most 5 minutes ahead of the server clock (clock skew). |
+| `started_at`, `ended_at`, `segments[].started_at`/`ended_at` | ISO 8601 with an explicit offset. Instants are compared in UTC at millisecond precision, and finer digits are dropped. `ended_at >= started_at`. Never compared with the server clock (see Clock policy). |
 | `planned_focus_ms` | Countdown: required, integer ≥ 1 (no upper bound). Stopwatch: null or absent. |
 | `segments` | 1 to 200. Each segment has exactly `type`, `started_at`, `ended_at` and `active_ms`. Segments are in order and non-overlapping, inside `[started_at, ended_at]`, with `0 <= active_ms <= segment wall time`. Break types are allowed in countdown only. The total `focus_ms` must be > 0. |
 | `laps` | Stopwatch only: null, absent, or up to 1000 integers ≥ 1, strictly increasing, each ≤ `focus_ms`. An empty list is stored as null. |
 | `todo_id` / `schedule_item_id` | Nullable UUIDs. At most one is set. Ownership is checked by the service (see below). |
 | `label` | Nullable, up to 120 characters (trimmed; an empty string becomes null). |
+
+Over-bound payloads (201 segments, 1001 laps, a 121-character label) are a 422 on that field ("must not have more than …"). Nothing is ever truncated.
+
+## Clock policy (planner correction, 2026-11-23)
+
+The proposal rejected an `ended_at` more than 5 minutes ahead of the server clock. A fast device clock could then make a finished offline session fail every retry until the server caught up, and the client could not fix the payload. That rule was removed. It is not in the authoritative docs, and no other Loomora endpoint compares client timestamps with the server clock (import takes `done_at` and `created_at` as sent).
+
+- The server never rejects a finished session because of its age or because it is ahead of the server clock. Only internal consistency is validated: order, bounds, segments and totals.
+- Times are stored as the device recorded them. `local_date` comes from that `started_at`, the same as every other client timestamp in the app.
+- Tests: a session two hours ahead of the server clock and one from more than a year ago are both saved with 201.
 
 **Note for the planner:** the proposal allowed `active_ms` to exceed its segment's wall time by 1 s. The implementation has no tolerance. This keeps `focus_ms + break_ms + paused_ms` exactly equal to the wall time, and `paused_ms` never negative, which is the "internally consistent totals" rule. Clients clamp `active_ms` to the segment's own timestamps.
 
@@ -110,6 +120,7 @@ There are no soft deletes, because B-043 has no delete endpoint. Durations are `
   - 409: do not retry; keep the draft for the user and report it.
   - 422: fix the payload (see below for link errors).
 - **Units:** integer milliseconds everywhere. Timestamps carry an explicit offset. `segments[].active_ms` excludes pauses and is no longer than the segment's own timestamps. Laps are cumulative active milliseconds.
+- **Clock skew:** never discard a draft because of the device clock. No response depends on the server time.
 - **Deleted schedule item while offline:** if a pending session gets 422 with `errors.schedule_item_id` (or `errors.todo_id`), it was never stored. Keep the local draft. Resend it with the **same id**, the link set to null and the `label` kept: this returns 201. Never drop the draft on this error. If the original request had in fact been stored, the original payload returns 200 instead, so retry the unchanged payload first.
 - **Guests:** keep Focus history locally; there is no import yet (Q-B043-5).
 - **Status:** Codex's current F-R3-02A (pure timer calculations) must not call these endpoints until the planner opens F-R3-01.

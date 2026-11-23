@@ -74,10 +74,6 @@ class StoreFocusSessionRequest extends FormRequest
         if ($payload->endedMs < $payload->startedMs) {
             $validator->errors()->add('ended_at', __('focus.end_before_start'));
         }
-
-        if ($payload->endedMs > now()->getTimestampMs() + FocusSession::MAX_CLOCK_SKEW_MS) {
-            $validator->errors()->add('ended_at', __('focus.end_in_future'));
-        }
     }
 
     private function checkSegments(Validator $validator, FocusSessionPayload $payload): void

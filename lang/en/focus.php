@@ -2,7 +2,6 @@
 
 return [
     'end_before_start' => 'The session cannot end before it starts.',
-    'end_in_future' => 'The session end time is in the future.',
     'segment_out_of_order' => 'Segments must be in order, must not overlap and must stay inside the session.',
     'segment_active_too_long' => 'Active time cannot be longer than the segment.',
     'stopwatch_break' => 'A stopwatch session has no breaks.',

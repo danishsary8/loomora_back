@@ -598,4 +598,12 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - **Other checks:** Pint passed. PHPStan reported no errors. `composer validate --strict` passed. `composer audit --locked` (with and without dev packages) reported no advisories. Redocly reported the file valid with the 4 existing warnings. `git diff --check` was clean. The unused-code pass removed an unused `FocusSession::user()` relation.
   - Docker was not built locally; CI's `docker` job runs it.
 - **Problems:** `composer install` cannot download GitHub zipballs here (403 from api.github.com). Packages were installed with `--prefer-source`, and `phpstan/phpstan` came from a zip built from its locked commit with `git archive`. No lock or manifest change.
-- **Questions:** Planner review of the strict `active_ms` rule (no 1 s tolerance) and the kept payload bounds (200 segments, 1000 laps, 120-character label, 5-minute clock skew), all from the approved proposal.
+- **Questions:** Planner review of the strict `active_ms` rule (no 1 s tolerance) and the kept payload bounds (200 segments, 1000 laps, 120-character label), all from the approved proposal.
+
+### 2026-11-23: B-043 integration correction
+- **Branch / PR:** PR #46 merged as docs-only (`33338a0`). The implementation commit `d607ca7` was cherry-picked cleanly onto `v2-rebuild` as `fb4aa35` on `feat/B-043-focus-sessions-implementation`, with a new implementation PR. The merged design proposal was preserved; no documentation is duplicated.
+- **What changed:**
+  - **Clock policy:** removed the 5-minute future-`ended_at` rule (`MAX_CLOCK_SKEW_MS`, `focus.end_in_future`) so a fast device clock can never make a finished offline session fail. Sessions are validated for internal consistency only, like every other client timestamp ([Clock policy](B-043-focus-session-design.md#clock-policy-planner-correction-2026-11-23)).
+  - **Tests:** a session two hours ahead of the server clock and one queued offline for over a year are both saved. Exact bounds are tested: 200 segments, 1000 laps and a 120-character label accepted unchanged, one more gives a 422 with an explicit message. Active time equal to the segment is accepted and 1 ms more is rejected. Replay after the linked schedule item or to-do is deleted returns 200 with the stored session, and dropping the link on a stored session gives 409. A pending session with a deleted schedule item gets 422, then recovers with the same id and a null link (201), then replays (200).
+- **How it was verified:** see the PR.
+- **Questions:** Planner review of the clock policy (no server-clock comparison).

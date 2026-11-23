@@ -48,9 +48,6 @@ class FocusSession extends Model
 
     public const MAX_LAPS = 1000;
 
-    /** How far ahead of the server clock `ended_at` may be, for client clock skew. */
-    public const MAX_CLOCK_SKEW_MS = 300_000;
-
     public $incrementing = false;
 
     protected $keyType = 'string';
