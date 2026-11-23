@@ -423,3 +423,12 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Scope:** Implement the planner-approved [B-034 Option A](B-034-google-account-deletion-design.md#proposed-option-a-contract). Bind the signed Google authentication time to a single-use deletion challenge and reuse B-037 account locking and revocation.
 - **Backend:** Challenge and verify endpoints and explicit Google confirmation on DELETE /me. Password confirmation remains required for accounts with a password. The Google flow is off by default.
 - **Release gate:** Google documents signed session-age claims for eligible configured clients. The Loomora staging client, dedicated callback, paired frontend, and fresh-versus-stale provider evidence are pending under Q23, Q25 and QA-009. See the [B-042 verification record](PROGRESS.md#2026-11-22-b-042-google-only-account-deletion).
+
+### B-043: R3 Focus session API contract and persistence
+
+- **Status:** blocked (planner approval of the [design proposal](B-043-focus-session-design.md))
+- **Scope:** Store each finished Focus session (countdown with break cycles, or stopwatch with laps) once, linked to an optional to-do or schedule item, with client UUIDs and idempotent retries. The browser timer engine and UI are out of scope.
+- [x] Inspect existing structures and write the contract proposal (Approach A: record finished sessions).
+- [ ] Planner answers Q-B043-0 to Q-B043-6 in `PROGRESS.md`.
+- [ ] Implement the migration, model, request, controller, routes, Pest tests and `openapi.yaml` from the approved contract.
+- **Note:** the frontend repository has a provisional "B-043" for R2 import capacity; the planner proposes renumbering that follow-up B-044.
