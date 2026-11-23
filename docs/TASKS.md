@@ -426,9 +426,10 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-043: R3 Focus session API contract and persistence
 
-- **Status:** blocked (planner approval of the [design proposal](B-043-focus-session-design.md))
-- **Scope:** Store each finished Focus session (countdown with break cycles, or stopwatch with laps) once, linked to an optional to-do or schedule item, with client UUIDs and idempotent retries. The browser timer engine and UI are out of scope.
-- [x] Inspect existing structures and write the contract proposal (Approach A: record finished sessions).
-- [ ] Planner answers Q-B043-0 to Q-B043-6 in `PROGRESS.md`.
-- [ ] Implement the migration, model, request, controller, routes, Pest tests and `openapi.yaml` from the approved contract.
-- **Note:** the frontend repository has a provisional "B-043" for R2 import capacity; the planner proposes renumbering that follow-up B-044.
+- **Status:** doing ([draft PR #46](https://github.com/danishsary8/loomora_back/pull/46))
+- **Scope:** Store each finished Focus session (countdown with break cycles, or stopwatch with laps) once, linked to an optional to-do or schedule item, with client UUIDs and idempotent retries. The browser timer engine and UI are out of scope. The contract is in the [B-043 design](B-043-focus-session-design.md) and `openapi.yaml`.
+- [x] Inspect existing structures and write the contract proposal.
+- [x] Planner approved Q-B043-0 to Q-B043-6 with amendments (2026-11-23): no 60 s minimum, guest import deferred.
+- [x] Migration, model, request, service, controller, resource, routes, Pest tests (SQLite and PostgreSQL, including a real race) and `openapi.yaml`.
+- [ ] Planner review of PR #46.
+- **Note:** the frontend repository's provisional "B-043" for R2 import capacity is renumbered B-044 by the planner.

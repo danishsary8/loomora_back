@@ -144,6 +144,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<FocusSession, $this>
+     */
+    public function focusSessions(): HasMany
+    {
+        return $this->hasMany(FocusSession::class);
+    }
+
+    /**
      * @return HasMany<DailyIntention, $this>
      */
     public function dailyIntentions(): HasMany
