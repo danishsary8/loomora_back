@@ -240,8 +240,7 @@ class ImportRequest extends FormRequest
     {
         $user = $this->user();
 
-        $newTodos = count($this->input('todos', [])) - $user->todos()->whereIn('id', array_column($this->input('todos', []), 'id'))->count();
-        if ($user->todos()->count() + $newTodos > Todo::MAX_PER_USER) {
+        if ($this->manualTodoCount() > Todo::MAX_PER_USER) {
             $validator->errors()->add('todos', __('validation.todo_limit', ['max' => Todo::MAX_PER_USER]));
         }
 
@@ -249,5 +248,30 @@ class ImportRequest extends FormRequest
         if ($user->scheduleItems()->count() + $newItems > ScheduleItem::MAX_PER_USER) {
             $validator->errors()->add('schedule_items', __('schedule.limit', ['max' => ScheduleItem::MAX_PER_USER]));
         }
+    }
+
+    /**
+     * Live manual to-dos the user would have after this import (B-044, DECISIONS I5 and I8).
+     *
+     * A repeat successor (a to-do another of the user's to-dos points at with `next_todo_id`,
+     * deleted ones included) and its subtasks do not count; a `repeat_rule` alone proves nothing.
+     * Only new payload rows add links: a row the user already has is skipped, so its links are not
+     * written. Deleted to-dos never count, and their ids are not new.
+     */
+    private function manualTodoCount(): int
+    {
+        $user = $this->user();
+        /** @var list<array<string, mixed>> $todos */
+        $todos = $this->input('todos', []);
+        $rows = collect($todos);
+        $owned = $user->todos()->withTrashed()->whereIn('id', $rows->pluck('id'))->pluck('id')->flip();
+        $new = $rows->reject(fn (array $row) => $owned->has($row['id']));
+
+        $successors = $user->todos()->withTrashed()->whereNotNull('next_todo_id')->pluck('next_todo_id')
+            ->merge($new->pluck('next_todo_id')->filter())->flip();
+        $isManual = fn (string $id, ?string $parentId) => ! $successors->has($id) && ($parentId === null || ! $successors->has($parentId));
+
+        return $user->todos()->toBase()->get(['id', 'parent_id'])->filter(fn (object $todo) => $isManual($todo->id, $todo->parent_id))->count()
+            + $new->filter(fn (array $row) => $isManual($row['id'], $row['parent_id'] ?? null))->count();
     }
 }

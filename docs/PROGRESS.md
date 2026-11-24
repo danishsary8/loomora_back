@@ -17,6 +17,8 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
+- **Q-B044 guest import capacity (2026-11-24), answered by the planner the same day** (see the [implementation entry](#2026-11-24-b-044-lossless-guest-import-implementation)). Original question: `POST /import` rejects any guest plan with more than 500 to-dos, and any plan that would take the account past 500, even when the extra rows were created by repeats. DECISIONS I5 / Q17 let repeats pass 500 only at check-off; no rule covers import. Decisions needed (Q-B044-1 to 4) are in the [B-044 entry](#2026-11-24-b-044-lossless-guest-import-investigation).
+
 - **B-043 Focus sessions (2026-11-23), answered by the planner.** Approved: Q-B043-0 (Option A), Q-B043-1, Q-B043-2, Q-B043-4 (with safeguards) and Q-B043-6. Amended: Q-B043-3 (no 60 s minimum; any `focus_ms > 0` is saved). Deferred: Q-B043-5 (no import change in B-043; coordinate with B-044). Later approved (2026-11-23): exact segment durations (`active_ms` may not exceed its segment's wall time, no 1 s tolerance) and no server-clock limit on `ended_at`. See the [B-043 design](B-043-focus-session-design.md#approved-decisions).
 
 - **B-039 guest import clarification (2026-11-21).** Rule 9 in `docs/08-data-model.md` describes one import call and an all-or-nothing outcome. The current frontend intentionally sends bounded, ordered chunks and retains the guest copy until all succeed. The API commits each successful request and an already accepted chunk remains safe to retry. Should the data-model rule explicitly state per-request atomicity and whole-plan guest retention, or does the planner require a different end-to-end guarantee? Keep the current behavior pending that decision.
@@ -607,3 +609,103 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - **Tests:** a session two hours ahead of the server clock and one queued offline for over a year are both saved. Exact bounds are tested: 200 segments, 1000 laps and a 120-character label accepted unchanged, one more gives a 422 with an explicit message. Active time equal to the segment is accepted and 1 ms more is rejected. Replay after the linked schedule item or to-do is deleted returns 200 with the stored session, and dropping the link on a stored session gives 409. A pending session with a deleted schedule item gets 422, then recovers with the same id and a null link (201), then replays (200).
 - **How it was verified:** PostgreSQL 567 passed; SQLite 526 passed, 41 skipped. Pint, PHPStan, Redocly, the Composer audit and GitHub CI (`test` and `docker`) passed.
 - **Questions:** none. The planner approved removing the server-clock limit and enforcing exact segment durations (2026-11-23).
+
+### 2026-11-24: B-044 Lossless guest import investigation
+- **Branch / PR:** `feat/B-044-lossless-guest-import` from `origin/v2-rebuild` at `2dfc976` (B-043 PR #47 merged). No PR yet; the task is blocked before implementation.
+- **What changed:** Docs only: the B-044 task entry and this investigation. No code changed.
+- **Root cause:**
+  1. `ImportRequest` limits `todos` to `max:500` (`Todo::MAX_PER_USER`) per request.
+  2. `ImportRequest::checkLimits()` rejects an import if the user's live to-dos plus the new rows exceed 500.
+  3. Neither check knows which rows were made by a repeat. A guest who reaches 500 and then checks off a repeating to-do has 501 or more rows (DECISIONS I5 lets the device pass 500). Every save then returns 422 and cannot succeed. Splitting into chunks only gets past (1); (2) still blocks the rest. The frontend keeps the guest copy on 422 (QA-023), so no data is lost, but the plan can never move to the account.
+- **Current behavior vs the approved docs:**
+  - docs/08 rule 11 says at most 500 to-dos per user (R1 limit). DECISIONS I5 / Q17 say a repeat check-off may go past 500. Neither says whether import may go past 500.
+  - docs/08 rule 9 says one import call in one transaction. The frontend sends ordered chunks, each committed separately, and safely retried by UUID. This is still open as the B-039 question above.
+  - **Already met:** client UUIDs are kept, and every to-do field is imported. Repeat and subtask links must exist already or be in the same request. Ids that already exist (including the user's own deleted ones) are skipped, so retries do not duplicate. Another user's id gives a 422. Each request runs in one transaction. The `ImportTest` suite covers these.
+  - **Small mismatch found:** `checkLimits()` counts the user's matching ids from live to-dos only. The service skips deleted ones too (I8). So a retry that includes an id the user has deleted counts as new, and can wrongly hit the limit. Fixing this follows I8 and can ship with B-044.
+- **How it was verified:** Read `ImportRequest`, `ImportService`, `StoreTodoRequest`, docs/08 rules 9 and 11, DECISIONS I5 and I8, Q17, and the frontend QA-023 evidence (read-only, `loomora-front-QA-023`). QA-023 reproduced the issue on a disposable backend: 501 rows gave 422 with no writes; 499 rows were accepted, a second 2-row chunk got 422, and a retry of the 499 skipped them all.
+- **Questions for the planner (implementation stops until answered):**
+  - **Q-B044-1, which rows count toward 500 on import?**
+    - **(A, recommended)** Same as I5: rows created by a repeat are exempt. That is a to-do another row points to with `next_todo_id` (in the payload or the account), plus its subtasks. Manual rows still count, and manual creation stays at 500.
+    - **(B)** Import is never limited by the 500 cap; the cap only applies to manual creation.
+    - **(C)** Keep the cap. Import up to capacity and report the rest, leaving them on the device. This is not lossless.
+  - **Q-B044-2, request size cap?** With A or B, `todos` needs a new per-request maximum instead of 500, for example 5000 (same as `exceptions`). The frontend already splits arrays into chunks.
+  - **Q-B044-3, multi-request atomicity?**
+    - **(A, recommended)** Keep the current behavior: each request is all-or-nothing. A chunk that already succeeded stays, and a retry with the same UUIDs skips it. The guest copy is cleared only after every chunk succeeds. Update docs/08 rule 9 to say so (this also answers the B-039 question).
+    - **(B)** Whole-plan atomicity using an import session id with server-side staging. This means new endpoints, a table, and expiry rules.
+  - **Q-B044-4, do soft-deleted account rows count?** Confirm I8 for import: deleted rows do not count toward the cap, and their ids are skipped (fixing the mismatch above).
+- **Problems:** `gh` is not logged in on this machine, so a PR needs `gh auth login` first.
+
+### 2026-11-24: B-044 Lossless guest import implementation
+- **Branch / PR:** `feat/B-044-lossless-guest-import` (one PR into `v2-rebuild`).
+- **Planner decisions (2026-11-24):**
+  - **Q-B044-1:** Verified repeat successors and their generated subtasks are exempt from the 500 limit; a `repeat_rule` alone exempts nothing.
+  - **Q-B044-2:** The request cap stays at 500 to-dos.
+  - **Q-B044-3:** Each request is all-or-nothing; chunks that already succeeded stay committed, retries are idempotent, and the frontend keeps the whole guest plan until every chunk succeeds.
+  - **Q-B044-4:** Deleted to-dos never count, and a deleted id is skipped on replay.
+- **What changed:**
+  - `ImportRequest::manualTodoCount()` replaces the total count. A to-do is a successor only if another to-do of the same user points at it with `next_todo_id`: an account row (deleted ones included) or a new payload row. The planner asked that provenance come from existing relationships. A payload row the user already has is skipped, so its links do not count. Every subtask of a successor is exempt. The check is the user's live manual to-dos plus the new manual rows, at most 500. `ImportService` and `POST /todos` are unchanged.
+  - Fixed Q-B044-4: a re-sent id of the user's own deleted to-do used to count as new.
+  - DECISIONS I9, docs/08 rules 9 (one transaction per request, chunks, guest copy kept until every chunk succeeds) and 11, and the `POST /import` description in `openapi.yaml`. The schema is unchanged.
+- **Reconciliation:**
+  - I5 / Q17 (repeats may pass 500 at check-off) now apply to import too.
+  - I8 (deleted rows do not count, and import skips them) is now enforced in validation as well.
+  - QA-023's blocked row is covered on the backend: a guest plan of 500 manual rows plus generated rows imports completely in chunks of 500. The current frontend does not chunk to-dos yet (see the final review follow-up below).
+  - The B-039 rule 9 question is answered by Q-B044-3.
+- **Subtask provenance (approved by the planner as a schema limitation, 2026-11-24; no new column in B-044):** the schema cannot tell a subtask copied at check-off from one added to the successor later; there is no column or link for it. All subtasks of a successor are therefore exempt.
+  - This never lets a real guest or account plan pass 500 manual rows. A manual row can only be created while the total is under 500, so the true manual count never passes 500. Exempting the extra subtasks only removes rows from a count that was already within the limit.
+  - A forged payload can exempt rows this way. The same is already possible with forged successor chains (pointers are the only provenance the schema has), so nothing new is exposed.
+  - Exact separation would need a data-model change (for example a `generated_from` column). It is not made here.
+- **Other residual edges:**
+  - A successor sent in an earlier request than its predecessor counts as manual for that request, and so do its subtasks. The final review follow-up below gives the corrected chunk order.
+  - A deleted successor that is restored after its pointer was cleared (I8) counts as manual. Restores already skip the limit check, so such an account could be refused near 500.
+- **How it was verified:**
+  - **TDD:** `tests/Feature/ImportCapacityTest.php` (24 tests) was written first. 13 failed with the expected 422, and all 24 passed after the change.
+  - **What the new tests cover:**
+    - Request sizes of 499, 500 and 501 rows.
+    - 500 manual rows plus 1, 499, 500, 501 and 600 generated successors, each with a subtask, sent in chunks of 500, with every field and link checked.
+    - Successor and subtask provenance. A manual to-do with a `repeat_rule` still counts, and so does a successor sent without its predecessor.
+    - Links on a skipped row are ignored, the account's own successors are exempt, and a link from another account is ignored.
+    - A re-sent deleted id is skipped, deleted to-dos do not count, and a successor stays exempt after its predecessor is deleted.
+    - A later chunk refused after an earlier one succeeded, the lost-response retry, a full chunked replay, rollback of a failed chunk, and another account's successor id.
+  - **Mutation checks:** five mutations each failed a test: counting owned ids without deleted rows, ignoring deleted predecessors, taking links from all accounts, taking links from skipped rows, and counting successor subtasks.
+  - **Full suites:** PostgreSQL 17.4 (a disposable local cluster) passed 591 tests (50,055 assertions). SQLite passed 550 with 41 skipped (49,757 assertions).
+  - **Static checks:** Pint passed and PHPStan reported no errors. `composer validate --strict` passed. `composer audit --locked`, with and without dev packages, found no advisories.
+  - **Contract and diff:** Redocly reported the file valid with the 4 existing warnings, and `git diff --check` was clean.
+  - **Unused code:** the review removed the old total-count code; every new helper is used.
+  - **Docker:** not run locally (Docker Desktop was off), so CI's `docker` job covers it.
+- **Problems:** The first local runs had 30 `GoogleDeletionTest` failures because `openssl_pkey_new()` on Windows PHP needs `OPENSSL_CONF`. They passed once it pointed at PHP's `extras/ssl/openssl.cnf`. The first PostgreSQL run also had 9 further failures while both suites ran at the same time; the rerun was fully green. `vendor/` was copied from the B-042 worktree, whose `composer.lock` is identical.
+- **Questions:** Planner review of the subtask-provenance limit above (answered: approved as a schema limitation).
+
+### 2026-11-24: B-044 final review follow-up
+- **Branch / PR:** same branch, [PR #48](https://github.com/danishsary8/loomora_back/pull/48). Not merged.
+- **Ordering contract, corrected:** the earlier advice ("a successor with its predecessor or in an earlier chunk, subtasks with or after their parent") was valid for references but could fail near capacity. A successor sent before its predecessor counts as manual for that request, and its subtasks did too when they were sent right after it. A new test reproduced this: an account with 301 manual to-dos and a guest plan with 199 manual rows first got a 422 even though the final count is exactly 500. The contract is now in `openapi.yaml` (`POST /import`) and DECISIONS I9:
+  1. **References (422 otherwise):** `parent_id` and `next_todo_id` must point at a row already on the account or in the same request. So a successor goes with its predecessor or earlier, and a subtask with its parent or later.
+  2. **Capacity:** a successor counts as generated only once its predecessor is on the account or in the same request. Until then the successor and its subtasks count as manual for that request.
+  3. **Safe order:**
+     - Each repeat chain runs from the newest successor down to the original.
+     - Each successor's subtasks go right after that successor's predecessor.
+     - Other to-dos can go anywhere, each with its subtasks after it.
+     - Cut the result into consecutive requests of at most 500.
+  4. **Why the safe order never hits a false 422:** each chain has at most one successor waiting for its predecessor, and it is sent without its subtasks. That chain's original, a manual row, has not been sent yet. So the count during the import never exceeds the final manual count.
+- **Real frontend (read-only, `loomora_front_v2` `origin/v2-rebuild` at `d18ca7d`, `src/lib/storage/saveGuestPlan.ts`):**
+  - `toImportBody` sends top-level to-dos before subtasks, otherwise in IndexedDB id order, and drops `next_todo_id` links to deleted occurrences.
+  - `chunkImportBody` puts **every to-do in the first request**; only exceptions, check-ins and intentions are split.
+  - So a plan of 500 manual rows plus any generated rows exceeds the 500-row request cap (Q-B044-2) and gets a 422 with nothing written. The guest copy is kept, so nothing is lost, but the plan cannot move.
+  - A plan of at most 500 to-dos works with the current frontend, even into an account that is almost full, because every predecessor is in the same request.
+- **Frontend follow-up required:** split to-dos into requests of at most 500 in the safe order above. Keep schedule items in the first request as today, and clean up only after every request succeeds (unchanged). No backend change is needed for it.
+- **Regression tests added:**
+  - `ImportCapacityTest` reproduces the frontend request (`frontendRequest()`: one call, id order, top-level first).
+  - A 500-row plan (50 manual + 150 successors with 2 subtasks each) imports into an account with 450 manual to-dos. Its replay skips all 500 rows, with no duplicates and no broken `parent_id` or `next_todo_id`. One more account row gives a 422.
+  - A plan with 500 manual + 3 successors with subtasks is refused in the frontend's single request with nothing written. The same plan then imports in contract chunks, twice, without duplicates or broken references.
+  - The near-capacity contract-order case: 301 account rows, and 199 guest manual rows plus 600 successors with 2 subtasks each, sent manual rows first.
+  - The test plan helper now builds the contract order.
+- **Residual edge (documented, no schema change):** a guest successor whose predecessor was deleted on the device has no pointer in the payload (deleted to-dos are not imported). It therefore counts as manual. This can only matter after deleting a checked-off occurrence while near the limit.
+- **Subtask provenance:** approved by the planner as a schema limitation. All subtasks of a verified successor are exempt, and no column is added in B-044.
+- **How it was verified:**
+  - The new near-capacity test failed with a 422 under the old helper order and passed under the corrected order.
+  - `ImportCapacityTest` passes 28 tests.
+  - **Full suites:** PostgreSQL 17.4 (a disposable local cluster) passed 595 (51,081 assertions). SQLite passed 554 with 41 skipped (50,783 assertions).
+  - **Static checks:** Pint passed and PHPStan reported no errors. `composer validate --strict` passed. `composer audit --locked`, with and without dev packages, found no advisories.
+  - **Contract and diff:** Redocly reported the file valid with the 4 existing warnings, and `git diff --check` was clean.
+  - **CI on `08745a7`:** both PR #48 jobs passed, `test` and `docker` ([run 45241621800](https://github.com/danishsary8/loomora_back/actions/runs/45241621800)).
+- **Unused code:** no production code changed in this follow-up. The test helper `brokenReferences()` and `frontendRequest()` are used, and the old grouping code in `guestPlan()` was removed.

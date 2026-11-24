@@ -434,3 +434,16 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Clock policy correction: sessions are never rejected against the server clock. Approved together with exact segment durations (2026-11-23).
 - [ ] Planner review of PR #47.
 - **Note:** the frontend repository's provisional "B-043" for R2 import capacity is renumbered B-044 by the planner.
+
+### B-044: Lossless guest-to-account import
+
+- **Status:** review (planner decisions Q-B044-1 to 4 approved 2026-11-24; see [implementation](PROGRESS.md#2026-11-24-b-044-lossless-guest-import-implementation))
+- **Scope:** `POST /import` must accept a full guest plan whose repeat-generated to-dos take it past 500 rows. Keep client UUIDs, every to-do field, repeat rules and links, and parent/subtask links. Retries must not create duplicates, account isolation must hold, and nothing may be silently skipped. The 500-row manual-creation limit stays. This replaces the frontend's provisional "B-043" (QA-023).
+- [x] Find the root cause and compare current behavior with the documented rules.
+- [x] Planner decision on Q-B044-1 to Q-B044-4.
+- [x] Implementation (DECISIONS I9), Pest tests (499/500/501/>500 repeat-generated rows, existing data, retries, rollback, links, cross-account ids), docs/08 rules 9 and 11 and `openapi.yaml`.
+- [x] Subtask provenance (all subtasks of a successor are exempt) approved as a schema limitation (2026-11-24).
+- [x] Final review follow-up: corrected chunk-order contract, checked against the real frontend, regression tests added.
+- [ ] Planner review of PR #48.
+- **Frontend follow-up required:** the current `saveGuestPlan.ts` sends every to-do in the first request. A plan of more than 500 to-dos (for example 500 manual plus any generated) is refused by the 500-row request cap. It must split to-dos into requests of at most 500 in the order in `openapi.yaml` (`POST /import`) and keep the guest copy until every request succeeds. See the [follow-up entry](PROGRESS.md#2026-11-24-b-044-final-review-follow-up).
+- **Out of scope:** B-043 Focus API, guest Focus history import, R4 analytics, frontend changes.
