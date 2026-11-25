@@ -31,3 +31,5 @@ Laravel Sanctum adds personal_access_tokens. A password_reset_tokens table is al
 10. **Delete account** removes the user and all their rows immediately (cascade).
 11. **Validation**: title 1 to 200 characters; start_time < end_time; days not empty; at most 500 to-dos and 100 schedule items per user (R1 limits). Repeat successors and their subtasks do not count toward the 500 to-dos, on check-off or on import (DECISIONS I5, I9).
 12. **Categories** are a fixed set of 6 (string enum), not a table.
+
+Focus History deletion (B-046, D3-D5) stamps the finished session with deleted_at and hides it from ordinary reads. Restore clears the stamp if fewer than seven days elapsed. Recording retries compare the original row, including deleted rows. Removing a linked planner item does not delete its session.
