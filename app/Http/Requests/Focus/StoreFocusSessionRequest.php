@@ -22,6 +22,12 @@ class StoreFocusSessionRequest extends FormRequest
      */
     public function rules(): array
     {
+        return self::payloadRules();
+    }
+
+    /** @return array<string, mixed> */
+    public static function payloadRules(): array
+    {
         $timestamp = ['required', ...TodoRules::dateTimeRules()];
 
         return [
@@ -56,10 +62,7 @@ class StoreFocusSessionRequest extends FormRequest
                     return;
                 }
 
-                $payload = $this->payload();
-                $this->checkTimes($validator, $payload);
-                $this->checkSegments($validator, $payload);
-                $this->checkLaps($validator, $payload);
+                self::validateConsistency($validator, $this->payload());
             },
         ];
     }
@@ -69,14 +72,21 @@ class StoreFocusSessionRequest extends FormRequest
         return $this->payload ??= FocusSessionPayload::fromInput($this->validator->validated());
     }
 
-    private function checkTimes(Validator $validator, FocusSessionPayload $payload): void
+    public static function validateConsistency(Validator $validator, FocusSessionPayload $payload): void
+    {
+        self::checkTimes($validator, $payload);
+        self::checkSegments($validator, $payload);
+        self::checkLaps($validator, $payload);
+    }
+
+    private static function checkTimes(Validator $validator, FocusSessionPayload $payload): void
     {
         if ($payload->endedMs < $payload->startedMs) {
             $validator->errors()->add('ended_at', __('focus.end_before_start'));
         }
     }
 
-    private function checkSegments(Validator $validator, FocusSessionPayload $payload): void
+    private static function checkSegments(Validator $validator, FocusSessionPayload $payload): void
     {
         $previousEnd = $payload->startedMs;
 
@@ -104,7 +114,7 @@ class StoreFocusSessionRequest extends FormRequest
         }
     }
 
-    private function checkLaps(Validator $validator, FocusSessionPayload $payload): void
+    private static function checkLaps(Validator $validator, FocusSessionPayload $payload): void
     {
         $previous = 0;
 

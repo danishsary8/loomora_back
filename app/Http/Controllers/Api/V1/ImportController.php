@@ -12,6 +12,6 @@ class ImportController extends Controller
     /** Same answer on a repeat: the counts show what was new and what was already there. */
     public function store(ImportRequest $request, ImportService $import): JsonResponse
     {
-        return response()->json(['data' => $import->import($request->user(), $request->validated())]);
+        return response()->json(['data' => $import->import($request->user(), $request->importData())]);
     }
 }

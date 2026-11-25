@@ -750,3 +750,10 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - With a seeded 150-character label, `migrate:rollback --step=1` exited 1 with "Cannot roll back B-045: 1 focus session label(s) are longer than 120 characters." The column stayed 200, the label stayed 150 characters, and the migration stayed recorded.
   - Local environment notes, not repository changes: this PHP build has `pdo_sqlite` disabled, so the SQLite runs used `php -d extension=pdo_sqlite -d extension=sqlite3`. The Google deletion tests need `OPENSSL_CONF` pointing at PHP's `openssl.cnf` to generate test keys.
 - **Not done here:** the production migration and deploy are an owner step. The frontend F-R3-10 follows after this merges.
+
+### 2026-11-25: B-049 Guest Focus history import
+
+- POST /import now accepts up to 500 finished Focus sessions per request. The optional focus_sessions result reports created and skipped counts. Missing links and invalid payloads return indexed validation errors. Changed replays and IDs belonging to another account return 409. The entire request rolls back on failure.
+- Reuses the B-043 recording rules and canonical payload. Linked planner rows must be in the account or earlier in the same import request. Deleted guest sessions are excluded under D4.
+- Full Pest passed on SQLite (565 passed, 42 PostgreSQL-only skips) and PostgreSQL (607 passed). Final focused tests passed on both databases (6 each). Pint, PHPStan, locked Composer checks, Redocly (four existing warnings) and the diff check passed.
+- F-R3-15 follows this contract and keeps local data until every batch succeeds. No migration is needed. Roll out the import client before relying on Analytics for converted guests.

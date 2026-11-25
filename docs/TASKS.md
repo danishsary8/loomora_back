@@ -463,3 +463,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] The migration widens the column, and its rollback refuses while any label is longer than 120.
 - [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Redocly lint and `composer audit` pass.
 - **Out of scope:** frontend F-R3-10, production migration and deploy.
+
+### B-049: Guest Focus history import
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** D6 and D4. Add an optional Focus section to POST /import for finished, active guest sessions.
+- **Plan:**
+  1. Test import of linked sessions, lost-response replay and atomic rejection.
+  2. Share the recording rules and payload consistency checks.
+  3. Record imported sessions through B-043 after imported links exist.
+  4. Update OpenAPI and verify both databases and static checks.
