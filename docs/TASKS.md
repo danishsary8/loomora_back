@@ -463,3 +463,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] The migration widens the column, and its rollback refuses while any label is longer than 120.
 - [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Redocly lint and `composer audit` pass.
 - **Out of scope:** frontend F-R3-10, production migration and deploy.
+
+### B-047: Analytics and Plan vs Reality summary
+
+- **Status:** doing
+- **Owner:** Codex
+- **Scope:** Approved D7 and D12. Add the authenticated 92-day summary using existing Focus, to-do and schedule data.
+- **Plan:**
+  1. Exercise range limits, account isolation, aggregation and query count through the API.
+  2. Validate the date range and aggregate Focus and to-do data alongside existing schedule occurrences.
+  3. Document the OpenAPI response and add a shared fixture for frontend parity.
+  4. Verify both databases, static checks and the contract, then open the PR for owner review.

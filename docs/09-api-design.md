@@ -54,6 +54,7 @@ Google-only accounts with no password receive `422` on `DELETE /me`. The planner
 | Method | Path | Purpose |
 |---|---|---|
 | GET | /streak?date= | current_streak, longest_streak, today_counted |
+| GET | /stats/summary?from=&to= | Daily and total Focus, to-do and effective schedule metrics, plus focus milliseconds by mode. Up to 92 dates inclusive. |
 | POST | /import | guest data import (idempotent, transactional) |
 | POST | /feedback | message |
 | GET | /health | `{ "status": "ok" }` (public) |

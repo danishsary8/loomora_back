@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\ScheduleCheckinController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleExceptionController;
 use App\Http\Controllers\Api\V1\ScheduleItemController;
+use App\Http\Controllers\Api\V1\StatsSummaryController;
 use App\Http\Controllers\Api\V1\StreakController;
 use App\Http\Controllers\Api\V1\TodoController;
 use App\Http\Controllers\Api\V1\TodoRestoreController;
@@ -58,6 +59,7 @@ Route::prefix('v1')->group(function () {
         Route::get('days/{date}/intention', [DailyIntentionController::class, 'show'])->name('days.intention.show');
         Route::put('days/{date}/intention', [DailyIntentionController::class, 'update'])->name('days.intention.update');
 
+        Route::get('stats/summary', StatsSummaryController::class)->name('stats.summary');
         Route::get('streak', [StreakController::class, 'show'])->name('streak');
 
         Route::get('todos', [TodoController::class, 'index'])->name('todos.index');

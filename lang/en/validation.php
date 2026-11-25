@@ -189,6 +189,8 @@ return [
     'repeat_needs_due_date' => 'A repeating to-do needs a due date.',
     'subtask_reminder' => 'A subtask cannot have a reminder.',
 
+    'stats_range' => 'The date range may contain at most 92 days.',
+
     'custom' => [
         'attribute-name' => [
             'rule-name' => 'custom-message',

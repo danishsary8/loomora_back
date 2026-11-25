@@ -750,3 +750,10 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - With a seeded 150-character label, `migrate:rollback --step=1` exited 1 with "Cannot roll back B-045: 1 focus session label(s) are longer than 120 characters." The column stayed 200, the label stayed 150 characters, and the migration stayed recorded.
   - Local environment notes, not repository changes: this PHP build has `pdo_sqlite` disabled, so the SQLite runs used `php -d extension=pdo_sqlite -d extension=sqlite3`. The Google deletion tests need `OPENSSL_CONF` pointing at PHP's `openssl.cnf` to generate test keys.
 - **Not done here:** the production migration and deploy are an owner step. The frontend F-R3-10 follows after this merges.
+
+### 2026-11-25: B-047 Analytics and Plan vs Reality summary
+
+- Added authenticated GET /api/v1/stats/summary with up to 92 inclusive dates, zero-filled daily rows, combined totals, and focus milliseconds split by timer mode. Focus uses stored local dates; to-do completions use the account time zone.
+- The existing schedule occurrence service supplies planned minutes and check-ins after overrides and skips. Streak remains available through GET /streak. No schema change is required.
+- Verified on PHP 8.4 with full SQLite Pest (568 passed, 42 PostgreSQL-only skips) and disposable PostgreSQL 17.4 (610 passed). Pint, PHPStan, Composer strict validation, both locked security audits, and git diff --check passed. Redocly validated with four baseline warnings.
+- Frontend F-R4-01 can sync this OpenAPI contract and the shared stats-summary-cases.json fixture. Deploy the backend before the frontend uses the new endpoint. B-049 and F-R3-15 are needed for converted guests' imported sessions to appear in Analytics.
