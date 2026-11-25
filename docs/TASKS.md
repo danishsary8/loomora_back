@@ -501,3 +501,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. Share the recording rules and payload consistency checks.
   3. Record imported sessions through B-043 after imported links exist.
   4. Update OpenAPI and verify both databases and static checks.
+
+### B-047: Analytics and Plan vs Reality summary
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** Approved D7 and D12. Add the authenticated 92-day summary using existing Focus, to-do and schedule data.
+- **Plan:**
+  1. Exercise range limits, account isolation, aggregation and query count through the API.
+  2. Validate the date range and aggregate Focus and to-do data alongside existing schedule occurrences.
+  3. Document the OpenAPI response and add a shared fixture for frontend parity.
+  4. Verify both databases, static checks and the contract, then open the PR for owner review.

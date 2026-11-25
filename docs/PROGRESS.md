@@ -15,6 +15,8 @@ Claude Code appends one entry at the end of every session or task. Newest entrie
 
 ## Open questions
 
+- **R4 streak history:** The feature list marks historical streaks Must, while B-047 directs the client to GET /streak, which returns current and longest values. Confirm whether the Insights client should derive the visible range from summary days, including the treatment of streaks that began earlier, or whether a history API is required.
+
 _Questions that need the planner or Danish. Includes any place where code and docs disagree._
 
 - **Q-B044 guest import capacity (2026-11-24), answered by the planner the same day** (see the [implementation entry](#2026-11-24-b-044-lossless-guest-import-implementation)). Original question: `POST /import` rejects any guest plan with more than 500 to-dos, and any plan that would take the account past 500, even when the extra rows were created by repeats. DECISIONS I5 / Q17 let repeats pass 500 only at check-off; no rule covers import. Decisions needed (Q-B044-1 to 4) are in the [B-044 entry](#2026-11-24-b-044-lossless-guest-import-investigation).
@@ -771,3 +773,12 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - Reuses the B-043 recording rules and canonical payload. Linked planner rows must be in the account or earlier in the same import request. Deleted guest sessions are excluded under D4.
 - Full Pest passed on SQLite (565 passed, 42 PostgreSQL-only skips) and PostgreSQL (607 passed). Final focused tests passed on both databases (6 each). Pint, PHPStan, locked Composer checks, Redocly (four existing warnings) and the diff check passed.
 - F-R3-15 follows this contract and keeps local data until every batch succeeds. No migration is needed. Roll out the import client before relying on Analytics for converted guests.
+
+### 2026-11-25: B-047 Analytics and Plan vs Reality summary
+
+- Added authenticated GET /api/v1/stats/summary with up to 92 inclusive dates, zero-filled daily rows, combined totals, and focus milliseconds split by timer mode. Focus uses stored local dates; to-do completions use the account time zone.
+- The existing schedule occurrence service supplies planned minutes and check-ins after overrides and skips. Streak remains available through GET /streak. No schema change is required.
+- Verified on PHP 8.4 with full SQLite Pest (568 passed, 42 PostgreSQL-only skips) and disposable PostgreSQL 17.4 (610 passed). Pint, PHPStan, Composer strict validation, both locked security audits, and git diff --check passed. Redocly validated with four baseline warnings.
+- Frontend F-R4-01 can sync this OpenAPI contract and the shared stats-summary-cases.json fixture. Deploy the backend before the frontend uses the new endpoint. B-049 and F-R3-15 are needed for converted guests' imported sessions to appear in Analytics.
+
+- Follow-up verification covers year zero rejection and safe iteration across the first and last supported calendar dates. The Stats and Schedule feature subset passed 54 tests on SQLite and PostgreSQL.

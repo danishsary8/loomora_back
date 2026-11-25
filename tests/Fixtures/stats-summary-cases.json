@@ -1,0 +1,100 @@
+{
+  "from": "2026-11-23",
+  "to": "2026-11-25",
+  "timezone": "Asia/Phnom_Penh",
+  "schedule": {
+    "start_time": "08:00",
+    "end_time": "09:30",
+    "days": [
+      0,
+      1,
+      2
+    ]
+  },
+  "exceptions": [
+    {
+      "date": "2026-11-23",
+      "type": "override",
+      "start_time": "08:30",
+      "end_time": "09:15"
+    },
+    {
+      "date": "2026-11-24",
+      "type": "skip"
+    }
+  ],
+  "checkins": [
+    "2026-11-23"
+  ],
+  "sessions": [
+    {
+      "local_date": "2026-11-23",
+      "mode": "countdown",
+      "focus_ms": 1500000,
+      "break_ms": 300000,
+      "linked": true
+    },
+    {
+      "local_date": "2026-11-23",
+      "mode": "stopwatch",
+      "focus_ms": 90000,
+      "break_ms": 0,
+      "linked": false
+    }
+  ],
+  "expected": {
+    "days": [
+      {
+        "local_date": "2026-11-23",
+        "focus_ms": 1590000,
+        "break_ms": 300000,
+        "sessions": 2,
+        "todos_done": 0,
+        "todos_due": 0,
+        "planned_block_minutes": 45,
+        "blocks_checked": 1,
+        "focus_ms_linked": 1500000,
+        "focus_ms_unplanned": 90000
+      },
+      {
+        "local_date": "2026-11-24",
+        "focus_ms": 0,
+        "break_ms": 0,
+        "sessions": 0,
+        "todos_done": 0,
+        "todos_due": 0,
+        "planned_block_minutes": 0,
+        "blocks_checked": 0,
+        "focus_ms_linked": 0,
+        "focus_ms_unplanned": 0
+      },
+      {
+        "local_date": "2026-11-25",
+        "focus_ms": 0,
+        "break_ms": 0,
+        "sessions": 0,
+        "todos_done": 0,
+        "todos_due": 0,
+        "planned_block_minutes": 90,
+        "blocks_checked": 0,
+        "focus_ms_linked": 0,
+        "focus_ms_unplanned": 0
+      }
+    ],
+    "totals": {
+      "focus_ms": 1590000,
+      "break_ms": 300000,
+      "sessions": 2,
+      "todos_done": 0,
+      "todos_due": 0,
+      "planned_block_minutes": 135,
+      "blocks_checked": 1,
+      "focus_ms_linked": 1500000,
+      "focus_ms_unplanned": 90000
+    },
+    "by_mode": {
+      "countdown": 1500000,
+      "stopwatch": 90000
+    }
+  }
+}
