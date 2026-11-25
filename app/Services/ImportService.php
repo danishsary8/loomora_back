@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  */
 class ImportService
 {
-    public function __construct(private readonly StreakService $streak) {}
+    public function __construct(private readonly StreakService $streak, private readonly NoteService $notes) {}
 
     /**
      * @param  array<string, list<array<string, mixed>>>  $data  already validated
@@ -36,6 +36,10 @@ class ImportService
                 'checkins' => $this->checkins($user, $data['checkins'] ?? []),
                 'daily_intentions' => $this->intentions($user, $data['daily_intentions'] ?? []),
             ];
+
+            if (array_key_exists('notes', $data)) {
+                $result['notes'] = $this->notes->import($user, $data['notes']);
+            }
 
             $this->streak->recompute($user);
 

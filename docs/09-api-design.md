@@ -64,3 +64,7 @@ Google-only accounts with no password receive `422` on `DELETE /me`. The planner
 - Set `FRONTEND_URL` to one canonical frontend origin per API environment. CORS and Google, verification and reset links use this setting. Preview auth uses a separate approved staging pair.
 - API resources return `id`, fields above and `created_at`. OpenAPI file at `docs/openapi.yaml`, kept in sync.
 - Later releases add endpoints (subtasks, repeats, reminders, timers, notes, analytics) in their own docs.
+
+### Notes
+
+The authenticated notes API supports standalone notes and notes linked to an owned schedule block or a dated occurrence. See /notes and /notes/{note} in OpenAPI for the resource contract. Guest imports can include up to 500 notes per request, with any referenced schedule item sent in the same request or earlier. Successful retries skip note UUIDs already owned by the account, including deleted notes.

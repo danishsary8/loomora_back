@@ -750,3 +750,10 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - With a seeded 150-character label, `migrate:rollback --step=1` exited 1 with "Cannot roll back B-045: 1 focus session label(s) are longer than 120 characters." The column stayed 200, the label stayed 150 characters, and the migration stayed recorded.
   - Local environment notes, not repository changes: this PHP build has `pdo_sqlite` disabled, so the SQLite runs used `php -d extension=pdo_sqlite -d extension=sqlite3`. The Google deletion tests need `OPENSSL_CONF` pointing at PHP's `openssl.cnf` to generate test keys.
 - **Not done here:** the production migration and deploy are an owner step. The frontend F-R3-10 follows after this merges.
+
+### 2026-11-25: B-048 Notes and guest import
+
+- Added standalone and schedule-block notes (D8 and D9), optionally associated with an occurrence date. The API supports reading, paging, editing, soft deletion, and seven-day Undo. Deleting a schedule block keeps its notes as standalone notes.
+- POST /import accepts optional notes, preserves provided timestamps and skips existing owned IDs including deleted notes. Send referenced blocks before their notes or in the same request. Each request is atomic.
+- Full SQLite baseline with Notes passed 566 tests, with 42 PostgreSQL-only skips. Final Notes subset passed 7 tests each on SQLite and PostgreSQL. The full PostgreSQL run passed 607 tests and hit one existing Google-deletion clock-boundary failure. PostgreSQL migrate, empty rollback and re-migrate passed, and the populated rollback test preserved the note.
+- Pint, PHPStan, Composer locked checks, Redocly (four existing warnings) and the diff check passed. Deploy the Notes migration before the Notes client calls the API.

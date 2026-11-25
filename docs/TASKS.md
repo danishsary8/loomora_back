@@ -463,3 +463,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] The migration widens the column, and its rollback refuses while any label is longer than 120.
 - [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Redocly lint and `composer audit` pass.
 - **Out of scope:** frontend F-R3-10, production migration and deploy.
+
+### B-048: Notes and guest import
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** D8 and D9, standalone and schedule-block notes with optional occurrence dates, plus idempotent guest import.
+- **Plan:**
+  1. Add API tests for ownership, note lifecycle and guest import.
+  2. Add the notes table and authenticated, account-scoped endpoints.
+  3. Extend the atomic import with the same note validation and reference rules.
+  4. Publish OpenAPI and verify compatibility, rollback and both database suites.
