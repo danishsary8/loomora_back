@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -27,9 +28,14 @@ use Illuminate\Support\Carbon;
  * @property string $payload_hash
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 class FocusSession extends Model
 {
+    use SoftDeletes;
+
+    public const RESTORE_WITHIN_DAYS = 7;
+
     public const MODE_COUNTDOWN = 'countdown';
 
     public const MODE_STOPWATCH = 'stopwatch';

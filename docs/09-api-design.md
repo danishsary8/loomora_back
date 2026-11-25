@@ -54,6 +54,7 @@ Google-only accounts with no password receive `422` on `DELETE /me`. The planner
 | Method | Path | Purpose |
 |---|---|---|
 | GET | /streak?date= | current_streak, longest_streak, today_counted |
+| GET | /stats/summary?from=&to= | Daily and total Focus, to-do and effective schedule metrics, plus focus milliseconds by mode. Up to 92 dates inclusive. |
 | POST | /import | guest data import (idempotent, transactional) |
 | POST | /feedback | message |
 | GET | /health | `{ "status": "ok" }` (public) |
@@ -64,6 +65,8 @@ Google-only accounts with no password receive `422` on `DELETE /me`. The planner
 - Set `FRONTEND_URL` to one canonical frontend origin per API environment. CORS and Google, verification and reset links use this setting. Preview auth uses a separate approved staging pair.
 - API resources return `id`, fields above and `created_at`. OpenAPI file at `docs/openapi.yaml`, kept in sync.
 - Later releases add endpoints (subtasks, repeats, reminders, timers, notes, analytics) in their own docs.
+
+Guest Focus history is imported through POST /import in batches of up to 500 finished sessions. Send linked planner records in the same or an earlier request and exclude deleted sessions. Focus import uses the recording contract and replay rules. A failed request rolls back every section of that request.
 
 ### Notes
 

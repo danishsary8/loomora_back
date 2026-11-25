@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Import;
 
+use App\Http\Requests\Focus\StoreFocusSessionRequest;
 use App\Http\Requests\NoteRequest;
 use App\Http\Requests\Todo\TodoRules;
 use App\Models\DailyIntention;
@@ -10,7 +11,9 @@ use App\Models\ScheduleCheckin;
 use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
 use App\Models\Todo;
+use App\Support\FocusSessionPayload;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Validator as ValidatorFactory;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -26,6 +29,11 @@ class ImportRequest extends FormRequest
     public const MAX_CHECKINS = 10000;
 
     public const MAX_INTENTIONS = 1000;
+
+    public const MAX_FOCUS_SESSIONS = 500;
+
+    /** @var list<array<string, mixed>> */
+    private array $validatedFocusSessions = [];
 
     /**
      * @return array<string, mixed>
@@ -75,6 +83,10 @@ class ImportRequest extends FormRequest
             'exceptions.*.start_time' => ['nullable', 'date_format:H:i'],
             'exceptions.*.end_time' => ['nullable', 'date_format:H:i'],
 
+            'focus_sessions' => ['sometimes', 'array', 'list', 'max:'.self::MAX_FOCUS_SESSIONS],
+            'focus_sessions.*' => ['array'],
+            'focus_sessions.*.id' => ['required', 'uuid', 'distinct:ignore_case'],
+
             'daily_intentions' => ['sometimes', 'array', 'max:'.self::MAX_INTENTIONS],
             'daily_intentions.*.date' => ['required', 'date_format:Y-m-d', 'distinct'],
             'daily_intentions.*.text' => ['required', 'string', 'min:1', 'max:'.DailyIntention::MAX_TEXT_LENGTH],
@@ -98,6 +110,7 @@ class ImportRequest extends FormRequest
                     return;
                 }
 
+                $this->checkFocusSessions($validator);
                 $this->checkTimesAndDates($validator);
                 $this->checkSubtasks($validator);
                 $this->checkRepeats($validator);
@@ -109,6 +122,41 @@ class ImportRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public function importData(): array
+    {
+        $data = $this->validated();
+        if (array_key_exists('focus_sessions', $data)) {
+            $data['focus_sessions'] = $this->validatedFocusSessions;
+        }
+
+        return $data;
+    }
+
+    private function checkFocusSessions(Validator $validator): void
+    {
+        foreach ($this->input('focus_sessions', []) as $index => $row) {
+            $session = ValidatorFactory::make($row, [
+                ...StoreFocusSessionRequest::payloadRules(),
+                'deleted_at' => ['prohibited'],
+            ])->after(function (Validator $session): void {
+                if ($session->errors()->isEmpty()) {
+                    StoreFocusSessionRequest::validateConsistency($session, FocusSessionPayload::fromInput($session->validated()));
+                }
+            });
+
+            if ($session->errors()->isEmpty()) {
+                $this->validatedFocusSessions[] = $session->validated();
+
+                continue;
+            }
+
+            foreach ($session->errors()->messages() as $field => $messages) {
+                $validator->errors()->merge(["focus_sessions.{$index}.{$field}" => $messages]);
+            }
+        }
     }
 
     private function checkTimesAndDates(Validator $validator): void

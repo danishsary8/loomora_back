@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\ScheduleCheckinController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleExceptionController;
 use App\Http\Controllers\Api\V1\ScheduleItemController;
+use App\Http\Controllers\Api\V1\StatsSummaryController;
 use App\Http\Controllers\Api\V1\StreakController;
 use App\Http\Controllers\Api\V1\TodoController;
 use App\Http\Controllers\Api\V1\TodoRestoreController;
@@ -59,6 +60,7 @@ Route::prefix('v1')->group(function () {
         Route::get('days/{date}/intention', [DailyIntentionController::class, 'show'])->name('days.intention.show');
         Route::put('days/{date}/intention', [DailyIntentionController::class, 'update'])->name('days.intention.update');
 
+        Route::get('stats/summary', StatsSummaryController::class)->name('stats.summary');
         Route::get('streak', [StreakController::class, 'show'])->name('streak');
 
         Route::get('todos', [TodoController::class, 'index'])->name('todos.index');
@@ -79,6 +81,8 @@ Route::prefix('v1')->group(function () {
         Route::get('focus-sessions', [FocusSessionController::class, 'index'])->name('focus-sessions.index');
         Route::post('focus-sessions', [FocusSessionController::class, 'store'])->name('focus-sessions.store');
         Route::get('focus-sessions/{focusSession}', [FocusSessionController::class, 'show'])->name('focus-sessions.show');
+        Route::delete('focus-sessions/{focusSession}', [FocusSessionController::class, 'destroy'])->name('focus-sessions.destroy');
+        Route::post('focus-sessions/{focusSession}/restore', [FocusSessionController::class, 'restore'])->name('focus-sessions.restore');
 
         Route::get('reminders/due', [ReminderController::class, 'due'])->name('reminders.due');
         Route::post('todos/{todo}/reminder/dismiss', [ReminderController::class, 'dismiss'])->name('reminders.dismiss');

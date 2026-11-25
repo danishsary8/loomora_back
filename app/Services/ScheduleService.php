@@ -54,7 +54,8 @@ class ScheduleService
             ->get();
 
         $result = [];
-        for ($day = CarbonImmutable::parse($from); $day->toDateString() <= $to; $day = $day->addDay()) {
+        $end = CarbonImmutable::parse($to);
+        for ($day = CarbonImmutable::parse($from); $day->lte($end); $day = $day->addDay()) {
             $date = $day->toDateString();
             $result[$date] = [];
 

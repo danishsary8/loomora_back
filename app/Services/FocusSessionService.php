@@ -26,7 +26,7 @@ class FocusSessionService
     public function record(User $user, FocusSessionPayload $payload): array
     {
         return DB::transaction(function () use ($user, $payload) {
-            $stored = FocusSession::find($payload->id);
+            $stored = FocusSession::withTrashed()->find($payload->id);
             if ($stored !== null) {
                 return [$this->replay($user, $stored, $payload), false];
             }
@@ -36,7 +36,7 @@ class FocusSessionService
             $session = (new FocusSession)->forceFill($payload->attributes($user));
             $session->updateTimestamps();
             $created = FocusSession::query()->insertOrIgnore($session->getAttributes()) === 1;
-            $stored = FocusSession::findOrFail($payload->id);
+            $stored = FocusSession::withTrashed()->findOrFail($payload->id);
 
             return [$created ? $stored : $this->replay($user, $stored, $payload), $created];
         });

@@ -39,6 +39,8 @@ tags:
     description: Moving guest data into an account.
   - name: Days
     description: Things the user sets for a single day.
+  - name: Analytics
+    description: Daily Focus, to-do and schedule metrics.
   - name: Streak
     description: Days in a row with something checked off.
   - name: Notes
@@ -1764,6 +1766,7 @@ paths:
         accepted). `schedule_item_id` must be the user's own existing schedule item. An unknown or another
         account's link is a 422 with the same message. The linked rows are checked after the replay check, so
         retrying an already stored session still returns 200 after its schedule item was deleted.
+        An identical retry of a deleted session returns its stored payload with 200 and leaves it deleted.
       requestBody:
         required: true
         content:
@@ -1825,8 +1828,8 @@ paths:
     get:
       tags: [Focus]
       operationId: getFocusSession
-      summary: One Focus session
-      description: An unknown session and another user's session both return 404.
+      summary: One active Focus session
+      description: An unknown, deleted, or another user's session returns 404.
       responses:
         '200':
           $ref: '#/components/responses/FocusSessionResponse'
@@ -1834,6 +1837,106 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Focus]
+      operationId: deleteFocusSession
+      summary: Soft-delete a finished Focus session
+      description: Deleted sessions are hidden from day lists and reads. A repeat delete keeps the original undo deadline.
+      responses:
+        '204':
+          description: The session is deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /focus-sessions/{focusSession}/restore:
+    parameters:
+      - $ref: '#/components/parameters/FocusSessionId'
+    post:
+      tags: [Focus]
+      operationId: restoreFocusSession
+      summary: Restore a Focus session
+      description: Restore an owned session deleted less than seven days ago. An already active session is returned as-is.
+      responses:
+        '200':
+          $ref: '#/components/responses/FocusSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: The undo deadline has expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /stats/summary:
+    get:
+      tags: [Analytics]
+      operationId: getStatsSummary
+      summary: Daily analytics and plan versus reality
+      description: |
+        Accepts calendar dates in years 0001 through 9999. Returns one row per date, including dates
+        with no activity. Focus sessions use their stored local date, to-do completions
+        use the account time zone, and to-dos due use their stored due date. Deleted
+        to-dos are excluded. Planned block minutes and check-ins reflect the schedule
+        after overrides and skips. Focus with a stored to-do or block link counts as
+        linked; all other focus counts as unplanned. Use GET /streak for streak data.
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          required: true
+          description: Must be on or after from and at most 91 days later.
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Daily and total metrics for the account.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [days, totals, by_mode]
+                    properties:
+                      days:
+                        type: array
+                        minItems: 1
+                        maxItems: 92
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/StatsMetrics'
+                            - type: object
+                              required: [local_date]
+                              properties:
+                                local_date: { type: string, format: date }
+                      totals:
+                        $ref: '#/components/schemas/StatsMetrics'
+                      by_mode:
+                        type: object
+                        description: Total focus milliseconds by timer mode.
+                        required: [countdown, stopwatch]
+                        properties:
+                          countdown: { type: integer, format: int64, minimum: 0 }
+                          stopwatch: { type: integer, format: int64, minimum: 0 }
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /streak:
     get:
@@ -1967,6 +2070,18 @@ paths:
                       schedule_item_id: {type: string, format: uuid}
                       date: {type: string, format: date}
                       done_at: {type: [string, 'null'], format: date-time}
+                focus_sessions:
+                  type: array
+                  maxItems: 500
+                  description: |
+                    Finished guest sessions. Exclude deleted sessions and send linked to-dos
+                    and schedule items in the same or an earlier request. UUIDs must be unique
+                    within a request. An identical replay is skipped; a changed payload or an
+                    ID already owned by another account returns 409 and rolls back the request.
+                    An identical replay of an account-deleted session leaves it deleted.
+                    Local dates and durations are calculated as for POST /focus-sessions.
+                  items:
+                    $ref: '#/components/schemas/FocusSessionInput'
                 notes:
                   type: array
                   maxItems: 500
@@ -2015,6 +2130,7 @@ paths:
                       schedule_items: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       exceptions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       checkins: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      focus_sessions: {type: object, description: Returned when the request includes focus_sessions., required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       notes: {type: object, description: Returned when the request includes notes., required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       daily_intentions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
               example:
@@ -2026,6 +2142,8 @@ paths:
                   daily_intentions: {created: 0, skipped: 0}
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: A Focus session ID conflicts with an existing session. Nothing in the request is imported.
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -2087,6 +2205,19 @@ components:
         format: uuid
 
   schemas:
+    StatsMetrics:
+      type: object
+      required: [focus_ms, break_ms, sessions, todos_done, todos_due, planned_block_minutes, blocks_checked, focus_ms_linked, focus_ms_unplanned]
+      properties:
+        focus_ms: { type: integer, format: int64, minimum: 0 }
+        break_ms: { type: integer, format: int64, minimum: 0 }
+        sessions: { type: integer, minimum: 0 }
+        todos_done: { type: integer, minimum: 0 }
+        todos_due: { type: integer, minimum: 0 }
+        planned_block_minutes: { type: integer, minimum: 0 }
+        blocks_checked: { type: integer, minimum: 0 }
+        focus_ms_linked: { type: integer, format: int64, minimum: 0 }
+        focus_ms_unplanned: { type: integer, format: int64, minimum: 0 }
     NoteFields:
       type: object
       properties:
