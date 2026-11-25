@@ -750,3 +750,8 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - With a seeded 150-character label, `migrate:rollback --step=1` exited 1 with "Cannot roll back B-045: 1 focus session label(s) are longer than 120 characters." The column stayed 200, the label stayed 150 characters, and the migration stayed recorded.
   - Local environment notes, not repository changes: this PHP build has `pdo_sqlite` disabled, so the SQLite runs used `php -d extension=pdo_sqlite -d extension=sqlite3`. The Google deletion tests need `OPENSSL_CONF` pointing at PHP's `openssl.cnf` to generate test keys.
 - **Not done here:** the production migration and deploy are an owner step. The frontend F-R3-10 follows after this merges.
+
+### 2026-11-25: B-050 Google deletion regression clock
+
+- The invalid assertion dataset builds future claims one second past the accepted clock window. A live clock can move before verification and turn the intended invalid fixture into a valid one. Freeze the clock for that dataset, including the request and JWT preparation.
+- The Google deletion feature suite passed all 38 tests on both SQLite and PostgreSQL. Pint and the diff check passed. This is a test-only change with no deployment or OpenAPI dependency.

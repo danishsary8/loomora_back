@@ -463,3 +463,13 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] The migration widens the column, and its rollback refuses while any label is longer than 120.
 - [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Redocly lint and `composer audit` pass.
 - **Out of scope:** frontend F-R3-10, production migration and deploy.
+
+### B-050: Stabilize Google deletion clock-boundary tests
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** Keep B-042 regression checks deterministic when signing or verifying a test JWT crosses the second used to build the boundary fixture.
+- **Plan:**
+  1. Confirm the affected test uses a live clock for both the boundary input and verification.
+  2. Freeze the test clock and leave the production verifier untouched.
+  3. Run the Google deletion suite on SQLite and PostgreSQL, then open a test-only PR.

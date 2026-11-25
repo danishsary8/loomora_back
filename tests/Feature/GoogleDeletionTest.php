@@ -193,6 +193,7 @@ it('exchanges with PKCE, confirms once and deletes only the bound account', func
 });
 
 it('rejects invalid Google assertions with a single proof error', function (string $case) {
+    $this->freezeSecond();
     $challenge = startGoogleDeletion($this);
     $now = now()->timestamp;
     $overrides = match ($case) {
