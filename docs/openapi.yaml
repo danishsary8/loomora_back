@@ -1594,6 +1594,7 @@ paths:
         accepted). `schedule_item_id` must be the user's own existing schedule item. An unknown or another
         account's link is a 422 with the same message. The linked rows are checked after the replay check, so
         retrying an already stored session still returns 200 after its schedule item was deleted.
+        An identical retry of a deleted session returns its stored payload with 200 and leaves it deleted.
       requestBody:
         required: true
         content:
@@ -1655,8 +1656,8 @@ paths:
     get:
       tags: [Focus]
       operationId: getFocusSession
-      summary: One Focus session
-      description: An unknown session and another user's session both return 404.
+      summary: One active Focus session
+      description: An unknown, deleted, or another user's session returns 404.
       responses:
         '200':
           $ref: '#/components/responses/FocusSessionResponse'
@@ -1664,6 +1665,44 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Focus]
+      operationId: deleteFocusSession
+      summary: Soft-delete a finished Focus session
+      description: Deleted sessions are hidden from day lists and reads. A repeat delete keeps the original undo deadline.
+      responses:
+        '204':
+          description: The session is deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /focus-sessions/{focusSession}/restore:
+    parameters:
+      - $ref: '#/components/parameters/FocusSessionId'
+    post:
+      tags: [Focus]
+      operationId: restoreFocusSession
+      summary: Restore a Focus session
+      description: Restore an owned session deleted less than seven days ago. An already active session is returned as-is.
+      responses:
+        '200':
+          $ref: '#/components/responses/FocusSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: The undo deadline has expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /stats/summary:
     get:
@@ -1859,6 +1898,18 @@ paths:
                       schedule_item_id: {type: string, format: uuid}
                       date: {type: string, format: date}
                       done_at: {type: [string, 'null'], format: date-time}
+                focus_sessions:
+                  type: array
+                  maxItems: 500
+                  description: |
+                    Finished guest sessions. Exclude deleted sessions and send linked to-dos
+                    and schedule items in the same or an earlier request. UUIDs must be unique
+                    within a request. An identical replay is skipped; a changed payload or an
+                    ID already owned by another account returns 409 and rolls back the request.
+                    An identical replay of an account-deleted session leaves it deleted.
+                    Local dates and durations are calculated as for POST /focus-sessions.
+                  items:
+                    $ref: '#/components/schemas/FocusSessionInput'
                 daily_intentions:
                   type: array
                   maxItems: 1000
@@ -1901,6 +1952,7 @@ paths:
                       schedule_items: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       exceptions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       checkins: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      focus_sessions: {type: object, description: Returned when the request includes focus_sessions., required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       daily_intentions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
               example:
                 data:
@@ -1911,6 +1963,8 @@ paths:
                   daily_intentions: {created: 0, skipped: 0}
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: A Focus session ID conflicts with an existing session. Nothing in the request is imported.
         '422':
           $ref: '#/components/responses/ValidationError'
 

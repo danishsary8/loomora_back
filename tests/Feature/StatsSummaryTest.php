@@ -115,3 +115,53 @@ it('accepts the first common-era date in a time zone ahead of UTC', function () 
         ->assertOk()
         ->assertJsonPath('data.days.0.local_date', '0001-01-01');
 });
+
+it('counts imported Focus on its local date and excludes it until restored after deletion', function () {
+    $this->actingAs(User::factory()->create(['timezone' => 'Asia/Phnom_Penh']), 'sanctum');
+    $item = Str::uuid()->toString();
+    $id = Str::uuid()->toString();
+    $body = [
+        'schedule_items' => [[
+            'id' => $item, 'title' => 'Reading', 'start_time' => '00:00', 'end_time' => '01:00',
+            'days' => [1], 'starts_on' => '2026-11-24',
+        ]],
+        'focus_sessions' => [[
+            'id' => $id,
+            'mode' => 'stopwatch',
+            'end_reason' => 'completed',
+            'started_at' => '2026-11-23T17:30:00.000Z',
+            'ended_at' => '2026-11-23T17:31:30.000Z',
+            'schedule_item_id' => $item,
+            'segments' => [[
+                'type' => 'focus',
+                'started_at' => '2026-11-23T17:30:00.000Z',
+                'ended_at' => '2026-11-23T17:31:30.000Z',
+                'active_ms' => 90000,
+            ]],
+        ]],
+    ];
+    $summary = '/api/v1/stats/summary?from=2026-11-23&to=2026-11-24';
+    $session = '/api/v1/focus-sessions/'.$id;
+
+    $this->postJson('/api/v1/import', $body)->assertOk()->assertJsonPath('data.focus_sessions.created', 1);
+    $this->getJson($summary)->assertOk()
+        ->assertJsonPath('data.days.0.sessions', 0)
+        ->assertJsonPath('data.days.1.local_date', '2026-11-24')
+        ->assertJsonPath('data.days.1.planned_block_minutes', 60)
+        ->assertJsonPath('data.days.1.focus_ms_linked', 90000)
+        ->assertJsonPath('data.totals.sessions', 1);
+
+    $this->deleteJson($session)->assertNoContent();
+    $this->postJson('/api/v1/import', $body)->assertOk()->assertJsonPath('data.focus_sessions.skipped', 1);
+    $this->getJson($summary)->assertOk()
+        ->assertJsonPath('data.days.1.planned_block_minutes', 60)
+        ->assertJsonPath('data.days.1.sessions', 0)
+        ->assertJsonPath('data.totals.focus_ms', 0)
+        ->assertJsonPath('data.by_mode.stopwatch', 0);
+
+    $this->postJson($session.'/restore')->assertOk();
+    $this->getJson($summary)->assertOk()
+        ->assertJsonPath('data.days.1.focus_ms_linked', 90000)
+        ->assertJsonPath('data.totals.sessions', 1)
+        ->assertJsonPath('data.by_mode.stopwatch', 90000);
+});

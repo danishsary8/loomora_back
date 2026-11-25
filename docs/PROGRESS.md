@@ -753,6 +753,27 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - Local environment notes, not repository changes: this PHP build has `pdo_sqlite` disabled, so the SQLite runs used `php -d extension=pdo_sqlite -d extension=sqlite3`. The Google deletion tests need `OPENSSL_CONF` pointing at PHP's `openssl.cnf` to generate test keys.
 - **Not done here:** the production migration and deploy are an owner step. The frontend F-R3-10 follows after this merges.
 
+### 2026-11-25: B-046 Focus History delete and restore
+
+- Continued the saved Claude RED commit d71edbd and implemented D3-D5. The authenticated delete endpoint is idempotent and active history reads hide deleted sessions. Restore returns the same session until seven days have elapsed, then returns 410.
+- Recording replay looks up deleted rows by the same client UUID and preserves their deletion state. Other accounts still receive 404 on history mutations and 409 on an ID collision at recording.
+- Added millisecond deleted_at. Rollback locks the PostgreSQL table before confirming there is no deleted state to lose. Regression tests exercise both allowed and refused rollback paths.
+- Full SQLite Pest passed 574 tests with 42 PostgreSQL-only skips. PostgreSQL passed 616. Pint, PHPStan, Redocly (four existing warnings), strict Composer validation, both audits and the diff check passed.
+- Frontend F-R3-14 follows the backend migration and OpenAPI. The owner approves production deployment.
+- Refresh after PR #55: merged v2-rebuild at 67f4aef and preserved both task entries. SQLite passed 574 tests (42 PostgreSQL-only skips), and PostgreSQL passed 616. Pint, PHPStan, Redocly (four existing warnings), and the locked Composer audit passed.
+
+### 2026-11-25: B-050 Google deletion regression clock
+
+- The invalid assertion dataset builds future claims one second past the accepted clock window. A live clock can move before verification and turn the intended invalid fixture into a valid one. Freeze the clock for that dataset, including the request and JWT preparation.
+- The Google deletion feature suite passed all 38 tests on both SQLite and PostgreSQL. Pint and the diff check passed. This is a test-only change with no deployment or OpenAPI dependency.
+
+### 2026-11-25: B-049 Guest Focus history import
+
+- POST /import now accepts up to 500 finished Focus sessions per request. The optional focus_sessions result reports created and skipped counts. Missing links and invalid payloads return indexed validation errors. Changed replays and IDs belonging to another account return 409. The entire request rolls back on failure.
+- Reuses the B-043 recording rules and canonical payload. Linked planner rows must be in the account or earlier in the same import request. Deleted guest sessions are excluded under D4.
+- Full Pest passed on SQLite (565 passed, 42 PostgreSQL-only skips) and PostgreSQL (607 passed). Final focused tests passed on both databases (6 each). Pint, PHPStan, locked Composer checks, Redocly (four existing warnings) and the diff check passed.
+- F-R3-15 follows this contract and keeps local data until every batch succeeds. No migration is needed. Roll out the import client before relying on Analytics for converted guests.
+
 ### 2026-11-25: B-047 Analytics and Plan vs Reality summary
 
 - Added authenticated GET /api/v1/stats/summary with up to 92 inclusive dates, zero-filled daily rows, combined totals, and focus milliseconds split by timer mode. Focus uses stored local dates; to-do completions use the account time zone.

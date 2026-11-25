@@ -7,9 +7,11 @@ use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
 use App\Models\Todo;
 use App\Models\User;
+use App\Support\FocusSessionPayload;
 use App\Support\LocalDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Writes validated guest data (docs/08 rule 9) in one transaction.
@@ -20,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  */
 class ImportService
 {
-    public function __construct(private readonly StreakService $streak) {}
+    public function __construct(private readonly StreakService $streak, private readonly FocusSessionService $focus) {}
 
     /**
      * @param  array<string, list<array<string, mixed>>>  $data  already validated
@@ -36,6 +38,10 @@ class ImportService
                 'checkins' => $this->checkins($user, $data['checkins'] ?? []),
                 'daily_intentions' => $this->intentions($user, $data['daily_intentions'] ?? []),
             ];
+
+            if (array_key_exists('focus_sessions', $data)) {
+                $result['focus_sessions'] = $this->focusSessions($user, $data['focus_sessions']);
+            }
 
             $this->streak->recompute($user);
 
@@ -209,5 +215,29 @@ class ImportService
         if (! empty($row['created_at'])) {
             $model->setAttribute('created_at', $row['created_at']);
         }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return array{created: int, skipped: int}
+     */
+    private function focusSessions(User $user, array $rows): array
+    {
+        $created = 0;
+        foreach ($rows as $index => $row) {
+            try {
+                [, $inserted] = $this->focus->record($user, FocusSessionPayload::fromInput($row));
+            } catch (ValidationException $exception) {
+                $errors = [];
+                foreach ($exception->errors() as $field => $messages) {
+                    $errors["focus_sessions.{$index}.{$field}"] = $messages;
+                }
+
+                throw ValidationException::withMessages($errors);
+            }
+            $created += (int) $inserted;
+        }
+
+        return ['created' => $created, 'skipped' => count($rows) - $created];
     }
 }
