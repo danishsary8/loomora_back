@@ -467,7 +467,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 ### B-046: Focus session soft delete and restore
 
 - **Status:** review
-- **Owner:** claude
+- **Owner:** Codex
 - **Scope:** Let a user delete a finished Focus session and undo it, mirroring the to-do soft delete (B-022). Owner-approved 2026-11-25 (spec S2, decisions D3 to D5). `DELETE /focus-sessions/{id}` returns 204 and is idempotent. `POST /focus-sessions/{id}/restore` returns the session if it was deleted less than 7 days ago, otherwise 410, and returns a session that is not deleted unchanged. Deleted sessions are hidden from list and show. An identical replay of a deleted session's UUID returns 200 and the session stays deleted (D3); a changed payload is still a 409. No cascade from to-do or schedule item deletes (D5), and no purge command. The frontend F-R3-14 follows after this merges. Running the migration in production is an owner deploy step.
 - **Plan:**
   1. Pest tests first for delete, restore, the 7-day window, cross-user 404, replay after delete (D3), conflict after delete and account deletion.

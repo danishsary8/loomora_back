@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'restore_expired' => 'This Focus session was deleted more than 7 days ago and can no longer be restored.',
     'end_before_start' => 'The session cannot end before it starts.',
     'segment_out_of_order' => 'Segments must be in order, must not overlap and must stay inside the session.',
     'segment_active_too_long' => 'Active time cannot be longer than the segment.',
