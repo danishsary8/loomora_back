@@ -730,6 +730,6 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - B-025 (email true, Google-only false): `HasPasswordTest`. `test` passed on the merge `717f275`.
   - B-026 (the next `remind_at` keeps its distance in UTC): the reminder cases in `RepeatTodoTest`. `test` passed on the merge `e167963`.
   - B-027 (fixture cases pass and no inline local-date code): `LocalDateTest` passed on the merge `e5be131`. A search of `app/` on `13c64ff` finds no `CarbonImmutable::now($user->timezone)` or other timezone-based date code outside `App\Support\LocalDate`.
-  - B-043 and B-044 (planner review of PR #47 and #48): both PRs were reviewed and merged by the owner (`2dfc976`, `13c64ff`).
+  - B-043 and B-044 (planner review of PR #47 and #48): GitHub has no review records on either PR. The planner approved B-043 on 2026-11-23 (Open questions above: Q-B043-0 to 6 answered, with Q-B043-3 amended and Q-B043-5 deferred) and B-044 on 2026-11-24 (Q-B044-1 to 4 and subtask provenance; DECISIONS I9). The owner merged both PRs (`2dfc976`, `13c64ff`).
 - **Left open on purpose:** the lint boxes of B-022 to B-027 (lines 245, 256, 267, 276, 286 and 297) include Redocly lint, which is not part of backend CI, and those sessions record that Redocly was not run. They stay unticked. Pint, PHPStan and tests did pass in CI.
 - **Checks:** `npx @redocly/cli lint docs/openapi.yaml` (unchanged, valid) and `git diff --check`. No code changed, so the PHP checks were not run.
