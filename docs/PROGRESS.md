@@ -733,3 +733,20 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - B-043 and B-044 (planner review of PR #47 and #48): GitHub has no review records on either PR. The planner approved B-043 on 2026-11-23 (Open questions above: Q-B043-0 to 6 answered, with Q-B043-3 amended and Q-B043-5 deferred) and B-044 on 2026-11-24 (Q-B044-1 to 4 and subtask provenance; DECISIONS I9). The owner merged both PRs (`2dfc976`, `13c64ff`).
 - **Left open on purpose:** the lint boxes of B-022 to B-027 (lines 245, 256, 267, 276, 286 and 297) include Redocly lint, which is not part of backend CI, and those sessions record that Redocly was not run. They stay unticked. Pint, PHPStan and tests did pass in CI.
 - **Checks:** `npx @redocly/cli lint docs/openapi.yaml` (unchanged, valid) and `git diff --check`. No code changed, so the PHP checks were not run.
+
+### 2026-11-25: B-045 Focus session label up to 200 characters
+
+- **Why:** the owner decided (2026-11-25, spec S1 / D1) that Focus History keeps full to-do and schedule item titles, which can be 200 characters. The session `label` stopped at 120, so the frontend F-R3-10 snapshot was refused. Nothing may be truncated.
+- **Changed:**
+  - `FocusSession::MAX_LABEL_LENGTH` goes from 120 to 200. Validation (`max:` counts characters) and the error message follow it.
+  - The original `create_focus_sessions_table` migration now states its length as the literal `120` instead of the constant, so a fresh database still builds the B-043 history before this change.
+  - The new migration `2026_11_25_000000_widen_focus_session_label` widens `focus_sessions.label` to `varchar(200)`. Its `down()` refuses with a `RuntimeException` naming how many labels are longer than 120, so a rollback can never truncate. When every label fits, it narrows back to 120.
+  - Contract: `docs/openapi.yaml` (`label` `maxLength: 200` and the bound text) and `docs/B-043-focus-session-design.md` (three places, marked "amended by B-045"). `docs/08-data-model.md` does not state the label length. Request and response shapes are unchanged, and existing labels are unchanged.
+- **Tests (RED, then GREEN):** new cases in `FocusSessionTest` cover a 200-character label with two-byte and emoji characters at the boundary stored and read back exactly, a 201-character label being a 422 on `label` with nothing stored, an identical retry of a 200-character label returning 200, and a 120-character session staying readable through show and list. The existing bound message is now 200. The new `FocusSessionLabelMigrationTest` covers the column being 200 on PostgreSQL, rollback refusing with a 150-character label (label and column unchanged), and rollback then re-migration with a 120-character label. Before the implementation, the new tests failed: SQLite 6 failed, PostgreSQL 7 failed. After it, they pass.
+- **Verified (Windows, PHP 8.4, local PostgreSQL 17 on port 55432; CI uses 16):**
+  - Full Pest: SQLite 560 passed and 42 skipped (PostgreSQL-only), PostgreSQL 602 passed.
+  - Pint `--test`, PHPStan (no errors), Redocly (valid, 4 existing warnings), `composer audit` (no advisories) and `git diff --check` all passed.
+  - On a fresh PostgreSQL database, `migrate` gave a 200 column, `migrate:rollback --step=1` gave 120, and `migrate` again gave 200.
+  - With a seeded 150-character label, `migrate:rollback --step=1` exited 1 with "Cannot roll back B-045: 1 focus session label(s) are longer than 120 characters." The column stayed 200, the label stayed 150 characters, and the migration stayed recorded.
+  - Local environment notes, not repository changes: this PHP build has `pdo_sqlite` disabled, so the SQLite runs used `php -d extension=pdo_sqlite -d extension=sqlite3`. The Google deletion tests need `OPENSSL_CONF` pointing at PHP's `openssl.cnf` to generate test keys.
+- **Not done here:** the production migration and deploy are an owner step. The frontend F-R3-10 follows after this merges.
