@@ -75,3 +75,29 @@ it('enforces the Focus import chunk boundary and unique client IDs', function ()
 
     $this->assertDatabaseCount('focus_sessions', 0);
 });
+
+it('skips an identical replay of an account-deleted session without restoring it', function () {
+    $this->actingAs(User::factory()->create(), 'sanctum');
+    $session = guestFocusSession();
+    $path = '/api/v1/focus-sessions/'.$session['id'];
+    $body = ['focus_sessions' => [$session]];
+
+    $this->postJson('/api/v1/import', $body)->assertOk()->assertJsonPath('data.focus_sessions.created', 1);
+    $this->deleteJson($path)->assertNoContent();
+    $deletedAt = FocusSession::withTrashed()->findOrFail($session['id'])->deleted_at;
+
+    $this->postJson('/api/v1/import', $body)->assertOk()->assertJsonPath('data.focus_sessions.skipped', 1);
+    $this->postJson('/api/v1/import', ['focus_sessions' => [[...$session, 'label' => 'Changed']]])->assertConflict();
+    $this->getJson($path)->assertNotFound();
+    expect(FocusSession::withTrashed()->findOrFail($session['id'])->deleted_at)->toEqual($deletedAt);
+});
+
+it('accepts exactly 500 distinct sessions in one authenticated request', function () {
+    $sessions = array_map(fn () => guestFocusSession(), range(1, 500));
+    $body = ['focus_sessions' => $sessions];
+    $this->postJson('/api/v1/import', $body)->assertUnauthorized();
+
+    $this->actingAs(User::factory()->create(), 'sanctum');
+    $this->postJson('/api/v1/import', $body)->assertOk()->assertJsonPath('data.focus_sessions.created', 500);
+    $this->assertDatabaseCount('focus_sessions', 500);
+});

@@ -76,7 +76,7 @@ The proposal rejected an `ended_at` more than 5 minutes ahead of the server cloc
 ## Idempotency and concurrency
 
 1. The request is validated (shape and internal consistency) and normalised to UTC milliseconds and lower-case UUIDs. Its SHA-256 fingerprint is stored as `payload_hash`. Equal instants written differently (`Z` or `+07:00`) are identical.
-2. In one transaction, an existing row with the id is compared first. The same owner and fingerprint return 200 with the stored row; anything else is a 409. This runs **before** the link check, so a retry of a stored session still returns 200 after its schedule item was deleted.
+2. In one transaction, an existing row with the id is compared first, including deleted rows (B-046). The same owner and fingerprint return 200 with the stored row; anything else is a 409. This runs **before** the link check, so a retry of a stored session still returns 200 after its schedule item was deleted. An identical replay of a deleted session still returns 200 and leaves it deleted (D3).
 3. Otherwise the linked to-do (including soft-deleted) or schedule item is read `FOR SHARE` for the current user, so it cannot be deleted before the insert. A missing link is a 422 with `errors.todo_id` or `errors.schedule_item_id` set to "The selected item was not found."
 4. The insert uses `INSERT … ON CONFLICT DO NOTHING` on the primary key. A concurrent request with the same id waits for the winner's commit, inserts nothing, re-reads the winning row and applies step 2 (200 or 409). The PostgreSQL concurrency test drives this real race.
 
@@ -108,7 +108,7 @@ There is one index, `(user_id, local_date, started_at)`, for the day list. Postg
 - `focus_ms > 0`, `break_ms >= 0` and `paused_ms >= 0`
 - at most one link
 
-There are no soft deletes, because B-043 has no delete endpoint. Durations are `bigint` because no upper bound was approved.
+B-046 adds a nullable millisecond-precision deleted_at. Durations are `bigint` because no upper bound was approved.
 
 ## Frontend handoff (F-R3-01)
 
@@ -131,3 +131,7 @@ There are no soft deletes, because B-043 has no delete endpoint. Durations are `
 - Session deletion and undo, paginated history and search (timer history is a Should).
 - Focus presets storage and sound settings.
 - Whether R4 analytics needs further indexes or aggregates.
+
+### B-046 amendment
+
+DELETE /focus-sessions/{focusSession} returns 204, including on repeat. POST /focus-sessions/{focusSession}/restore returns the same session for an active row or a deletion less than seven days old, and 410 when the undo window expires. Both operations return 404 for unknown or foreign IDs. Active list and show reads hide deleted sessions. Account deletion removes all sessions through the user foreign key. Focus deletes keep the original UUID and the recording replay contract.

@@ -464,6 +464,33 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Redocly lint and `composer audit` pass.
 - **Out of scope:** frontend F-R3-10, production migration and deploy.
 
+### B-046: Focus session soft delete and restore
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** Let a user delete a finished Focus session and undo it, mirroring the to-do soft delete (B-022). Owner-approved 2026-11-25 (spec S2, decisions D3 to D5). `DELETE /focus-sessions/{id}` returns 204 and is idempotent. `POST /focus-sessions/{id}/restore` returns the session if it was deleted less than 7 days ago, otherwise 410, and returns a session that is not deleted unchanged. Deleted sessions are hidden from list and show. An identical replay of a deleted session's UUID returns 200 and the session stays deleted (D3); a changed payload is still a 409. No cascade from to-do or schedule item deletes (D5), and no purge command. The frontend F-R3-14 follows after this merges. Running the migration in production is an owner deploy step.
+- **Plan:**
+  1. Pest tests first for delete, restore, the 7-day window, cross-user 404, replay after delete (D3), conflict after delete and account deletion.
+  2. A migration adds `deleted_at` (millisecond precision). Its `down()` refuses while any session is deleted, so deletion state is never silently lost.
+  3. `FocusSession` uses `SoftDeletes`. The replay path reads with `withTrashed()`, both before the insert and after the `ON CONFLICT` re-read.
+  4. Add the delete and restore endpoints, `docs/openapi.yaml`, the B-043 design (amended by B-046) and a docs/08 rule.
+  5. Run Pest on SQLite and PostgreSQL (including the concurrency race), Pint, PHPStan, Redocly and `composer audit`, plus migrate and rollback on PostgreSQL.
+- [x] Delete hides a session from list and show; restore brings back the same id within 7 days and returns 410 after that.
+- [x] An identical replay of a deleted session returns 200 and keeps it deleted; a changed payload is a 409.
+- [x] Account deletion removes every session, including deleted ones; the migration rollback refuses while any session is deleted.
+- [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Redocly lint and `composer audit` pass.
+- **Out of scope:** frontend F-R3-14, guest import of Focus sessions (D4: deleted sessions will be excluded), production migration and deploy.
+
+### B-050: Stabilize Google deletion clock-boundary tests
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** Keep B-042 regression checks deterministic when signing or verifying a test JWT crosses the second used to build the boundary fixture.
+- **Plan:**
+  1. Confirm the affected test uses a live clock for both the boundary input and verification.
+  2. Freeze the test clock and leave the production verifier untouched.
+  3. Run the Google deletion suite on SQLite and PostgreSQL, then open a test-only PR.
+
 ### B-049: Guest Focus history import
 
 - **Status:** review

@@ -71,6 +71,8 @@ Route::prefix('v1')->group(function () {
         Route::get('focus-sessions', [FocusSessionController::class, 'index'])->name('focus-sessions.index');
         Route::post('focus-sessions', [FocusSessionController::class, 'store'])->name('focus-sessions.store');
         Route::get('focus-sessions/{focusSession}', [FocusSessionController::class, 'show'])->name('focus-sessions.show');
+        Route::delete('focus-sessions/{focusSession}', [FocusSessionController::class, 'destroy'])->name('focus-sessions.destroy');
+        Route::post('focus-sessions/{focusSession}/restore', [FocusSessionController::class, 'restore'])->name('focus-sessions.restore');
 
         Route::get('reminders/due', [ReminderController::class, 'due'])->name('reminders.due');
         Route::post('todos/{todo}/reminder/dismiss', [ReminderController::class, 'dismiss'])->name('reminders.dismiss');
