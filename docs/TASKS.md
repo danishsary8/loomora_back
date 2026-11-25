@@ -490,3 +490,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   1. Confirm the affected test uses a live clock for both the boundary input and verification.
   2. Freeze the test clock and leave the production verifier untouched.
   3. Run the Google deletion suite on SQLite and PostgreSQL, then open a test-only PR.
+
+### B-049: Guest Focus history import
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** D6 and D4. Add an optional Focus section to POST /import for finished, active guest sessions.
+- **Plan:**
+  1. Test import of linked sessions, lost-response replay and atomic rejection.
+  2. Share the recording rules and payload consistency checks.
+  3. Record imported sessions through B-043 after imported links exist.
+  4. Update OpenAPI and verify both databases and static checks.

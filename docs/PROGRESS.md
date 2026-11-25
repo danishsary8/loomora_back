@@ -764,3 +764,10 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 
 - The invalid assertion dataset builds future claims one second past the accepted clock window. A live clock can move before verification and turn the intended invalid fixture into a valid one. Freeze the clock for that dataset, including the request and JWT preparation.
 - The Google deletion feature suite passed all 38 tests on both SQLite and PostgreSQL. Pint and the diff check passed. This is a test-only change with no deployment or OpenAPI dependency.
+
+### 2026-11-25: B-049 Guest Focus history import
+
+- POST /import now accepts up to 500 finished Focus sessions per request. The optional focus_sessions result reports created and skipped counts. Missing links and invalid payloads return indexed validation errors. Changed replays and IDs belonging to another account return 409. The entire request rolls back on failure.
+- Reuses the B-043 recording rules and canonical payload. Linked planner rows must be in the account or earlier in the same import request. Deleted guest sessions are excluded under D4.
+- Full Pest passed on SQLite (565 passed, 42 PostgreSQL-only skips) and PostgreSQL (607 passed). Final focused tests passed on both databases (6 each). Pint, PHPStan, locked Composer checks, Redocly (four existing warnings) and the diff check passed.
+- F-R3-15 follows this contract and keeps local data until every batch succeeds. No migration is needed. Roll out the import client before relying on Analytics for converted guests.
