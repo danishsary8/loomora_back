@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Support\LocalDate;
-use Carbon\CarbonImmutable;
 
 /**
  * @phpstan-type Metrics array{focus_ms: int, break_ms: int, sessions: int, todos_done: int, todos_due: int, planned_block_minutes: int, blocks_checked: int, focus_ms_linked: int, focus_ms_unplanned: int}
@@ -61,11 +60,13 @@ class StatsSummaryService
         }
 
         $start = LocalDate::startOfDay($user, $from)->utc();
-        $nextDate = CarbonImmutable::parse($to)->addDay()->toDateString();
-        $end = LocalDate::startOfDay($user, $nextDate)->utc();
+        $end = LocalDate::startOfDay($user, $to)->addDay()->startOfDay()->utc();
         $todos = $user->todos()->where(fn ($query) => $query
             ->whereBetween('due_date', [$from, $to])
-            ->orWhere(fn ($query) => $query->where('done_at', '>=', $start)->where('done_at', '<', $end)))
+            ->orWhere(fn ($query) => $query->whereNotNull('done_at')
+                // A local midnight can cross the UTC bounds of the API's four-digit years.
+                ->when($start->year > 0, fn ($query) => $query->where('done_at', '>=', $start))
+                ->when($end->year <= 9999, fn ($query) => $query->where('done_at', '<', $end))))
             ->cursor();
 
         foreach ($todos as $todo) {

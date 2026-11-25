@@ -20,6 +20,7 @@ it('rejects invalid analytics ranges', function (string $query, string $field) {
         ->assertJsonValidationErrors($field);
 })->with([
     ['to=2026-11-29', 'from'],
+    ['from=0000-01-01&to=0000-01-01', 'from'],
     ['from=2026-02-30&to=2026-03-01', 'from'],
     ['from=2026-11-29&to=2026-11-23', 'to'],
     ['from=2026-01-01&to=2026-04-03', 'to'],
@@ -98,4 +99,19 @@ it('accepts the inclusive 92 day limit', function () {
         ->getJson('/api/v1/stats/summary?from=2026-01-01&to=2026-04-02')
         ->assertOk()
         ->assertJsonCount(92, 'data.days');
+});
+
+it('accepts the final representable date without generating dates beyond the requested range', function () {
+    $this->actingAs(User::factory()->create(), 'sanctum')
+        ->getJson('/api/v1/stats/summary?from=9999-12-31&to=9999-12-31')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.days')
+        ->assertJsonPath('data.days.0.local_date', '9999-12-31');
+});
+
+it('accepts the first common-era date in a time zone ahead of UTC', function () {
+    $this->actingAs(User::factory()->create(['timezone' => 'Asia/Phnom_Penh']), 'sanctum')
+        ->getJson('/api/v1/stats/summary?from=0001-01-01&to=0001-01-01')
+        ->assertOk()
+        ->assertJsonPath('data.days.0.local_date', '0001-01-01');
 });

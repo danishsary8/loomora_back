@@ -12,7 +12,7 @@ class StatsSummaryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'from' => ['required', 'date_format:Y-m-d'],
+            'from' => ['bail', 'required', 'date_format:Y-m-d', 'after:0000-12-31'],
             'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
         ];
     }

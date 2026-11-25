@@ -1671,7 +1671,7 @@ paths:
       operationId: getStatsSummary
       summary: Daily analytics and plan versus reality
       description: |
-        Returns one row for each calendar date in the inclusive range, including dates
+        Accepts calendar dates in years 0001 through 9999. Returns one row per date, including dates
         with no activity. Focus sessions use their stored local date, to-do completions
         use the account time zone, and to-dos due use their stored due date. Deleted
         to-dos are excluded. Planned block minutes and check-ins reflect the schedule
