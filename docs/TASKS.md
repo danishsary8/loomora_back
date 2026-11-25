@@ -42,7 +42,7 @@ Rules:
   1. Add `.github/workflows/ci.yml`: PHP 8.3, composer install (cached), Postgres 16 service, run Pint check and `php artisan test`.
   2. Run on pull requests and pushes to `main` and `v2-rebuild`.
 - **Done when:**
-  - [ ] The workflow runs green on the PR
+  - [x] The workflow runs green on the PR
 - **Files:** `.github/workflows/ci.yml`
 
 ### B-004: Dockerfile and Render blueprint
@@ -52,7 +52,7 @@ Rules:
   2. Add `render.yaml` for a service named `loomora-api` (free plan, Docker, health check `/api/v1/health`), listing env variable NAMES only.
   3. Do not deploy. Do not add secrets.
 - **Done when:**
-  - [ ] `docker build .` succeeds
+  - [x] `docker build .` succeeds
   - [x] `render.yaml` lists all variables from docs/10 with no values
 - **Files:** `Dockerfile`, `render.yaml`, `.dockerignore`
 
@@ -125,7 +125,7 @@ Rules:
   2. Endpoints: `GET /schedule/day`, `/schedule/week`, `/schedule/now`, exceptions PUT/DELETE, check-ins POST/DELETE, `copy-day`.
   3. Pest tests: weekday match, starts_on/ends_on, skip, override, now/next with "Free" and nothing-more-today, check-in toggle, time zone edge cases.
 - **Done when:**
-  - [ ] Tests and Pint pass
+  - [x] Tests and Pint pass
 - **Files:** `app/Services/ScheduleService.php`, controllers, tests
 
 ### B-012: Streak API
@@ -134,7 +134,7 @@ Rules:
   1. `StreakService` per docs/08 rule 8 (skip empty days, today is never judged, lazy recompute on check-off and `GET /streak`). Update users.current_streak, longest_streak, last_streak_date.
   2. Hook it into to-do and schedule check-offs. Pest tests for every rule, including time zones.
 - **Done when:**
-  - [ ] Tests and Pint pass
+  - [x] Tests and Pint pass
 - **Files:** `app/Services/StreakService.php`, tests
 
 ### B-013: Guest data import
@@ -143,7 +143,7 @@ Rules:
   1. `POST /import` per docs/08 rule 9: to-dos, schedule items, exceptions, check-ins with client UUIDs; idempotent; one transaction; enforce limits.
   2. Pest tests: success, repeat import creates no duplicates, invalid payload writes nothing, cannot overwrite another user's ids.
 - **Done when:**
-  - [ ] Tests and Pint pass
+  - [x] Tests and Pint pass
 - **Files:** `ImportService`, controller, tests
 
 ### B-014: Feedback and account endpoints
@@ -241,7 +241,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. Do NOT add any command that permanently deletes expired rows. Write the question in `docs/PROGRESS.md`: should a daily command hard-delete to-dos deleted more than 7 days ago (planner decides, it is destructive)?
   3. Check that account deletion still removes all of the user's to-dos including soft-deleted ones. Update `docs/openapi.yaml`.
 - **Done when:**
-  - [ ] Tests pass for: delete hides it from lists, restore brings it back with the same id, restore after 8 days returns 410, another user returns 404, account deletion leaves no rows
+  - [x] Tests pass for: delete hides it from lists, restore brings it back with the same id, restore after 8 days returns 410, another user returns 404, account deletion leaves no rows
   - [ ] Pint, static analysis and Redocly lint pass
 - **Files:** migration, `app/Models/Todo.php`, todo controller, `routes/api.php`, `tests/Feature/TodoRestoreTest.php`, `docs/openapi.yaml`
 
@@ -252,7 +252,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. (Moved to B-027, see Q20.) Add `tests/Fixtures/local-date-cases.json` with the cases from DC-10 in `docs/research/daycraft-task-prompts.md` (Asia/Phnom_Penh just after local midnight, Asia/Kolkata, America/Los_Angeles, a DST day) and a test that reads it against the existing local-date helper. Fix the helper if a case fails.
   3. Update `docs/openapi.yaml`.
 - **Done when:**
-  - [ ] Tests pass for valid and invalid values (`time_format: 'x'` and `week_starts_on: 8` return 422) and for every fixture case
+  - [x] Tests pass for valid and invalid values (`time_format: 'x'` and `week_starts_on: 8` return 422) and for every fixture case
   - [ ] Pint, static analysis and Redocly lint pass
 - **Files:** migration, `UpdateMeRequest`, user resource, `tests/Fixtures/local-date-cases.json`, `tests/Feature/*`, `docs/openapi.yaml`
 
@@ -263,7 +263,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. `GET /days/{date}/intention` returns `{data:{date, text}}` (`text` null if none). `PUT` the same path with `{text}` upserts; an empty string deletes the row. `{date}` must be `Y-m-d` within 366 days of the user's today (else 422).
   3. Extend `POST /import` with `daily_intentions` (idempotent). Update `docs/openapi.yaml`.
 - **Done when:**
-  - [ ] Tests pass for: put then get, second put updates the same row, empty deletes, invalid date returns 422, another user cannot see it, import twice leaves one row
+  - [x] Tests pass for: put then get, second put updates the same row, empty deletes, invalid date returns 422, another user cannot see it, import twice leaves one row
   - [ ] Pint, static analysis and Redocly lint pass
 - **Files:** migration, `app/Models/DailyIntention.php`, controller, `routes/api.php`, `tests/Feature/DailyIntentionTest.php`, `docs/openapi.yaml`
 
@@ -272,7 +272,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - **Steps:**
   1. Return `has_password` (boolean) in the User resource, true when the account has a password (false for Google-only accounts). Update `docs/openapi.yaml`.
 - **Done when:**
-  - [ ] Tests pass for an email account (true) and a Google-only account (false)
+  - [x] Tests pass for an email account (true) and a Google-only account (false)
   - [ ] Pint, static analysis and Redocly lint pass
 - **Files:** `app/Http/Resources/UserResource.php`, `tests/Feature/*`, `docs/openapi.yaml`
 
@@ -282,7 +282,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   1. When the first check-off of a repeating to-do creates the next to-do, move `remind_at` by the same time distance as the due date moved (old due date to new due date), so "remind me at 07:00" repeats. If the old to-do has no `remind_at`, the next one has none. Subtasks copied with it get no reminder (subtasks cannot have one).
   2. Tests: daily and weekly repeats, a reminder 1 hour before a 09:00 due time, no reminder, the 00:30 Asia/Phnom_Penh case. Update DECISIONS I7 and `docs/openapi.yaml` text if it mentions "not copied".
 - **Done when:**
-  - [ ] The next to-do's `remind_at` keeps the same distance from its due date, in UTC
+  - [x] The next to-do's `remind_at` keeps the same distance from its due date, in UTC
   - [ ] Pest, Pint, PHPStan and Redocly lint pass
 - **Files:** `app/Services/RepeatTodoService.php`, `tests/Feature/RepeatTodoTest.php`, `docs/DECISIONS.md`, `docs/openapi.yaml`
 
@@ -293,7 +293,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. Replace the inline local-date code with it in `StreakService`, `TodayRequest::localDate()`, `RepeatTodoService`, `IntentionDateRequest` and any other place `CarbonImmutable::now($user->timezone)` is used. No other behaviour change.
   3. Add `tests/Fixtures/local-date-cases.json` (Asia/Phnom_Penh just after local midnight, Asia/Kolkata, America/Los_Angeles, a DST day) and a test that reads it.
 - **Done when:**
-  - [ ] Every fixture case passes and no inline local-date code is left
+  - [x] Every fixture case passes and no inline local-date code is left
   - [ ] All earlier tests still pass; Pint, PHPStan and Redocly lint pass
 - **Files:** `app/Support/LocalDate.php`, the services and requests above, `tests/Fixtures/local-date-cases.json`, `tests/Feature/*`
 
@@ -411,7 +411,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-041: Sensitive access-log redaction
 
-- **Status:** review
+- **Status:** done ([PR #44](https://github.com/danishsary8/loomora_back/pull/44), merged at `f87bf1b57a6427c845f9310778be538ac83bd0ee`)
 - **Scope:** Ship one Apache access log for the production container with timestamp, method, query-free path, final status and response body size. Keep Apache diagnostics on stderr and omit the raw Referer suffix.
 - [x] Reproduce the baseline exposure with synthetic markers and verify the same HTTP smoke test against the repaired image.
 - [x] Add the access-log smoke to the Docker CI job and document the container's logging behavior and limits.
@@ -419,31 +419,31 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-042: Google-only account deletion
 
-- **Status:** review ([draft PR #45](https://github.com/danishsary8/loomora_back/pull/45))
+- **Status:** done ([PR #45](https://github.com/danishsary8/loomora_back/pull/45), merged at `c9a7acf0e03a0a3ee5f60cc38198634fd0f58e3d`)
 - **Scope:** Implement the planner-approved [B-034 Option A](B-034-google-account-deletion-design.md#proposed-option-a-contract). Bind the signed Google authentication time to a single-use deletion challenge and reuse B-037 account locking and revocation.
 - **Backend:** Challenge and verify endpoints and explicit Google confirmation on DELETE /me. Password confirmation remains required for accounts with a password. The Google flow is off by default.
 - **Release gate:** Google documents signed session-age claims for eligible configured clients. The Loomora staging client, dedicated callback, paired frontend, and fresh-versus-stale provider evidence are pending under Q23, Q25 and QA-009. See the [B-042 verification record](PROGRESS.md#2026-11-22-b-042-google-only-account-deletion).
 
 ### B-043: R3 Focus session API contract and persistence
 
-- **Status:** review ([PR #47](https://github.com/danishsary8/loomora_back/pull/47), implementation; [PR #46](https://github.com/danishsary8/loomora_back/pull/46) merged the design proposal only)
+- **Status:** done ([PR #47](https://github.com/danishsary8/loomora_back/pull/47), merged at `2dfc976f8d57f4933fd0bbbfcc5653bd4a6498cb`; [PR #46](https://github.com/danishsary8/loomora_back/pull/46) merged the design proposal at `33338a034f91d957362ab968c424d4eda677d7f6`)
 - **Scope:** Store each finished Focus session (countdown with break cycles, or stopwatch with laps) once, linked to an optional to-do or schedule item, with client UUIDs and idempotent retries. The browser timer engine and UI are out of scope. The contract is in the [B-043 design](B-043-focus-session-design.md) and `openapi.yaml`.
 - [x] Inspect existing structures and write the contract proposal.
 - [x] Planner approved Q-B043-0 to Q-B043-6 with amendments (2026-11-23): no 60 s minimum, guest import deferred.
 - [x] Migration, model, request, service, controller, resource, routes, Pest tests (SQLite and PostgreSQL, including a real race) and `openapi.yaml`.
 - [x] Clock policy correction: sessions are never rejected against the server clock. Approved together with exact segment durations (2026-11-23).
-- [ ] Planner review of PR #47.
+- [x] Planner review of PR #47.
 - **Note:** the frontend repository's provisional "B-043" for R2 import capacity is renumbered B-044 by the planner.
 
 ### B-044: Lossless guest-to-account import
 
-- **Status:** review (planner decisions Q-B044-1 to 4 approved 2026-11-24; see [implementation](PROGRESS.md#2026-11-24-b-044-lossless-guest-import-implementation))
+- **Status:** done ([PR #48](https://github.com/danishsary8/loomora_back/pull/48), merged at `13c64ff988ea1d6f63acc9e0ecb8f04201d8afc5`; planner decisions Q-B044-1 to 4 approved 2026-11-24; see [implementation](PROGRESS.md#2026-11-24-b-044-lossless-guest-import-implementation))
 - **Scope:** `POST /import` must accept a full guest plan whose repeat-generated to-dos take it past 500 rows. Keep client UUIDs, every to-do field, repeat rules and links, and parent/subtask links. Retries must not create duplicates, account isolation must hold, and nothing may be silently skipped. The 500-row manual-creation limit stays. This replaces the frontend's provisional "B-043" (QA-023).
 - [x] Find the root cause and compare current behavior with the documented rules.
 - [x] Planner decision on Q-B044-1 to Q-B044-4.
 - [x] Implementation (DECISIONS I9), Pest tests (499/500/501/>500 repeat-generated rows, existing data, retries, rollback, links, cross-account ids), docs/08 rules 9 and 11 and `openapi.yaml`.
 - [x] Subtask provenance (all subtasks of a successor are exempt) approved as a schema limitation (2026-11-24).
 - [x] Final review follow-up: corrected chunk-order contract, checked against the real frontend, regression tests added.
-- [ ] Planner review of PR #48.
+- [x] Planner review of PR #48.
 - **Frontend follow-up required:** the current `saveGuestPlan.ts` sends every to-do in the first request. A plan of more than 500 to-dos (for example 500 manual plus any generated) is refused by the 500-row request cap. It must split to-dos into requests of at most 500 in the order in `openapi.yaml` (`POST /import`) and keep the guest copy until every request succeeds. See the [follow-up entry](PROGRESS.md#2026-11-24-b-044-final-review-follow-up).
 - **Out of scope:** B-043 Focus API, guest Focus history import, R4 analytics, frontend changes.

@@ -709,3 +709,27 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
   - **Contract and diff:** Redocly reported the file valid with the 4 existing warnings, and `git diff --check` was clean.
   - **CI on `08745a7`:** both PR #48 jobs passed, `test` and `docker` ([run 45241621800](https://github.com/danishsary8/loomora_back/actions/runs/45241621800)).
 - **Unused code:** no production code changed in this follow-up. The test helper `brokenReferences()` and `frontendRequest()` are used, and the old grouping code in `guestPlan()` was removed.
+
+### 2026-11-25: Task board reconciliation with merged PRs
+
+- **Scope:** documentation only, `docs/TASKS.md` and `docs/PROGRESS.md`. Branch `docs/board-sync-20261125` from `origin/v2-rebuild` at `13c64ff` (fetched 2026-11-25). Owner-approved: reconcile through a separate docs PR and keep genuinely open items open.
+- **Merge evidence:** for each PR, the head and the merge commit are ancestors of `origin/v2-rebuild`, the merge commit message names the PR and branch, and the GitHub API reports the PR merged.
+- **Status changes (`review` to `done`):**
+  - B-041: PR #44, merged 2026-11-21 at `f87bf1b`.
+  - B-042: PR #45 (no longer a draft), merged 2026-11-22 at `c9a7acf`.
+  - B-043: PR #47, merged 2026-11-23 at `2dfc976`. The design proposal PR #46 merged at `33338a0`.
+  - B-044: PR #48, merged 2026-11-24 at `13c64ff`.
+  - The release gates on B-041 and B-042 (Q23, Q25, QA-009 and owner log evidence) are unchanged and still open, as for B-040.
+- **"Done when" boxes ticked, with evidence:**
+  - B-003 (workflow green on the PR): `test` passed on the PR #3 head `0be480a` and on the merge `dae9d90`.
+  - B-004 (`docker build .` succeeds): `docker` passed on the PR #7 head `36329a2` and on the merge `6813143`.
+  - B-011, B-012, B-013 (tests and Pint pass): the `test` job runs Pint and `php artisan test`. It passed on PR heads `3af5b6c` (#13), `646acff` (#14) and `bb7a226` (#15), and on the merges `476b882` and `c09e65a`. The B-011 merge `7427521` has no CI run of its own.
+  - B-022 (named tests): `TodoRestoreTest` covers hiding from lists, restoring the same id, 410 after 8 days, 404 for another user and an unknown id, and account deletion removing every row. `test` passed on the merge `ab5fe86`.
+  - B-023 (valid and invalid values and every fixture case): `PreferencesTest` rejects `time_format: 'x'` and `week_starts_on: 8` with 422 (merge `12cfb61`, `test` passed). The fixture cases moved to B-027 (Q20). `LocalDateTest` reads `tests/Fixtures/local-date-cases.json` and passed on the B-027 merge `e5be131`.
+  - B-024 (named tests): `DailyIntentionTest` covers put then get, a second put updating the same row, empty text deleting the row, 422 for a bad date, another user's isolation and a repeated import leaving one row. `test` passed on the merge `1a5105b`.
+  - B-025 (email true, Google-only false): `HasPasswordTest`. `test` passed on the merge `717f275`.
+  - B-026 (the next `remind_at` keeps its distance in UTC): the reminder cases in `RepeatTodoTest`. `test` passed on the merge `e167963`.
+  - B-027 (fixture cases pass and no inline local-date code): `LocalDateTest` passed on the merge `e5be131`. A search of `app/` on `13c64ff` finds no `CarbonImmutable::now($user->timezone)` or other timezone-based date code outside `App\Support\LocalDate`.
+  - B-043 and B-044 (planner review of PR #47 and #48): both PRs were reviewed and merged by the owner (`2dfc976`, `13c64ff`).
+- **Left open on purpose:** the lint boxes of B-022 to B-027 (lines 245, 256, 267, 276, 286 and 297) include Redocly lint, which is not part of backend CI, and those sessions record that Redocly was not run. They stay unticked. Pint, PHPStan and tests did pass in CI.
+- **Checks:** `npx @redocly/cli lint docs/openapi.yaml` (unchanged, valid) and `git diff --check`. No code changed, so the PHP checks were not run.
