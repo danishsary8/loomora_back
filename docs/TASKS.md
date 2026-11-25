@@ -447,3 +447,19 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Planner review of PR #48.
 - **Frontend follow-up required:** the current `saveGuestPlan.ts` sends every to-do in the first request. A plan of more than 500 to-dos (for example 500 manual plus any generated) is refused by the 500-row request cap. It must split to-dos into requests of at most 500 in the order in `openapi.yaml` (`POST /import`) and keep the guest copy until every request succeeds. See the [follow-up entry](PROGRESS.md#2026-11-24-b-044-final-review-follow-up).
 - **Out of scope:** B-043 Focus API, guest Focus history import, R4 analytics, frontend changes.
+
+### B-045: Focus session label up to 200 characters
+
+- **Status:** review
+- **Owner:** claude
+- **Scope:** Raise the Focus session `label` limit from 120 to 200 characters, so a to-do or schedule item title (up to 200) can be stored as the session label without truncation. This unblocks the frontend F-R3-10. Owner-approved 2026-11-25 (spec S1, decision D1). The contract change is additive: requests and responses keep their shape, and existing labels are unchanged. Running the migration in production is an owner deploy step and is not part of this task.
+- **Plan:**
+  1. Pest tests first: a 200-character label (multibyte and emoji at the boundary) is stored exactly, 201 is a 422 on `label`, an existing 120-character row stays readable, and an identical retry still returns 200.
+  2. `FocusSession::MAX_LABEL_LENGTH = 200`, and pin the original create migration to its literal `120` so the migration history stays fixed.
+  3. A new migration widens `focus_sessions.label` to `varchar(200)`. Its `down()` refuses with a clear error while any label is longer than 120, so nothing is truncated.
+  4. Update `docs/openapi.yaml` and the B-043 design (marked as amended by B-045).
+  5. Run Pest on SQLite and PostgreSQL, Pint, PHPStan, Redocly and `composer audit`, plus migrate and rollback on a fresh and a seeded PostgreSQL database.
+- [x] A 200-character label is stored exactly, a 201-character label is a 422 on `label`, and nothing is truncated.
+- [x] The migration widens the column, and its rollback refuses while any label is longer than 120.
+- [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Redocly lint and `composer audit` pass.
+- **Out of scope:** frontend F-R3-10, production migration and deploy.

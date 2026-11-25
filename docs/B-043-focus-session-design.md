@@ -59,9 +59,9 @@ Request and response examples are in `docs/openapi.yaml` (`recordFocusSession`, 
 | `segments` | 1 to 200. Each segment has exactly `type`, `started_at`, `ended_at` and `active_ms`. Segments are in order and non-overlapping, inside `[started_at, ended_at]`, with `0 <= active_ms <= segment wall time`. Break types are allowed in countdown only. The total `focus_ms` must be > 0. |
 | `laps` | Stopwatch only: null, absent, or up to 1000 integers ≥ 1, strictly increasing, each ≤ `focus_ms`. An empty list is stored as null. |
 | `todo_id` / `schedule_item_id` | Nullable UUIDs. At most one is set. Ownership is checked by the service (see below). |
-| `label` | Nullable, up to 120 characters (trimmed; an empty string becomes null). |
+| `label` | Nullable, up to 200 characters (trimmed; an empty string becomes null). Amended by B-045 (was 120). |
 
-Over-bound payloads (201 segments, 1001 laps, a 121-character label) are a 422 on that field ("must not have more than …"). Nothing is ever truncated.
+Over-bound payloads (201 segments, 1001 laps, a 201-character label; amended by B-045, was 121) are a 422 on that field ("must not have more than …"). Nothing is ever truncated.
 
 ## Clock policy (approved by the planner, 2026-11-23)
 
@@ -96,7 +96,7 @@ Migration `2026_11_23_000000_create_focus_sessions_table`:
 | `focus_ms`, `break_ms`, `paused_ms` | bigint |
 | `todo_id` | uuid nullable, FK `todos`, null on delete |
 | `schedule_item_id` | uuid nullable, FK `schedule_items`, null on delete |
-| `label` | string(120), nullable |
+| `label` | string(200), nullable (widened from 120 by B-045) |
 | `segments` | jsonb |
 | `laps` | jsonb, nullable |
 | `payload_hash` | char(64) |

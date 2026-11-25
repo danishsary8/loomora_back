@@ -439,8 +439,46 @@ describe('bounds', function () {
     })->with([
         'segments' => [fn () => focusCountdown(['segments' => array_fill(0, FocusSession::MAX_SEGMENTS + 1, focusCountdown()['segments'][0])]), 'segments', 'The segments field must not have more than 200 items.'],
         'laps' => [fn () => focusStopwatch(['laps' => range(1, FocusSession::MAX_LAPS + 1)]), 'laps', 'The laps field must not have more than 1000 items.'],
-        'label' => [fn () => focusCountdown(['label' => str_repeat('é', FocusSession::MAX_LABEL_LENGTH + 1)]), 'label', 'The label field must not be greater than 120 characters.'],
+        'label' => [fn () => focusCountdown(['label' => str_repeat('é', FocusSession::MAX_LABEL_LENGTH + 1)]), 'label', 'The label field must not be greater than 200 characters.'],
     ]);
+
+    it('stores a 200-character label exactly, with multibyte and emoji characters at the boundary', function () {
+        // 198 two-byte characters and two four-byte emoji: 200 characters, 404 bytes.
+        $label = str_repeat('é', 198).'🎯🔥';
+        expect(mb_strlen($label))->toBe(200);
+
+        $this->postJson('/api/v1/focus-sessions', focusCountdown(['label' => $label]))
+            ->assertCreated()
+            ->assertJsonPath('data.label', $label);
+
+        expect(FocusSession::first()->label)->toBe($label);
+        $this->getJson('/api/v1/focus-sessions/'.FOCUS_SESSION_ID)->assertOk()->assertJsonPath('data.label', $label);
+    });
+
+    it('rejects a 201-character label with 422 on label and stores nothing', function () {
+        $this->postJson('/api/v1/focus-sessions', focusCountdown(['label' => str_repeat('a', 200).'🎯']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['label' => 'The label field must not be greater than 200 characters.']);
+
+        expect(FocusSession::count())->toBe(0);
+    });
+
+    it('replays a session with a 200-character label as an identical retry', function () {
+        $payload = focusCountdown(['label' => str_repeat('é', 200)]);
+
+        $this->postJson('/api/v1/focus-sessions', $payload)->assertCreated();
+        $this->postJson('/api/v1/focus-sessions', $payload)->assertOk()->assertJsonPath('data.label', str_repeat('é', 200));
+
+        expect(FocusSession::count())->toBe(1);
+    });
+
+    it('still reads a session stored with a 120-character label', function () {
+        $label = str_repeat('é', 120);
+        $this->postJson('/api/v1/focus-sessions', focusCountdown(['label' => $label]))->assertCreated();
+
+        $this->getJson('/api/v1/focus-sessions/'.FOCUS_SESSION_ID)->assertOk()->assertJsonPath('data.label', $label);
+        $this->getJson('/api/v1/focus-sessions?date=2026-11-23')->assertOk()->assertJsonPath('data.0.label', $label);
+    });
 
     it('accepts active time equal to the segment and rejects one millisecond more', function () {
         $segment = ['type' => 'focus', 'started_at' => '2026-11-23T02:00:00.000Z', 'ended_at' => '2026-11-23T02:00:01.000Z'];

@@ -1588,7 +1588,7 @@ paths:
         `focus_ms > 0`; there is no other minimum. Timestamps come from the client clock and are never compared
         with the server clock: a session recorded on a device whose clock is ahead or behind, or queued offline
         for a long time, is accepted as recorded. Only its internal consistency is validated. Payload bounds: 200
-        segments, 1000 laps, a 120-character label; one more is a 422 on that field, never a silent truncation. `todo_id` must be the user's own to-do (a soft-deleted one is
+        segments, 1000 laps, a 200-character label; one more is a 422 on that field, never a silent truncation. `todo_id` must be the user's own to-do (a soft-deleted one is
         accepted). `schedule_item_id` must be the user's own existing schedule item. An unknown or another
         account's link is a 422 with the same message. The linked rows are checked after the replay check, so
         retrying an already stored session still returns 200 after its schedule item was deleted.
@@ -2279,8 +2279,8 @@ components:
           description: The user's own existing schedule item.
         label:
           type: [string, 'null']
-          maxLength: 120
-          description: Snapshot of the linked item's title, kept if the link goes away.
+          maxLength: 200
+          description: Snapshot of the linked item's title, kept if the link goes away. Up to 200 characters, the same as to-do and schedule item titles (B-045).
         segments:
           type: array
           minItems: 1

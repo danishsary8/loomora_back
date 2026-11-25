@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\FocusSession;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +23,8 @@ return new class extends Migration
             $table->bigInteger('paused_ms');
             $table->foreignUuid('todo_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignUuid('schedule_item_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('label', FocusSession::MAX_LABEL_LENGTH)->nullable();
+            // Fixed at the original B-043 length; B-045 widens it in a later migration.
+            $table->string('label', 120)->nullable();
             $table->jsonb('segments');
             $table->jsonb('laps')->nullable();
             $table->char('payload_hash', 64);

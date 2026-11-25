@@ -42,7 +42,7 @@ class FocusSession extends Model
 
     public const SEGMENT_TYPES = [self::SEGMENT_FOCUS, 'short_break', 'long_break'];
 
-    public const MAX_LABEL_LENGTH = 120;
+    public const MAX_LABEL_LENGTH = 200;
 
     public const MAX_SEGMENTS = 200;
 
