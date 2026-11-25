@@ -758,3 +758,8 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - Added millisecond deleted_at. Rollback locks the PostgreSQL table before confirming there is no deleted state to lose. Regression tests exercise both allowed and refused rollback paths.
 - Full SQLite Pest passed 574 tests with 42 PostgreSQL-only skips. PostgreSQL passed 616. Pint, PHPStan, Redocly (four existing warnings), strict Composer validation, both audits and the diff check passed.
 - Frontend F-R3-14 follows the backend migration and OpenAPI. The owner approves production deployment.
+
+### 2026-11-25: B-050 Google deletion regression clock
+
+- The invalid assertion dataset builds future claims one second past the accepted clock window. A live clock can move before verification and turn the intended invalid fixture into a valid one. Freeze the clock for that dataset, including the request and JWT preparation.
+- The Google deletion feature suite passed all 38 tests on both SQLite and PostgreSQL. Pint and the diff check passed. This is a test-only change with no deployment or OpenAPI dependency.
