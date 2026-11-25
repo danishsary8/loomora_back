@@ -758,6 +758,7 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - Added millisecond deleted_at. Rollback locks the PostgreSQL table before confirming there is no deleted state to lose. Regression tests exercise both allowed and refused rollback paths.
 - Full SQLite Pest passed 574 tests with 42 PostgreSQL-only skips. PostgreSQL passed 616. Pint, PHPStan, Redocly (four existing warnings), strict Composer validation, both audits and the diff check passed.
 - Frontend F-R3-14 follows the backend migration and OpenAPI. The owner approves production deployment.
+- Refresh after PR #55: merged v2-rebuild at 67f4aef and preserved both task entries. SQLite passed 574 tests (42 PostgreSQL-only skips), and PostgreSQL passed 616. Pint, PHPStan, Redocly (four existing warnings), and the locked Composer audit passed.
 
 ### 2026-11-25: B-050 Google deletion regression clock
 
