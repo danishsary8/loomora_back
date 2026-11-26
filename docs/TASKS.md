@@ -552,7 +552,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-054: Backend documentation reconciliation
 
-- **Status:** review
+- **Status:** review ([PR #58](https://github.com/danishsary8/loomora_back/pull/58))
 - **Owner:** claude
 - **Scope:** Planner-approved 2026-11-26, docs only. Mark B-045, B-046, B-047, B-049, B-050, B-051 and B-052 `done` with their merged PRs. Replace B-048's unsupported "D8 and D9" reference. Bring `docs/08-data-model.md` in line with the implemented schema: missing `users` and `todos` columns, the `daily_intentions`, `focus_sessions` and `notes` tables, rule 9 (guest import, including the B-052 note diagnostics and client verification), and rules for Focus sessions, notes and account deletion. Record the approved B-053 planning decisions in PROGRESS as future behavior. No application code, migration, test, configuration, dependency or `openapi.yaml` change.
 - **Plan:**
