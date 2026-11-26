@@ -18,7 +18,7 @@ class NoteController extends Controller
         $request->validate(['page' => ['sometimes', 'integer', 'between:1,1000000']]);
 
         return NoteResource::collection(
-            $request->user()->notes()->latest('updated_at')->orderByDesc('id')->simplePaginate(50),
+            $request->user()->notes()->orderByDesc('pinned')->latest('updated_at')->orderByDesc('id')->simplePaginate(50),
         );
     }
 

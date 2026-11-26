@@ -1551,7 +1551,7 @@ paths:
     get:
       tags: [Notes]
       operationId: listNotes
-      summary: List the account's live notes, newest update first
+      summary: List the account's live notes, pinned first (B-056), then newest update first
       parameters:
         - in: query
           name: page
@@ -1593,7 +1593,8 @@ paths:
         A title or body is required. An occurrence date requires an owned schedule block. The client UUID makes the
         request safe to retry (B-053): an identical replay of an active note returns 200 with the stored note and
         writes nothing. Identical compares title, body, schedule_item_id (letter case ignored) and local_date as
-        GET /notes/{note} returns them; any `revision` or timestamp in the body is ignored. A changed replay, a replay
+        GET /notes/{note} returns them, plus pinned, color and normalized tags (B-056); any `revision` or timestamp
+        in the body is ignored. A changed replay, a replay
         of a deleted note (which stays deleted) and a UUID owned by another account are 409.
       requestBody:
         required: true
@@ -2320,6 +2321,21 @@ components:
         body: { type: [string, 'null'], maxLength: 10000 }
         schedule_item_id: { type: [string, 'null'], format: uuid }
         local_date: { type: [string, 'null'], format: date }
+        pinned:
+          type: boolean
+          description: B-056. Pinned notes are listed first. Omitted on create means false; omitted on edit keeps the value.
+        color:
+          description: B-056. One of the six category pastels, or null for the plain paper card.
+          oneOf:
+            - $ref: '#/components/schemas/Category'
+            - type: 'null'
+        tags:
+          type: [array, 'null']
+          maxItems: 5
+          description: |
+            B-056. Up to 5 tags of 1 to 24 characters each. The server trims each tag, removes a leading "#",
+            stores it lowercase and drops duplicates, so "#Work" and "work" are one tag. null or [] clears them.
+          items: { type: string, minLength: 1, maxLength: 24 }
     NoteInput:
       allOf:
         - $ref: '#/components/schemas/NoteFields'
@@ -2340,7 +2356,8 @@ components:
         Returned when the request includes notes. A skipped note is never changed. `skipped_details` has exactly one
         entry per skipped note, in request order, with the note's lowercase UUID, so it never holds more than 500.
         `identical` means the account note is active and its title, body, schedule_item_id and local_date (as
-        returned by GET /notes/{note}, so local_date is null without a block) match the submitted note; letter
+        returned by GET /notes/{note}, so local_date is null without a block), and since B-056 its pinned, color
+        and normalized tags, match the submitted note; letter
         case of UUIDs and the submitted timestamps are ignored. `different` means the active account note differs.
         `deleted` means the account note is soft-deleted, whatever its content. A note UUID owned by another
         account is still a 422, never a diagnostic. No account content, timestamps or other account data is
@@ -2364,8 +2381,17 @@ components:
       allOf:
         - $ref: '#/components/schemas/NoteInput'
         - type: object
-          required: [title, body, schedule_item_id, local_date, revision, created_at, updated_at]
+          required: [title, body, schedule_item_id, local_date, pinned, color, tags, revision, created_at, updated_at]
           properties:
+            pinned: { type: boolean }
+            color:
+              oneOf:
+                - $ref: '#/components/schemas/Category'
+                - type: 'null'
+            tags:
+              type: array
+              description: Normalized tags (lowercase, no "#", no duplicates); [] when the note has none.
+              items: { type: string }
             revision:
               type: integer
               minimum: 1
