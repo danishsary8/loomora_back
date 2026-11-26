@@ -125,7 +125,7 @@ class StreakService
             if ($start->equalTo($calendarStart) && $day->lt($calendarStart)) {
                 $mayBeLonger = false;
             }
-            $result[$date->toDateString()] = ['streak' => $value, 'streak_may_be_longer' => $mayBeLonger];
+            $result[$date->toDateString()] = ['streak' => $value, 'streak_may_be_longer' => $value > 0 && $mayBeLonger];
         }
 
         return $result;

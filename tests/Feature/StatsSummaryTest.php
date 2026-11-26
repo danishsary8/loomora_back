@@ -220,10 +220,36 @@ it('limits each reported streak to 400 preceding days and detects a break at the
         ->assertJsonPath('data.opening_streak_may_be_longer', false);
 });
 
-it('identifies a zero with no visible preceding break as a lower bound', function () {
+it('returns a complete zero when the window has no counted days', function () {
     $user = User::factory()->create(['timezone' => 'UTC']);
     $this->actingAs($user, 'sanctum')->getJson('/api/v1/stats/summary?from=2026-01-01&to=2026-01-01')
         ->assertOk()
+        ->assertJsonPath('data.opening_streak', 0)
+        ->assertJsonPath('data.opening_streak_may_be_longer', false)
         ->assertJsonPath('data.days.0.streak', 0)
+        ->assertJsonPath('data.days.0.streak_may_be_longer', false);
+});
+
+it('does not mark zero as longer when the only completion falls outside the historical window', function () {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $date = CarbonImmutable::parse('2026-01-01');
+    Todo::factory()->for($user)->create(['done_at' => $date->subDays(401)->setTime(12, 0)]);
+
+    $this->actingAs($user, 'sanctum')->getJson('/api/v1/stats/summary?from=2026-01-01&to=2026-01-01')
+        ->assertOk()
+        ->assertJsonPath('data.days.0.streak', 0)
+        ->assertJsonPath('data.days.0.streak_may_be_longer', false)
+        ->assertJsonPath('data.opening_streak', 1)
+        ->assertJsonPath('data.opening_streak_may_be_longer', true);
+});
+
+it('marks a positive historical streak as a lower bound at the 400 day edge', function () {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $date = CarbonImmutable::parse('2026-01-01');
+    Todo::factory()->for($user)->create(['done_at' => $date->subDays(400)->setTime(12, 0)]);
+
+    $this->actingAs($user, 'sanctum')->getJson('/api/v1/stats/summary?from=2026-01-01&to=2026-01-01')
+        ->assertOk()
+        ->assertJsonPath('data.days.0.streak', 1)
         ->assertJsonPath('data.days.0.streak_may_be_longer', true);
 });
