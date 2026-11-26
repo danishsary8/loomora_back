@@ -568,7 +568,8 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-053: Revision-aware Notes and conditional writes
 
-- **Status:** review
+- **Status:** done
+- **Merge:** [PR #59](https://github.com/danishsary8/loomora_back/pull/59) at `2c95ed6`.
 - **Owner:** claude
 - **Scope:** Planner-approved 2026-11-26 (decisions in PROGRESS, "B-053 planner decisions"). Add a server-controlled `notes.revision` (integer, at least 1, default 1). It goes up by one on a real edit, a delete, a restore and a schedule block delete that detaches the note. `PATCH /notes/{note}` takes an optional `expected_revision` body field and `DELETE /notes/{note}` an optional `expected_revision` query parameter: a stale value is a 409 with no write, an invalid one a 422, and an omitted one keeps the old behavior. An identical `POST /notes` replay of an active note returns 200; a changed one, a deleted note or another account's UUID is 409. `revision` is in every Note response. Import and the B-052 diagnostics are unchanged. No automatic overwrite or restore, no bulk conflict action, no frontend change.
 - **Plan:**
@@ -583,3 +584,15 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Two PATCHes with the same revision on PostgreSQL give one 200 and one 409.
 - [x] B-052 import diagnostics unchanged.
 - **Out of scope:** frontend use (F-R4-04), a required `expected_revision`, revisions in import diagnostics, deploy.
+
+### B-055: Patch runtime dependency advisories and gate them in CI
+
+- **Status:** review
+- **Owner:** claude
+- **Scope:** `composer audit --locked` reported 9 advisories in `symfony/http-client` (4), `symfony/routing` (2), `symfony/mailer` (2) and `symfony/http-kernel` (1). Update the Symfony packages to the patched 7.4.24 line (no major upgrade needed) and fail CI on any future advisory.
+- **Done when:**
+  - [x] `composer audit --locked` reports no advisories.
+  - [x] `composer validate --strict` passes.
+  - [x] CI runs `composer audit --locked` after install.
+  - [ ] CI tests, Pint, PHPStan and Docker jobs pass on the PR.
+- **Files:** `composer.lock`, `.github/workflows/ci.yml`, `docs/TASKS.md`, `docs/PROGRESS.md`
