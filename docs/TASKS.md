@@ -587,7 +587,8 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-055: Patch runtime dependency advisories and gate them in CI
 
-- **Status:** review
+- **Status:** done
+- **Merge:** [PR #60](https://github.com/danishsary8/loomora_back/pull/60) at `4f4b551`.
 - **Owner:** claude
 - **Scope:** `composer audit --locked` reported 9 advisories in `symfony/http-client` (4), `symfony/routing` (2), `symfony/mailer` (2) and `symfony/http-kernel` (1). Update the Symfony packages to the patched 7.4.24 line (no major upgrade needed) and fail CI on any future advisory.
 - **Done when:**
