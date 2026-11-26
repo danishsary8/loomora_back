@@ -1589,7 +1589,12 @@ paths:
       tags: [Notes]
       operationId: createNote
       summary: Create a standalone or schedule-block note
-      description: A title or body is required. An occurrence date requires an owned schedule block.
+      description: |
+        A title or body is required. An occurrence date requires an owned schedule block. The client UUID makes the
+        request safe to retry (B-053): an identical replay of an active note returns 200 with the stored note and
+        writes nothing. Identical compares title, body, schedule_item_id (letter case ignored) and local_date as
+        GET /notes/{note} returns them; any `revision` or timestamp in the body is ignored. A changed replay, a replay
+        of a deleted note (which stays deleted) and a UUID owned by another account are 409.
       requestBody:
         required: true
         content:
@@ -1598,7 +1603,17 @@ paths:
               $ref: '#/components/schemas/NoteInput'
       responses:
         '201':
-          description: The created note.
+          description: The created note, at revision 1.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Note'
+        '200':
+          description: An identical replay of an active note; the stored note, unchanged.
           content:
             application/json:
               schema:
@@ -1608,7 +1623,13 @@ paths:
                   data:
                     $ref: '#/components/schemas/Note'
         '409':
-          description: The client UUID is already in use.
+          description: The UUID already holds different content or a deleted note, or belongs to another account. Do not retry; save the content under a new UUID if needed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: This note ID is already in use.
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -1647,16 +1668,29 @@ paths:
       tags: [Notes]
       operationId: updateNote
       summary: Edit an account note
-      description: Supply null to clear a field. A changed block clears an omitted occurrence date. The resulting note must retain a title or body.
+      description: |
+        Supply null to clear a field. A changed block clears an omitted occurrence date. The resulting note must
+        retain a title or body. Send `expected_revision` (the `revision` the client last read) to reject a stale
+        edit with 409 and write nothing; the client then reads the note again. Without it the edit applies as
+        before (last write wins), so older clients keep working. An edit that changes nothing returns the note
+        with the same revision. If a response is lost, a retry with the old revision gets 409: read the note and
+        treat matching content as success.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NoteFields'
+              allOf:
+                - $ref: '#/components/schemas/NoteFields'
+                - type: object
+                  properties:
+                    expected_revision: { type: integer, minimum: 1 }
+            example:
+              body: Read chapter five
+              expected_revision: 3
       responses:
         '200':
-          description: The updated note.
+          description: The updated note. Its revision is one higher if anything changed.
           content:
             application/json:
               schema:
@@ -1669,6 +1703,14 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: The note's current revision is not `expected_revision`. Nothing was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: This note changed since you loaded it. Reload it and try again.
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -1677,6 +1719,15 @@ paths:
       tags: [Notes]
       operationId: deleteNote
       summary: Soft-delete a note
+      description: |
+        Deleting moves the revision up by one. Send `expected_revision` to refuse the delete with 409 when the note
+        changed since the client read it; without it the delete applies as before. Deleting a note that is already
+        deleted returns 204 again without checking the revision.
+      parameters:
+        - in: query
+          name: expected_revision
+          required: false
+          schema: { type: integer, minimum: 1 }
       responses:
         '204':
           description: The note is deleted. Repeated deletion returns the same status.
@@ -1684,6 +1735,16 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: The note's current revision is not `expected_revision`. The note was not deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: This note changed since you loaded it. Reload it and try again.
+        '422':
+          $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -1699,7 +1760,7 @@ paths:
       summary: Restore a note deleted less than seven days ago
       responses:
         '200':
-          description: The restored note, or the current note if already active.
+          description: The restored note with its revision one higher, or the current note unchanged if already active.
           content:
             application/json:
               schema:
@@ -2283,7 +2344,7 @@ components:
         case of UUIDs and the submitted timestamps are ignored. `different` means the active account note differs.
         `deleted` means the account note is soft-deleted, whatever its content. A note UUID owned by another
         account is still a 422, never a diagnostic. No account content, timestamps or other account data is
-        returned. Added in B-052: `created` and `skipped` are unchanged, and a client talking to an earlier
+        returned; B-053 revisions are not part of it. Added in B-052: `created` and `skipped` are unchanged, and a client talking to an earlier
         server that omits `skipped_details` must treat every skipped note as unverified.
       required: [created, skipped, skipped_details]
       properties:
@@ -2303,8 +2364,15 @@ components:
       allOf:
         - $ref: '#/components/schemas/NoteInput'
         - type: object
-          required: [title, body, schedule_item_id, local_date, created_at, updated_at]
+          required: [title, body, schedule_item_id, local_date, revision, created_at, updated_at]
           properties:
+            revision:
+              type: integer
+              minimum: 1
+              description: |
+                Set by the server (B-053); a client value is ignored on create, import and edit. Starts at 1 and
+                goes up by one on each edit that changes a field, each delete and restore, and when the note's
+                schedule block is deleted (the note becomes standalone).
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
 
