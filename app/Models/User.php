@@ -166,4 +166,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Todo::class);
     }
+
+    /** @return HasMany<Note, $this> */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(Note::class);
+    }
 }

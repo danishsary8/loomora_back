@@ -22,7 +22,11 @@ use Illuminate\Validation\ValidationException;
  */
 class ImportService
 {
-    public function __construct(private readonly StreakService $streak, private readonly FocusSessionService $focus) {}
+    public function __construct(
+        private readonly StreakService $streak,
+        private readonly FocusSessionService $focus,
+        private readonly NoteService $notes,
+    ) {}
 
     /**
      * @param  array<string, list<array<string, mixed>>>  $data  already validated
@@ -38,6 +42,10 @@ class ImportService
                 'checkins' => $this->checkins($user, $data['checkins'] ?? []),
                 'daily_intentions' => $this->intentions($user, $data['daily_intentions'] ?? []),
             ];
+
+            if (array_key_exists('notes', $data)) {
+                $result['notes'] = $this->notes->import($user, $data['notes']);
+            }
 
             if (array_key_exists('focus_sessions', $data)) {
                 $result['focus_sessions'] = $this->focusSessions($user, $data['focus_sessions']);

@@ -67,3 +67,7 @@ Google-only accounts with no password receive `422` on `DELETE /me`. The planner
 - Later releases add endpoints (subtasks, repeats, reminders, timers, notes, analytics) in their own docs.
 
 Guest Focus history is imported through POST /import in batches of up to 500 finished sessions. Send linked planner records in the same or an earlier request and exclude deleted sessions. Focus import uses the recording contract and replay rules. A failed request rolls back every section of that request.
+
+### Notes
+
+The authenticated notes API supports standalone notes and notes linked to an owned schedule block or a dated occurrence. See /notes and /notes/{note} in OpenAPI for the resource contract. Guest imports can include up to 500 notes per request, with any referenced schedule item sent in the same request or earlier. Successful retries skip note UUIDs already owned by the account, including deleted notes.

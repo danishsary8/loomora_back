@@ -101,3 +101,38 @@ it('accepts exactly 500 distinct sessions in one authenticated request', functio
     $this->postJson('/api/v1/import', $body)->assertOk()->assertJsonPath('data.focus_sessions.created', 500);
     $this->assertDatabaseCount('focus_sessions', 500);
 });
+
+it('imports notes alongside linked Focus sessions and rolls back both with planner rows on a Focus conflict', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user, 'sanctum');
+
+    $payload = function () {
+        $todoId = Str::uuid()->toString();
+        $blockId = Str::uuid()->toString();
+
+        return [
+            'todos' => [['id' => $todoId, 'title' => 'Read']],
+            'schedule_items' => [['id' => $blockId, 'title' => 'Study', 'start_time' => '08:00', 'end_time' => '09:00', 'days' => [0]]],
+            'notes' => [['id' => Str::uuid()->toString(), 'body' => 'Keep this', 'schedule_item_id' => $blockId]],
+            'focus_sessions' => [guestFocusSession(['todo_id' => $todoId])],
+        ];
+    };
+    $body = $payload();
+    $this->postJson('/api/v1/import', $body)->assertOk()
+        ->assertJsonPath('data.todos.created', 1)
+        ->assertJsonPath('data.schedule_items.created', 1)
+        ->assertJsonPath('data.notes.created', 1)
+        ->assertJsonPath('data.focus_sessions.created', 1);
+    $this->postJson('/api/v1/import', $body)->assertOk()
+        ->assertJsonPath('data.notes.skipped', 1)
+        ->assertJsonPath('data.focus_sessions.skipped', 1);
+
+    $retry = $payload();
+    $retry['focus_sessions'][] = [...$body['focus_sessions'][0], 'label' => 'Conflicting replay'];
+    $this->postJson('/api/v1/import', $retry)->assertConflict();
+
+    foreach (['todos', 'schedule_items', 'notes', 'focus_sessions'] as $table) {
+        $this->assertDatabaseMissing($table, ['id' => $retry[$table][0]['id']]);
+        $this->assertDatabaseHas($table, ['id' => $body[$table][0]['id']]);
+    }
+});

@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Import;
 
 use App\Http\Requests\Focus\StoreFocusSessionRequest;
+use App\Http\Requests\NoteRequest;
 use App\Http\Requests\Todo\TodoRules;
 use App\Models\DailyIntention;
+use App\Models\Note;
 use App\Models\ScheduleCheckin;
 use App\Models\ScheduleException;
 use App\Models\ScheduleItem;
@@ -39,6 +41,12 @@ class ImportRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'notes' => ['sometimes', 'array', 'list', 'max:'.Note::MAX_IMPORT],
+            'notes.*.id' => ['required', 'uuid', 'distinct:ignore_case'],
+            ...NoteRequest::fields('notes.*.'),
+            'notes.*.created_at' => TodoRules::dateTimeRules(),
+            'notes.*.updated_at' => TodoRules::dateTimeRules(),
+
             'todos' => ['sometimes', 'array', 'max:'.Todo::MAX_PER_USER],
             'todos.*.id' => ['required', 'uuid', 'distinct'],
             'todos.*.title' => ['required', 'string', 'min:1', 'max:200'],

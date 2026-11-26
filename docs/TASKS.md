@@ -512,3 +512,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. Validate the date range and aggregate Focus and to-do data alongside existing schedule occurrences.
   3. Document the OpenAPI response and add a shared fixture for frontend parity.
   4. Verify both databases, static checks and the contract, then open the PR for owner review.
+
+### B-048: Notes and guest import
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** D8 and D9, standalone and schedule-block notes with optional occurrence dates, plus idempotent guest import.
+- **Plan:**
+  1. Add API tests for ownership, note lifecycle and guest import.
+  2. Add the notes table and authenticated, account-scoped endpoints.
+  3. Extend the atomic import with the same note validation and reference rules.
+  4. Publish OpenAPI and verify compatibility, rollback and both database suites.

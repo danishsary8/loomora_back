@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\GoogleDeletionController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\ImportController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\NoteController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ReminderController;
 use App\Http\Controllers\Api\V1\ScheduleCheckinController;
@@ -39,7 +40,7 @@ Route::prefix('v1')->group(function () {
         Route::post('password/reset', [PasswordResetController::class, 'reset'])->name('auth.password.reset');
     });
 
-    Route::middleware(['auth:sanctum', 'throttle:api'])->whereUuid(['item', 'todo', 'focusSession'])->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:api'])->whereUuid(['item', 'todo', 'focusSession', 'note'])->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::post('auth/email/resend', [EmailVerificationController::class, 'resend'])
             ->middleware('throttle:verification')
@@ -69,6 +70,13 @@ Route::prefix('v1')->group(function () {
         Route::post('todos/{todo}/restore', TodoRestoreController::class)->name('todos.restore');
         Route::post('todos/{todo}/done', [TodoController::class, 'markDone'])->name('todos.done');
         Route::delete('todos/{todo}/done', [TodoController::class, 'markUndone'])->name('todos.undone');
+
+        Route::get('notes', [NoteController::class, 'index'])->name('notes.index');
+        Route::post('notes', [NoteController::class, 'store'])->name('notes.store');
+        Route::get('notes/{note}', [NoteController::class, 'show'])->name('notes.show');
+        Route::patch('notes/{note}', [NoteController::class, 'update'])->name('notes.update');
+        Route::delete('notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy');
+        Route::post('notes/{note}/restore', [NoteController::class, 'restore'])->name('notes.restore');
 
         Route::get('focus-sessions', [FocusSessionController::class, 'index'])->name('focus-sessions.index');
         Route::post('focus-sessions', [FocusSessionController::class, 'store'])->name('focus-sessions.store');

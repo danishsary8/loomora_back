@@ -43,6 +43,8 @@ tags:
     description: Daily Focus, to-do and schedule metrics.
   - name: Streak
     description: Days in a row with something checked off.
+  - name: Notes
+    description: Standalone and schedule-block notes.
   - name: Focus
     description: Finished Focus sessions (countdown with breaks, or stopwatch with laps).
 security:
@@ -1545,6 +1547,176 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /notes:
+    get:
+      tags: [Notes]
+      operationId: listNotes
+      summary: List the account's live notes, newest update first
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, maximum: 1000000, default: 1 }
+      responses:
+        '200':
+          description: Up to 50 live notes and links to adjacent pages.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, links, meta]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Note'
+                  links:
+                    type: object
+                    properties:
+                      prev: { type: [string, 'null'] }
+                      next: { type: [string, 'null'] }
+                  meta:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      per_page: { type: integer }
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    post:
+      tags: [Notes]
+      operationId: createNote
+      summary: Create a standalone or schedule-block note
+      description: A title or body is required. An occurrence date requires an owned schedule block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteInput'
+      responses:
+        '201':
+          description: The created note.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Note'
+        '409':
+          description: The client UUID is already in use.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /notes/{note}:
+    parameters:
+      - in: path
+        name: note
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Notes]
+      operationId: getNote
+      summary: Read an account note
+      responses:
+        '200':
+          description: The note.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Note'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    patch:
+      tags: [Notes]
+      operationId: updateNote
+      summary: Edit an account note
+      description: Supply null to clear a field. A changed block clears an omitted occurrence date. The resulting note must retain a title or body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteFields'
+      responses:
+        '200':
+          description: The updated note.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Note'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags: [Notes]
+      operationId: deleteNote
+      summary: Soft-delete a note
+      responses:
+        '204':
+          description: The note is deleted. Repeated deletion returns the same status.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /notes/{note}/restore:
+    parameters:
+      - in: path
+        name: note
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Notes]
+      operationId: restoreNote
+      summary: Restore a note deleted less than seven days ago
+      responses:
+        '200':
+          description: The restored note, or the current note if already active.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Note'
+        '410':
+          description: The note's undo window has expired.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /focus-sessions:
     get:
       tags: [Focus]
@@ -1910,6 +2082,12 @@ paths:
                     Local dates and durations are calculated as for POST /focus-sessions.
                   items:
                     $ref: '#/components/schemas/FocusSessionInput'
+                notes:
+                  type: array
+                  maxItems: 500
+                  description: Send blocks before their notes or in the same request. Existing note UUIDs owned by the account are skipped, including deleted notes.
+                  items:
+                    $ref: '#/components/schemas/NoteImportInput'
                 daily_intentions:
                   type: array
                   maxItems: 1000
@@ -1953,6 +2131,7 @@ paths:
                       exceptions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       checkins: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       focus_sessions: {type: object, description: Returned when the request includes focus_sessions., required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      notes: {type: object, description: Returned when the request includes notes., required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       daily_intentions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
               example:
                 data:
@@ -2039,6 +2218,35 @@ components:
         blocks_checked: { type: integer, minimum: 0 }
         focus_ms_linked: { type: integer, format: int64, minimum: 0 }
         focus_ms_unplanned: { type: integer, format: int64, minimum: 0 }
+    NoteFields:
+      type: object
+      properties:
+        title: { type: [string, 'null'], maxLength: 120 }
+        body: { type: [string, 'null'], maxLength: 10000 }
+        schedule_item_id: { type: [string, 'null'], format: uuid }
+        local_date: { type: [string, 'null'], format: date }
+    NoteInput:
+      allOf:
+        - $ref: '#/components/schemas/NoteFields'
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uuid }
+    NoteImportInput:
+      allOf:
+        - $ref: '#/components/schemas/NoteInput'
+        - type: object
+          properties:
+            created_at: { type: [string, 'null'], format: date-time }
+            updated_at: { type: [string, 'null'], format: date-time }
+    Note:
+      allOf:
+        - $ref: '#/components/schemas/NoteInput'
+        - type: object
+          required: [title, body, schedule_item_id, local_date, created_at, updated_at]
+          properties:
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
 
     GoogleDeletionBrowserSecret:
       type: string

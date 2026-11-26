@@ -782,3 +782,16 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - Frontend F-R4-01 can sync this OpenAPI contract and the shared stats-summary-cases.json fixture. Deploy the backend before the frontend uses the new endpoint. B-049 and F-R3-15 are needed for converted guests' imported sessions to appear in Analytics.
 
 - Follow-up verification covers year zero rejection and safe iteration across the first and last supported calendar dates. The Stats and Schedule feature subset passed 54 tests on SQLite and PostgreSQL.
+
+### 2026-11-25: B-048 Notes and guest import
+
+- Added standalone and schedule-block notes (D8 and D9), optionally associated with an occurrence date. The API supports reading, paging, editing, soft deletion, and seven-day Undo. Deleting a schedule block keeps its notes as standalone notes.
+- POST /import accepts optional notes, preserves provided timestamps and skips existing owned IDs including deleted notes. Send referenced blocks before their notes or in the same request. Each request is atomic.
+- Full SQLite baseline with Notes passed 566 tests, with 42 PostgreSQL-only skips. Final Notes subset passed 7 tests each on SQLite and PostgreSQL. The full PostgreSQL run passed 607 tests and hit one existing Google-deletion clock-boundary failure. PostgreSQL migrate, empty rollback and re-migrate passed, and the populated rollback test preserved the note.
+- Pint, PHPStan, Composer locked checks, Redocly (four existing warnings) and the diff check passed. Deploy the Notes migration before the Notes client calls the API.
+
+### 2026-11-26: B-048 integration refresh
+
+- Integrated the B-047 base with B-046 Focus History and B-049 guest Focus import. Notes and Focus retain their optional import result sections.
+- Added a mixed-import regression covering to-dos, schedule items, Notes, linked Focus sessions, replay and rollback after a Focus collision.
+- Verified the Notes migration, empty rollback, re-apply and schema on disposable SQLite and PostgreSQL. The overnight handoff records suite and GitHub results.
