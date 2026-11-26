@@ -1887,7 +1887,15 @@ paths:
         use the account time zone, and to-dos due use their stored due date. Deleted
         to-dos are excluded. Planned block minutes and check-ins reflect the schedule
         after overrides and skips. Focus with a stored to-do or block link counts as
-        linked; all other focus counts as unplanned. Use GET /streak for streak data.
+        linked; all other focus counts as unplanned. Historical streak values use current
+        records and the account time zone. A completed to-do or schedule check-in counts;
+        unplanned days are skipped and a missed planned day breaks the streak. The current
+        local day is not judged until it ends. Deleted to-dos are excluded.
+        Each value looks back at most 400 preceding days. The may_be_longer flag is true
+        when no missed planned day establishes the beginning within that window, so the
+        reported value is a lower bound and an earlier streak could make it longer.
+        A false flag means a break or the start of the supported calendar establishes
+        the value. No permanent history snapshots are stored.
       parameters:
         - in: query
           name: from
@@ -1909,8 +1917,10 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [days, totals, by_mode]
+                    required: [opening_streak, opening_streak_may_be_longer, days, totals, by_mode]
                     properties:
+                      opening_streak: { type: integer, minimum: 0, description: Streak at the end of the local day preceding from. }
+                      opening_streak_may_be_longer: { type: boolean, description: True when the opening streak could extend beyond the supported lookback. }
                       days:
                         type: array
                         minItems: 1
@@ -1919,9 +1929,11 @@ paths:
                           allOf:
                             - $ref: '#/components/schemas/StatsMetrics'
                             - type: object
-                              required: [local_date]
+                              required: [local_date, streak, streak_may_be_longer]
                               properties:
                                 local_date: { type: string, format: date }
+                                streak: { type: integer, minimum: 0, description: Reconstructed streak at the end of this local day. }
+                                streak_may_be_longer: { type: boolean, description: True when the streak could extend beyond the supported lookback. }
                       totals:
                         $ref: '#/components/schemas/StatsMetrics'
                       by_mode:

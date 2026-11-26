@@ -3,6 +3,8 @@
 use App\Models\ScheduleItem;
 use App\Models\Todo;
 use App\Models\User;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -58,7 +60,14 @@ it('zero fills dates and buckets only owned live to-dos by due date and local co
 });
 
 it('summarizes Focus and effective schedule occurrences using the shared fixture', function () {
+    $this->travelTo(Carbon::parse('2026-12-01 12:00:00', 'UTC'));
     $fixture = json_decode(file_get_contents(base_path('tests/Fixtures/stats-summary-cases.json')), true, flags: JSON_THROW_ON_ERROR);
+    $fixture['expected']['opening_streak'] = 0;
+    $fixture['expected']['opening_streak_may_be_longer'] = false;
+    foreach ([1, 1, 0] as $index => $streak) {
+        $fixture['expected']['days'][$index]['streak'] = $streak;
+        $fixture['expected']['days'][$index]['streak_may_be_longer'] = false;
+    }
     $user = User::factory()->create(['timezone' => $fixture['timezone']]);
     $other = User::factory()->create();
     $this->actingAs($user, 'sanctum');
@@ -164,4 +173,57 @@ it('counts imported Focus on its local date and excludes it until restored after
         ->assertJsonPath('data.days.1.focus_ms_linked', 90000)
         ->assertJsonPath('data.totals.sessions', 1)
         ->assertJsonPath('data.by_mode.stopwatch', 90000);
+});
+
+it('reports opening and daily streaks across local dates, skipped days, breaks and deleted completions', function () {
+    $this->travelTo(Carbon::parse('2026-11-27 12:00:00', 'UTC'));
+    $user = User::factory()->create(['timezone' => 'Asia/Phnom_Penh']);
+    Todo::factory()->for($user)->create(['due_date' => '2026-11-21', 'done_at' => null]);
+    Todo::factory()->for($user)->create(['done_at' => '2026-11-21 18:00:00']);
+    Todo::factory()->for($user)->create(['done_at' => '2026-11-22 18:00:00']);
+    Todo::factory()->for($user)->create(['due_date' => '2026-11-25', 'done_at' => null]);
+    Todo::factory()->for($user)->create(['done_at' => '2026-11-24 18:00:00'])->delete();
+    $this->actingAs($user, 'sanctum')->getJson('/api/v1/stats/summary?from=2026-11-23&to=2026-11-26')
+        ->assertOk()
+        ->assertJsonPath('data.opening_streak', 1)
+        ->assertJsonPath('data.opening_streak_may_be_longer', false)
+        ->assertJsonPath('data.days.0.streak', 2)
+        ->assertJsonPath('data.days.1.streak', 2)
+        ->assertJsonPath('data.days.2.streak', 0)
+        ->assertJsonPath('data.days.2.streak_may_be_longer', false);
+});
+
+it('marks a streak as potentially longer when the 400 day window contains no break', function () {
+    $this->travelTo(Carbon::parse('2026-11-27 12:00:00', 'UTC'));
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    Todo::factory()->for($user)->create(['done_at' => '2026-11-23 12:00:00']);
+    $this->actingAs($user, 'sanctum')->getJson('/api/v1/stats/summary?from=2026-11-24&to=2026-11-24')
+        ->assertOk()
+        ->assertJsonPath('data.opening_streak', 1)
+        ->assertJsonPath('data.opening_streak_may_be_longer', true)
+        ->assertJsonPath('data.days.0.streak', 1)
+        ->assertJsonPath('data.days.0.streak_may_be_longer', true);
+});
+
+it('limits each reported streak to 400 preceding days and detects a break at the boundary', function () {
+    $this->travelTo(Carbon::parse('2026-11-27 12:00:00', 'UTC'));
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $target = CarbonImmutable::parse('2026-11-24');
+    Todo::factory()->for($user)->create(['due_date' => $target->subDays(400)->toDateString(), 'done_at' => null]);
+    Todo::factory()->for($user)->create(['done_at' => $target->subDays(401)->setTime(12, 0)]);
+    Todo::factory()->for($user)->create(['done_at' => $target->subDay()->setTime(12, 0)]);
+    $this->actingAs($user, 'sanctum')->getJson('/api/v1/stats/summary?from=2026-11-24&to=2026-11-24')
+        ->assertOk()
+        ->assertJsonPath('data.days.0.streak', 1)
+        ->assertJsonPath('data.days.0.streak_may_be_longer', false)
+        ->assertJsonPath('data.opening_streak', 1)
+        ->assertJsonPath('data.opening_streak_may_be_longer', false);
+});
+
+it('identifies a zero with no visible preceding break as a lower bound', function () {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $this->actingAs($user, 'sanctum')->getJson('/api/v1/stats/summary?from=2026-01-01&to=2026-01-01')
+        ->assertOk()
+        ->assertJsonPath('data.days.0.streak', 0)
+        ->assertJsonPath('data.days.0.streak_may_be_longer', true);
 });
