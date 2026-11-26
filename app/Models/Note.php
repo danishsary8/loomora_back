@@ -30,5 +30,12 @@ class Note extends Model
 
     public const MAX_BODY_LENGTH = 10000;
 
+    /** How a skipped import row compares with the account note (B-052). */
+    public const IMPORT_IDENTICAL = 'identical';
+
+    public const IMPORT_DIFFERENT = 'different';
+
+    public const IMPORT_DELETED = 'deleted';
+
     protected $fillable = ['title', 'body', 'schedule_item_id', 'local_date'];
 }

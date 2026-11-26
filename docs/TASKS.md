@@ -515,7 +515,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-048: Notes and guest import
 
-- **Status:** review
+- **Status:** done ([PR #52](https://github.com/danishsary8/loomora_back/pull/52), merged at `6f1dfe4a935c90f225521801133c95ab5ebc169d`)
 - **Owner:** Codex
 - **Scope:** D8 and D9, standalone and schedule-block notes with optional occurrence dates, plus idempotent guest import.
 - **Plan:**
@@ -534,3 +534,18 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. Reuse the existing streak rules and bound reads while keeping GET /streak unchanged.
   3. Update the OpenAPI contract and progress, then verify both databases and required checks.
   4. Open a PR against v2-rebuild and verify its exact head and CI.
+
+### B-052: Safe Notes import conflict diagnostics
+
+- **Status:** review
+- **Owner:** claude
+- **Scope:** Owner-approved 2026-11-26 as phase 1 of revision-aware Notes reconciliation (phase 2 is B-053). Extend the `notes` section of the `POST /import` result additively with `skipped_details`: one `{id, status}` per skipped note, where status is `identical`, `different` or `deleted`, comparing the API-visible title, body, schedule block and occurrence date. No account content, timestamps or revisions are returned, no account note is ever changed, a note owned by another account stays a 422, and transactions and chunking are unchanged. A deleted account note keeps the guest copy (a later frontend flow may save it as a new note). QA-027 fail-closed behavior stays intact.
+- **Plan:**
+  1. Pest tests first: new, identical, different (guest and account edits, each visible field), deleted, mixed batch order, repeats, the 500 bound, cross-account ids and rollback.
+  2. Build the diagnostic in `NoteService::import` from the row it already loads, with no extra query and no write.
+  3. Document `NoteImportResult` in `openapi.yaml` with examples and backward compatibility, and docs/09.
+  4. Run Pest on SQLite and PostgreSQL, Pint, PHPStan, Composer audit, Redocly and `git diff --check`.
+- [x] Exactly one diagnostic per skipped note, in request order; no diagnostics for created notes.
+- [x] Skipped account notes are never modified, and a failed request reports nothing and writes nothing.
+- [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Composer audit and Redocly lint pass.
+- **Out of scope:** B-053 revisions and conditional writes, PATCH or restore changes, frontend use of the diagnostics.

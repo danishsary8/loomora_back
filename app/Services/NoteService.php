@@ -42,20 +42,57 @@ class NoteService
     }
 
     /**
-     * Called after schedule items are imported, inside the import transaction.
+     * Called after schedule items are imported, inside the import transaction. A skipped row is
+     * never written; its diagnostic only says how the account copy compares with the guest copy.
      *
      * @param  list<array<string, mixed>>  $rows
-     * @return array{created: int, skipped: int}
+     * @return array{created: int, skipped: int, skipped_details: list<array{id: string, status: string}>}
      */
     public function import(User $user, array $rows): array
     {
-        $created = 0;
+        $details = [];
         foreach ($rows as $index => $attributes) {
-            [, $inserted] = $this->insert($user, $attributes, "notes.{$index}.");
-            $created += (int) $inserted;
+            [$stored, $inserted] = $this->insert($user, $attributes, "notes.{$index}.");
+            if (! $inserted) {
+                $details[] = ['id' => $stored->id, 'status' => $this->skipStatus($stored, $attributes)];
+            }
         }
 
-        return ['created' => $created, 'skipped' => count($rows) - $created];
+        return [
+            'created' => count($rows) - count($details),
+            'skipped' => count($details),
+            'skipped_details' => $details,
+        ];
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function skipStatus(Note $stored, array $attributes): string
+    {
+        if ($stored->trashed()) {
+            return Note::IMPORT_DELETED;
+        }
+
+        return $this->visibleFields($stored->getAttributes()) === $this->visibleFields($attributes)
+            ? Note::IMPORT_IDENTICAL
+            : Note::IMPORT_DIFFERENT;
+    }
+
+    /**
+     * The fields the API shows: an occurrence date is hidden without a block (NoteResource).
+     *
+     * @param  array<string, mixed>  $fields
+     * @return list<string|null>
+     */
+    private function visibleFields(array $fields): array
+    {
+        $block = isset($fields['schedule_item_id']) ? strtolower($fields['schedule_item_id']) : null;
+
+        return [
+            $fields['title'] ?? null,
+            $fields['body'] ?? null,
+            $block,
+            $block === null ? null : ($fields['local_date'] ?? null),
+        ];
     }
 
     /**

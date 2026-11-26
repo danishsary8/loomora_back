@@ -2099,7 +2099,7 @@ paths:
                 notes:
                   type: array
                   maxItems: 500
-                  description: Send blocks before their notes or in the same request. Existing note UUIDs owned by the account are skipped, including deleted notes.
+                  description: Send blocks before their notes or in the same request. Existing note UUIDs owned by the account are skipped, including deleted notes, and each one is described in `notes.skipped_details` of the response.
                   items:
                     $ref: '#/components/schemas/NoteImportInput'
                 daily_intentions:
@@ -2145,15 +2145,35 @@ paths:
                       exceptions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       checkins: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
                       focus_sessions: {type: object, description: Returned when the request includes focus_sessions., required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
-                      notes: {type: object, description: Returned when the request includes notes., required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
+                      notes:
+                        $ref: '#/components/schemas/NoteImportResult'
                       daily_intentions: {type: object, required: [created, skipped], properties: {created: {type: integer}, skipped: {type: integer}}}
-              example:
-                data:
-                  todos: {created: 1, skipped: 0}
-                  schedule_items: {created: 1, skipped: 0}
-                  exceptions: {created: 0, skipped: 0}
-                  checkins: {created: 0, skipped: 0}
-                  daily_intentions: {created: 0, skipped: 0}
+              examples:
+                planner:
+                  summary: A request without notes
+                  value:
+                    data:
+                      todos: {created: 1, skipped: 0}
+                      schedule_items: {created: 1, skipped: 0}
+                      exceptions: {created: 0, skipped: 0}
+                      checkins: {created: 0, skipped: 0}
+                      daily_intentions: {created: 0, skipped: 0}
+                notesRetry:
+                  summary: A retried notes chunk after a partial import
+                  value:
+                    data:
+                      todos: {created: 0, skipped: 0}
+                      schedule_items: {created: 0, skipped: 0}
+                      exceptions: {created: 0, skipped: 0}
+                      checkins: {created: 0, skipped: 0}
+                      daily_intentions: {created: 0, skipped: 0}
+                      notes:
+                        created: 1
+                        skipped: 3
+                        skipped_details:
+                          - {id: 0b6f2c1e-3d4a-4b5c-8d9e-0f1a2b3c4d5e, status: identical}
+                          - {id: 1c7a3d2f-4e5b-4c6d-9e0f-1a2b3c4d5e6f, status: different}
+                          - {id: 2d8b4e3a-5f6c-4d7e-8f1a-2b3c4d5e6f7a, status: deleted}
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '409':
@@ -2253,6 +2273,32 @@ components:
           properties:
             created_at: { type: [string, 'null'], format: date-time }
             updated_at: { type: [string, 'null'], format: date-time }
+    NoteImportResult:
+      type: object
+      description: |
+        Returned when the request includes notes. A skipped note is never changed. `skipped_details` has exactly one
+        entry per skipped note, in request order, with the note's lowercase UUID, so it never holds more than 500.
+        `identical` means the account note is active and its title, body, schedule_item_id and local_date (as
+        returned by GET /notes/{note}, so local_date is null without a block) match the submitted note; letter
+        case of UUIDs and the submitted timestamps are ignored. `different` means the active account note differs.
+        `deleted` means the account note is soft-deleted, whatever its content. A note UUID owned by another
+        account is still a 422, never a diagnostic. No account content, timestamps or other account data is
+        returned. Added in B-052: `created` and `skipped` are unchanged, and a client talking to an earlier
+        server that omits `skipped_details` must treat every skipped note as unverified.
+      required: [created, skipped, skipped_details]
+      properties:
+        created: {type: integer, minimum: 0}
+        skipped: {type: integer, minimum: 0}
+        skipped_details:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [id, status]
+            additionalProperties: false
+            properties:
+              id: {type: string, format: uuid}
+              status: {type: string, enum: [identical, different, deleted]}
     Note:
       allOf:
         - $ref: '#/components/schemas/NoteInput'
