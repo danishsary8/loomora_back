@@ -296,7 +296,7 @@ it('ends a pending Google sign-in when its resolved account has been deleted', f
     );
 
     expect($deleted['status'])->toBe(204)->and($callback['status'])->toBe(302)
-        ->and($callback['location'])->toEndWith('?error=account_not_found');
+        ->and($callback['location'])->toEndWith('?error=google_failed');
     $this->assertModelMissing($user);
     expect($emailMatch->fresh()->google_id)->toBeNull()
         ->and($emailMatch->fresh()->email_verified_at)->toBeNull()
@@ -416,7 +416,9 @@ it('commits one account and one initial bearer for overlapping signups', functio
 
     expect($accepted['status'])->toBe(201);
     if ($googleContender) {
-        expect($rejected['status'])->toBe(302)->and($rejected['location'])->toEndWith('?error=account_already_exists');
+        // The Google callback either loses the insert race (retryable) or signs in to the committed account.
+        expect($rejected['status'])->toBe(302)->and($rejected['location'])->toMatch('/\\?(error=google_failed|code=[A-Za-z0-9]{64})$/');
+        expect(User::where('email', $email)->count())->toBe(1);
     } else {
         expect($rejected['status'])->toBe(422)->and($rejected['body']['errors'])->toHaveKey('email');
     }

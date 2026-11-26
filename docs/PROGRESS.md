@@ -866,3 +866,8 @@ The owner approved these rules for B-053 revision-aware Notes. None of this is i
 - **What changed:** See TASKS B-056. The import reuses `NoteRequest::fields`, so imported guest notes get the same rules. `NoteService::prepare` normalizes tags before every create, edit and import row, so dirty checks and replay comparisons see the stored form.
 - **How it was verified:** `php -l` on every changed PHP file; Redocly valid with the four existing warnings. New `NotesOrganizeTest` covers defaults, normalization, validation, list order, revision bumps, identical/changed replays and import diagnostics. The sandbox cannot install Composer packages (its proxy refuses Composer's GitHub downloads), so Pest, Pint and PHPStan run in CI.
 - **Questions:** None.
+
+### 2026-11-26: B-057 Google sign-in or sign-up from either button
+
+- **Why:** On the live site, "Sign in with Google" with a new address returned `account_not_found`. The owner asked for one button that signs in existing users and creates accounts for new ones.
+- **How it was verified:** `php -l` on changed files; Redocly. Pest, Pint and PHPStan run in CI (the sandbox cannot install Composer packages).

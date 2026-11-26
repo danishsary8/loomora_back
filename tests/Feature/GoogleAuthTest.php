@@ -89,19 +89,21 @@ describe('callback', function () {
             ->and($user->email_verified_at)->not->toBeNull();
     });
 
-    it('rejects sign-up when the account already exists', function () {
-        User::factory()->create(['email' => 'sokha@gmail.com']);
+    it('signs an existing account in from the sign-up button', function () {
+        $user = User::factory()->create(['email' => 'sokha@gmail.com']);
         fakeGoogle();
 
-        expect(callbackParams($this, googleState('sign_up')))->toBe(['error' => 'account_already_exists'])
-            ->and(User::count())->toBe(1);
+        expect(callbackParams($this, googleState('sign_up')))->toHaveKey('code')
+            ->and(User::count())->toBe(1)
+            ->and($user->fresh()->google_id)->toBe('g-123');
     });
 
-    it('rejects sign-in when no account exists', function () {
+    it('creates an account from the sign-in button when none exists', function () {
         fakeGoogle();
 
-        expect(callbackParams($this, googleState('sign_in')))->toBe(['error' => 'account_not_found'])
-            ->and(User::count())->toBe(0);
+        expect(callbackParams($this, googleState('sign_in')))->toHaveKey('code')
+            ->and(User::count())->toBe(1)
+            ->and(User::first()->email)->toBe('sokha@gmail.com');
     });
 
     it('signs in an existing email user and links their Google id', function () {

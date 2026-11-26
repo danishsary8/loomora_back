@@ -213,9 +213,10 @@ paths:
       summary: Google returns here
       description: |
         Google calls this endpoint. It redirects to `{FRONTEND_URL}/auth/google/callback` with either
-        `?code=<one-time code>` or `?error=` one of `account_not_found` (sign_in, no account),
-        `account_already_exists` (sign_up, account exists), `email_not_verified`, `google_failed`
-        (including when the email account is already linked to a different Google subject).
+        `?code=<one-time code>` or `?error=` one of `email_not_verified` or `google_failed` (including when the
+        email account is already linked to a different Google subject, or a concurrent signup won the race).
+        Both intents behave the same (B-057): an existing account signs in and links its Google id, and a new
+        verified address gets an account. `account_not_found` and `account_already_exists` are no longer sent.
       security: []
       responses:
         '302':

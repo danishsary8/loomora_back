@@ -86,26 +86,18 @@ class GoogleAuthController extends Controller
                     ->orderByRaw('case when google_id = ? then 0 else 1 end', [$subject])
                     ->value('id');
 
-                $signingIn = $state['intent'] === 'sign_in';
+                // One Google button for both screens: an existing account signs in, a new address gets an account.
                 // If this UUID disappeared while waiting, never fall back to another email match.
-                $user = $signingIn && $id !== null ? User::lockForUpdate()->find($id) : null;
-                if ($state['expires'] < now()->getTimestamp()) {
+                $user = $id !== null ? User::lockForUpdate()->find($id) : null;
+                if ($state['expires'] < now()->getTimestamp() || ($id !== null && ! $user)) {
                     return ['error' => 'google_failed'];
                 }
 
-                if ($signingIn) {
-                    if (! $user) {
-                        return ['error' => 'account_not_found'];
-                    }
-
+                if ($user) {
                     if ($user->google_id !== null && $user->google_id !== $subject) {
                         return ['error' => 'google_failed'];
                     }
                 } else {
-                    if ($id !== null) {
-                        return ['error' => 'account_already_exists'];
-                    }
-
                     $user = User::create([
                         'name' => $google->getName() ?: Str::before($email, '@'),
                         'email' => $email,
@@ -127,8 +119,8 @@ class GoogleAuthController extends Controller
                 return ['code' => $code];
             });
         } catch (UniqueConstraintViolationException) {
-            // Another signup or link won. Reusing it would change the callback's intent or identity.
-            $params = ['error' => $state['intent'] === 'sign_up' ? 'account_already_exists' : 'google_failed'];
+            // Another signup or link won the race; the user can simply press the Google button again.
+            $params = ['error' => 'google_failed'];
         }
 
         return $this->toFrontend($params);
