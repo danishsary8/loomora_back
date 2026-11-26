@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Support\LocalDate;
+use Carbon\CarbonImmutable;
 
 /**
  * @phpstan-type Metrics array{focus_ms: int, break_ms: int, sessions: int, todos_done: int, todos_due: int, planned_block_minutes: int, blocks_checked: int, focus_ms_linked: int, focus_ms_unplanned: int}
@@ -22,9 +23,9 @@ class StatsSummaryService
         'focus_ms_unplanned' => 0,
     ];
 
-    public function __construct(private readonly ScheduleService $schedule) {}
+    public function __construct(private readonly ScheduleService $schedule, private readonly StreakService $streak) {}
 
-    /** @return array{days: list<array<string, int|string>>, totals: Metrics, by_mode: array<string, int>} */
+    /** @return array{opening_streak: int, opening_streak_may_be_longer: bool, days: list<array<string, int|string|bool>>, totals: Metrics, by_mode: array<string, int>} */
     public function summarize(User $user, string $from, string $to): array
     {
         $days = [];
@@ -82,16 +83,18 @@ class StatsSummaryService
             }
         }
 
+        $history = $this->streak->history($user, $from, $to);
+        $opening = $history[CarbonImmutable::parse($from)->subDay()->toDateString()];
         $totals = self::EMPTY_METRICS;
         $rows = [];
         foreach ($days as $date => $day) {
             foreach ($day as $metric => $value) {
                 $totals[$metric] += $value;
             }
-            $rows[] = ['local_date' => $date, ...$day];
+            $rows[] = ['local_date' => $date, ...$day, ...$history[$date]];
         }
 
-        return ['days' => $rows, 'totals' => $totals, 'by_mode' => $byMode];
+        return ['opening_streak' => $opening['streak'], 'opening_streak_may_be_longer' => $opening['streak_may_be_longer'], 'days' => $rows, 'totals' => $totals, 'by_mode' => $byMode];
     }
 
     private function minutesSinceMidnight(string $time): int

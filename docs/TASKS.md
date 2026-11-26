@@ -523,3 +523,14 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   2. Add the notes table and authenticated, account-scoped endpoints.
   3. Extend the atomic import with the same note validation and reference rules.
   4. Publish OpenAPI and verify compatibility, rollback and both database suites.
+
+### B-051: Historical streak summary
+
+- **Status:** review
+- **Owner:** Codex
+- **Scope:** Extend the existing 92-day analytics summary with opening and daily reconstructed streak values and an explicit completeness indicator, following the planner decisions in PROGRESS.
+- **Plan:**
+  1. Test opening streaks, 400-day truncation, missing planned days, deleted records and local dates.
+  2. Reuse the existing streak rules and bound reads while keeping GET /streak unchanged.
+  3. Update the OpenAPI contract and progress, then verify both databases and required checks.
+  4. Open a PR against v2-rebuild and verify its exact head and CI.

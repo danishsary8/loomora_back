@@ -795,3 +795,18 @@ The PostgreSQL workers used independent connections, explicit timeouts and advis
 - Integrated the B-047 base with B-046 Focus History and B-049 guest Focus import. Notes and Focus retain their optional import result sections.
 - Added a mixed-import regression covering to-dos, schedule items, Notes, linked Focus sessions, replay and rollback after a Focus collision.
 - Verified the Notes migration, empty rollback, re-apply and schema on disposable SQLite and PostgreSQL. The overnight handoff records suite and GitHub results.
+
+### 2026-11-26: B-051 historical streak policy
+
+The planner approved reconstructing history from existing qualifying records using the current streak rules, with no permanent snapshots. Extend the 92-day summary with an opening value and daily values, without changing GET /streak. StreakService looks back 400 days, counts checked-off to-dos in the user's time zone and schedule check-ins, skips unplanned days and breaks on planned days without a completion. Deleted to-dos are excluded by the model scope.
+
+Proposed additive representation: each streak value includes a boolean indicating whether a preceding break was found within the supported lookback. A true value denotes an incomplete positive lower bound when no break is visible. Zero always returns false under the planner clarification. Historical dates should be treated as completed days; only the actual local current date gets the current-day exception. Future dates and the first representable calendar date require explicit handling without fabricating earlier data.
+
+- B-051 adds opening_streak and opening_streak_may_be_longer at the summary root, and streak and streak_may_be_longer on each daily row. True means a positive value is a lower bound because no missed planned day or supported calendar beginning establishes its start within 400 preceding days. Zero always has a false flag, including when earlier completions lie outside the lookback. Reconstruct from current live data, including deleted-record exclusion, and keep the current-day exception only for the actual local today.
+- Focused analytics verification passed 16 tests and 80 assertions on SQLite. Pint, PHPStan, locked Composer audits and Redocly passed, with four existing Redocly warnings. The corrected PostgreSQL suite passed 648 tests (51,403 assertions). The separately tested merged baseline passed 644 PostgreSQL tests (51,383 assertions) and 602 SQLite tests (42 skips, 51,080 assertions). CI is pending.
+
+### 2026-11-26: B-051 completeness review
+
+- Planner clarified that a zero streak must have a false completeness flag. Positive values retain the 400-day lower-bound indicator. Regression cases cover empty history, a completion just outside the window, and a positive completion at its boundary.
+
+- Completeness correction verified on PHP 8.3: PostgreSQL 650 tests (51,413 assertions), SQLite 608 tests (51,110 assertions) with 42 PostgreSQL-only skips. Pint, PHPStan, Composer validation and locked audits, Redocly (four existing warnings), Docker build, deep health, Apache syntax and access-log checks passed.

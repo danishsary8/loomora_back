@@ -84,6 +84,54 @@ class StreakService
     }
 
     /**
+     * @return array<string, array{streak: int, streak_may_be_longer: bool}>
+     */
+    public function history(User $user, string $from, string $to): array
+    {
+        $first = CarbonImmutable::parse($from);
+        $earliest = $first->subDays(self::WINDOW_DAYS + 1);
+        $calendarStart = CarbonImmutable::parse('0001-01-01');
+        if ($earliest->lt($calendarStart)) {
+            $earliest = $calendarStart;
+        }
+
+        $counted = $this->countedDates($user, $earliest->toDateString(), $to);
+        $planned = $this->plannedDates($user, $earliest->toDateString(), $to);
+        $today = LocalDate::todayFor($user);
+        $result = [];
+
+        for ($date = $first->subDay(); $date->lte(CarbonImmutable::parse($to)); $date = $date->addDay()) {
+            if ($date->lt($calendarStart)) {
+                $result[$date->toDateString()] = ['streak' => 0, 'streak_may_be_longer' => false];
+
+                continue;
+            }
+
+            $value = 0;
+            $mayBeLonger = true;
+            $start = $date->subDays(self::WINDOW_DAYS);
+            if ($start->lt($calendarStart)) {
+                $start = $calendarStart;
+            }
+            for ($day = $date; $day->gte($start); $day = $day->subDay()) {
+                $key = $day->toDateString();
+                if (isset($counted[$key])) {
+                    $value++;
+                } elseif ($key !== $today && isset($planned[$key])) {
+                    $mayBeLonger = false;
+                    break;
+                }
+            }
+            if ($start->equalTo($calendarStart) && $day->lt($calendarStart)) {
+                $mayBeLonger = false;
+            }
+            $result[$date->toDateString()] = ['streak' => $value, 'streak_may_be_longer' => $value > 0 && $mayBeLonger];
+        }
+
+        return $result;
+    }
+
+    /**
      * @return array<string, true>
      */
     private function countedDates(User $user, string $from, string $to): array
@@ -91,9 +139,10 @@ class StreakService
         $dates = [];
 
         // Look one day further back in UTC so no local day at the edge is cut off.
+        $lowerBound = LocalDate::rangeUtc($user, $from)[0]->subDay();
         $user->todos()
             ->whereNotNull('done_at')
-            ->where('done_at', '>=', LocalDate::rangeUtc($user, $from)[0]->subDay())
+            ->when($lowerBound->year > 0, fn ($query) => $query->where('done_at', '>=', $lowerBound))
             ->pluck('done_at')
             ->each(function ($doneAt) use (&$dates, $user) {
                 $dates[LocalDate::forUser($user, CarbonImmutable::parse($doneAt))] = true;
