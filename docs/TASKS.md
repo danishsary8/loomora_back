@@ -594,5 +594,5 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   - [x] `composer audit --locked` reports no advisories.
   - [x] `composer validate --strict` passes.
   - [x] CI runs `composer audit --locked` after install.
-  - [ ] CI tests, Pint, PHPStan and Docker jobs pass on the PR.
+  - [x] CI tests, Pint, PHPStan and Docker jobs pass on the PR (run 45813615986).
 - **Files:** `composer.lock`, `.github/workflows/ci.yml`, `docs/TASKS.md`, `docs/PROGRESS.md`
