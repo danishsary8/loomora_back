@@ -819,3 +819,29 @@ Proposed additive representation: each streak value includes a boolean indicatin
 - **How it was verified:** New `NotesImportDiagnosticsTest` (19 tests) was red before the change (16 failing for the missing field; the omitted-section, cross-account and rollback guards already passed) and green after. Full SQLite: 597 passed, 42 PostgreSQL-only skipped, 30 failed. Full PostgreSQL 17 (disposable cluster): 630 passed, 39 failed. The failures are `GoogleDeletionTest` (30; `openssl_pkey_get_details()` gets `false` because this Windows PHP 8.4 cannot generate the test RSA key) and `CredentialConcurrencyTest` (9, PostgreSQL child-process lock timing). The same files fail identically on an unmodified `origin/v2-rebuild` checkout (30 SQLite, 39 PostgreSQL), so they are environmental; CI is authoritative. Pint, PHPStan (no errors), `composer validate --strict`, `composer audit --locked` (no advisories), Redocly (valid, four existing warnings) and `git diff --check` passed.
 - **Problems:** The local PHP has `pdo_sqlite` disabled in `php.ini`; SQLite runs used `php -d extension=pdo_sqlite` without changing the global config.
 - **Questions:** The B-048 entries cite decisions "D8 and D9" for Notes, but in this repo those ids are schedule-grid decisions (`docs/01-product-brief.md`), and `DECISIONS.md` has no Notes decision. `docs/08-data-model.md` has no `notes` or `focus_sessions` entity, and rule 9 does not list notes, Focus sessions or daily intentions among imported data. Should the planner record the Notes decisions and extend docs/08?
+
+### 2026-11-26: Correction to the Notes decision references (B-048)
+
+- The B-048 entries (2026-11-25 above and TASKS) cite "D8 and D9" for Notes. In this repository D8 and D9 are schedule-grid decisions in `docs/01-product-brief.md`. The documented approval for Notes is `docs/02-feature-list.md` (Notes, standalone and attached to items, Must). The owner's R3/R4 decision specification (S1, S2, D1 to D12) has not been supplied, so no decision record is created for it.
+- B-048's TASKS scope now cites docs/02. Historical PROGRESS entries stay as written.
+- Unresolved references kept for later reconciliation, since their meaning cannot be verified here: S1/D1 (B-045), S2/D3 to D5 (B-046), D6 and D4 (B-049), D7 and D12 (B-047), and the earlier D8 and D9 text. docs/08 no longer cites "D3-D5" in its Focus rule.
+
+### 2026-11-26: B-053 planner decisions (approved, not implemented)
+
+The owner approved these rules for B-053 revision-aware Notes. None of this is implemented: there is no `notes.revision` column, `expected_revision` parameter or create-replay change today, and `openapi.yaml` does not describe them.
+
+1. Unsupported R3/R4 decision references are removed unless the original specification is supplied.
+2. An account note is never replaced by its guest copy. The account copy is kept; the user may explicitly save the guest copy as a separate new note.
+3. Conditional writes protect both `PATCH` and `DELETE` on notes.
+4. `expected_revision` stays optional at the API boundary for backward compatibility. New frontend writes should send it. Making it required needs separate approval.
+5. An identical retry of `POST /notes` with the same UUID returns 200 with the existing note. Changed content remains a conflict, and a deleted note is not restored.
+6. Conflicts are resolved one note at a time. No bulk "save all" action.
+7. B-054 includes the verified missing `todos` and `users` columns.
+
+### 2026-11-26: B-054 Backend documentation reconciliation
+
+- **Branch / PR:** `docs/B-054-backend-documentation-reconciliation` from `origin/v2-rebuild` (`259cf90`), worktree `loomora-back-B-054`.
+- **What changed:** TASKS marks B-045 (#50), B-046 (#54), B-047 (#51), B-049 (#53), B-050 (#55), B-051 (#56) and B-052 (#57) done with full merge SHAs, and B-048 cites docs/02 instead of D8 and D9. docs/08 adds `users.time_format`, `week_starts_on` and the Google exchange-grant columns (and notes that `has_password` is derived), the R2 `todos` columns (`next_todo_id`, `remind_dismissed_at`, `deleted_at`, limits and defaults), the `daily_intentions`, `focus_sessions` and `notes` tables, a rewritten rule 9, and rules 13 to 15 (Focus sessions, notes, account deletion).
+- **How it was verified:** Each PR confirmed merged with `gh pr view` and each merge commit confirmed an ancestor of `origin/v2-rebuild`. Every docs/08 column checked against `database/migrations`, model constants, request rules and the import code; cross-account handling checked in `ImportRequest::checkOwnership`, `NoteService` and the B-049 OpenAPI (409 for Focus). `git diff --check` passed. `npx @redocly/cli lint docs/openapi.yaml` is valid with the four existing warnings (`openapi.yaml` unchanged). No Markdown linter is configured in this repository, so none was run.
+- **Problems:** None.
+- **Questions:** `google_deletion_challenges`, Laravel's `sessions`, `cache` and `jobs` tables, and `password_reset_tokens` details are still not described in docs/08; they are internal and were left out. Should the R3/R4 owner specification be supplied so the remaining decision references can be resolved?

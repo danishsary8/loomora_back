@@ -450,7 +450,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-045: Focus session label up to 200 characters
 
-- **Status:** review
+- **Status:** done ([PR #50](https://github.com/danishsary8/loomora_back/pull/50), merged at `4ef99b25e5d59d230bfaa631c7ae5e075701d64b`)
 - **Owner:** claude
 - **Scope:** Raise the Focus session `label` limit from 120 to 200 characters, so a to-do or schedule item title (up to 200) can be stored as the session label without truncation. This unblocks the frontend F-R3-10. Owner-approved 2026-11-25 (spec S1, decision D1). The contract change is additive: requests and responses keep their shape, and existing labels are unchanged. Running the migration in production is an owner deploy step and is not part of this task.
 - **Plan:**
@@ -466,7 +466,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-046: Focus session soft delete and restore
 
-- **Status:** review
+- **Status:** done ([PR #54](https://github.com/danishsary8/loomora_back/pull/54), merged at `6a8fb15bb9d75956a9c50851868ee32a5cf5ebc1`)
 - **Owner:** Codex
 - **Scope:** Let a user delete a finished Focus session and undo it, mirroring the to-do soft delete (B-022). Owner-approved 2026-11-25 (spec S2, decisions D3 to D5). `DELETE /focus-sessions/{id}` returns 204 and is idempotent. `POST /focus-sessions/{id}/restore` returns the session if it was deleted less than 7 days ago, otherwise 410, and returns a session that is not deleted unchanged. Deleted sessions are hidden from list and show. An identical replay of a deleted session's UUID returns 200 and the session stays deleted (D3); a changed payload is still a 409. No cascade from to-do or schedule item deletes (D5), and no purge command. The frontend F-R3-14 follows after this merges. Running the migration in production is an owner deploy step.
 - **Plan:**
@@ -483,7 +483,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-050: Stabilize Google deletion clock-boundary tests
 
-- **Status:** review
+- **Status:** done ([PR #55](https://github.com/danishsary8/loomora_back/pull/55), merged at `67f4aef1b96f26fb0e5deac02ea16672543e3e0b`)
 - **Owner:** Codex
 - **Scope:** Keep B-042 regression checks deterministic when signing or verifying a test JWT crosses the second used to build the boundary fixture.
 - **Plan:**
@@ -493,7 +493,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-049: Guest Focus history import
 
-- **Status:** review
+- **Status:** done ([PR #53](https://github.com/danishsary8/loomora_back/pull/53), merged at `6534a8ee61cb3f942a20599c5870dfc11482a313`)
 - **Owner:** Codex
 - **Scope:** D6 and D4. Add an optional Focus section to POST /import for finished, active guest sessions.
 - **Plan:**
@@ -504,7 +504,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-047: Analytics and Plan vs Reality summary
 
-- **Status:** review
+- **Status:** done ([PR #51](https://github.com/danishsary8/loomora_back/pull/51), merged at `fa2b93d8d0028939daf599e4d9e93cbdb4a56812`)
 - **Owner:** Codex
 - **Scope:** Approved D7 and D12. Add the authenticated 92-day summary using existing Focus, to-do and schedule data.
 - **Plan:**
@@ -517,7 +517,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 - **Status:** done ([PR #52](https://github.com/danishsary8/loomora_back/pull/52), merged at `6f1dfe4a935c90f225521801133c95ab5ebc169d`)
 - **Owner:** Codex
-- **Scope:** D8 and D9, standalone and schedule-block notes with optional occurrence dates, plus idempotent guest import.
+- **Scope:** Notes (Must) in docs/02-feature-list.md; the owner's R3/R4 decision IDs are not recorded in this repository. Standalone and schedule-block notes with optional occurrence dates, plus idempotent guest import.
 - **Plan:**
   1. Add API tests for ownership, note lifecycle and guest import.
   2. Add the notes table and authenticated, account-scoped endpoints.
@@ -526,7 +526,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-051: Historical streak summary
 
-- **Status:** review
+- **Status:** done ([PR #56](https://github.com/danishsary8/loomora_back/pull/56), merged at `fdb595ab28b16eb1a3450f024a761c54de166a3b`)
 - **Owner:** Codex
 - **Scope:** Extend the existing 92-day analytics summary with opening and daily reconstructed streak values and an explicit completeness indicator, following the planner decisions in PROGRESS.
 - **Plan:**
@@ -537,7 +537,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-052: Safe Notes import conflict diagnostics
 
-- **Status:** review
+- **Status:** done ([PR #57](https://github.com/danishsary8/loomora_back/pull/57), merged at `259cf901c309b6c3ecf43e94b40ccec5bf237bb9`)
 - **Owner:** claude
 - **Scope:** Owner-approved 2026-11-26 as phase 1 of revision-aware Notes reconciliation (phase 2 is B-053). Extend the `notes` section of the `POST /import` result additively with `skipped_details`: one `{id, status}` per skipped note, where status is `identical`, `different` or `deleted`, comparing the API-visible title, body, schedule block and occurrence date. No account content, timestamps or revisions are returned, no account note is ever changed, a note owned by another account stays a 422, and transactions and chunking are unchanged. A deleted account note keeps the guest copy (a later frontend flow may save it as a new note). QA-027 fail-closed behavior stays intact.
 - **Plan:**
@@ -549,3 +549,19 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] Skipped account notes are never modified, and a failed request reports nothing and writes nothing.
 - [x] Pest (SQLite and PostgreSQL), Pint, PHPStan, Composer audit and Redocly lint pass.
 - **Out of scope:** B-053 revisions and conditional writes, PATCH or restore changes, frontend use of the diagnostics.
+
+### B-054: Backend documentation reconciliation
+
+- **Status:** review
+- **Owner:** claude
+- **Scope:** Planner-approved 2026-11-26, docs only. Mark B-045, B-046, B-047, B-049, B-050, B-051 and B-052 `done` with their merged PRs. Replace B-048's unsupported "D8 and D9" reference. Bring `docs/08-data-model.md` in line with the implemented schema: missing `users` and `todos` columns, the `daily_intentions`, `focus_sessions` and `notes` tables, rule 9 (guest import, including the B-052 note diagnostics and client verification), and rules for Focus sessions, notes and account deletion. Record the approved B-053 planning decisions in PROGRESS as future behavior. No application code, migration, test, configuration, dependency or `openapi.yaml` change.
+- **Plan:**
+  1. Verify each PR is merged and each merge commit is on `origin/v2-rebuild`.
+  2. Write every docs/08 statement from the migrations, models, requests and current API behavior.
+  3. Add PROGRESS entries: the decision-reference correction, the B-053 planner decisions, and this task.
+  4. Run `git diff --check` and Redocly, and review docs against migrations and task IDs against statuses.
+- [x] Seven merged tasks marked `done` with PR and merge commit; no other status changed.
+- [x] B-048 cites docs/02-feature-list.md instead of D8 and D9; historical PROGRESS lines unchanged.
+- [x] docs/08 documents only implemented columns and behavior; `notes.revision` and other B-053 behavior are not described as existing.
+- [x] Only `docs/TASKS.md`, `docs/PROGRESS.md` and `docs/08-data-model.md` changed.
+- **Out of scope:** B-053 implementation, `openapi.yaml`, recording the unsupplied R3/R4 owner specification.
