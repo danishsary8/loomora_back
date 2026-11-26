@@ -611,3 +611,13 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   - [x] `openapi.yaml` and docs/08 updated; Redocly valid (four existing warnings).
   - [x] CI: Pest (SQLite and PostgreSQL), Pint, PHPStan pass.
 - **Files:** `database/migrations/2026_11_29_000000_add_pin_color_tags_to_notes_table.php`, `app/Models/Note.php`, `app/Http/Requests/NoteRequest.php`, `app/Http/Resources/NoteResource.php`, `app/Http/Controllers/Api/V1/NoteController.php`, `app/Services/NoteService.php`, `tests/Feature/NotesOrganizeTest.php`, `docs/openapi.yaml`, `docs/08-data-model.md`
+
+### B-057: One Google button signs in or creates the account
+
+- **Status:** review
+- **Owner:** claude
+- **Scope:** Owner request (2026-11-26): "Continue with Google" must work from both Sign in and Sign up. The callback no longer branches on `intent`: an existing account (Google subject first, then verified email) signs in and links its Google id; a new verified address gets an account. A concurrent signup that wins the insert race returns the retryable `google_failed`. `account_not_found` and `account_already_exists` are no longer returned; the frontend keeps handling them for older servers.
+- **Done when:**
+  - [x] `GoogleAuthTest` and `CredentialConcurrencyTest` updated to the new outcomes; `openapi.yaml` callback description updated.
+  - [ ] CI: Pest (SQLite and PostgreSQL), Pint, PHPStan pass.
+- **Files:** `app/Http/Controllers/Api/V1/GoogleAuthController.php`, `tests/Feature/GoogleAuthTest.php`, `tests/Feature/CredentialConcurrencyTest.php`, `docs/openapi.yaml`, `docs/TASKS.md`, `docs/PROGRESS.md`
