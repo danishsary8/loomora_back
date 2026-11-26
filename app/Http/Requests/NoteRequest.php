@@ -24,6 +24,10 @@ class NoteRequest extends FormRequest
             $prefix.'body' => ['nullable', 'string', 'max:'.Note::MAX_BODY_LENGTH],
             $prefix.'schedule_item_id' => ['nullable', 'uuid'],
             $prefix.'local_date' => ['nullable', 'date_format:Y-m-d'],
+            $prefix.'pinned' => ['sometimes', 'boolean'],
+            $prefix.'color' => ['nullable', 'string', 'in:'.implode(',', Note::COLORS)],
+            $prefix.'tags' => ['nullable', 'array', 'list', 'max:'.Note::MAX_TAGS],
+            $prefix.'tags.*' => ['string', 'regex:/\S/', 'max:'.Note::MAX_TAG_LENGTH],
         ];
     }
 

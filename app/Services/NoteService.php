@@ -26,6 +26,8 @@ class NoteService
      */
     public function create(User $user, array $attributes): array
     {
+        $attributes = $this->prepare($attributes);
+
         return DB::transaction(function () use ($user, $attributes) {
             [$note, $created] = $this->insert($user, $attributes, '');
             if (! $created && ($note->trashed() || ! $this->sameVisibleFields($note, $attributes))) {
@@ -43,6 +45,8 @@ class NoteService
      */
     public function update(User $user, string $id, array $attributes, ?int $expectedRevision): Note
     {
+        $attributes = $this->prepare($attributes);
+
         return DB::transaction(function () use ($user, $id, $attributes, $expectedRevision) {
             $note = $user->notes()->lockForUpdate()->findOrFail($id);
             $this->assertRevision($note, $expectedRevision);
@@ -115,6 +119,7 @@ class NoteService
     {
         $details = [];
         foreach ($rows as $index => $attributes) {
+            $attributes = $this->prepare($attributes);
             [$stored, $inserted] = $this->insert($user, $attributes, "notes.{$index}.");
             if (! $inserted) {
                 $details[] = ['id' => $stored->id, 'status' => $this->skipStatus($stored, $attributes)];
@@ -126,6 +131,21 @@ class NoteService
             'skipped' => count($details),
             'skipped_details' => $details,
         ];
+    }
+
+    /**
+     * Normalizes the B-056 fields a request sent: tags are cleaned, and a missing `pinned` stays missing.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function prepare(array $attributes): array
+    {
+        if (array_key_exists('tags', $attributes)) {
+            $attributes['tags'] = Note::normalizeTags($attributes['tags']);
+        }
+
+        return $attributes;
     }
 
     private function assertRevision(Note $note, ?int $expectedRevision): void
@@ -152,20 +172,25 @@ class NoteService
     }
 
     /**
-     * The fields the API shows: an occurrence date is hidden without a block (NoteResource).
+     * The fields the API shows: an occurrence date is hidden without a block (NoteResource), and
+     * B-056 pin, color and tags count too. Stored rows hold tags as JSON text.
      *
      * @param  array<string, mixed>  $fields
-     * @return list<string|null>
+     * @return list<bool|string|list<string>|null>
      */
     private function visibleFields(array $fields): array
     {
         $block = isset($fields['schedule_item_id']) ? strtolower($fields['schedule_item_id']) : null;
+        $tags = $fields['tags'] ?? null;
 
         return [
             $fields['title'] ?? null,
             $fields['body'] ?? null,
             $block,
             $block === null ? null : ($fields['local_date'] ?? null),
+            (bool) ($fields['pinned'] ?? false),
+            $fields['color'] ?? null,
+            Note::normalizeTags(is_string($tags) ? json_decode($tags, true) : $tags),
         ];
     }
 

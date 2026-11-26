@@ -860,3 +860,9 @@ The owner approved these rules for B-053 revision-aware Notes. None of this is i
 - **What changed:** `composer update 'symfony/*' --with-dependencies` moved `http-client`, `routing`, `mailer`, `http-kernel` and related Symfony packages to 7.4.24 (patch releases within the existing `^7.4` constraints; `composer.json` unchanged, no major upgrade needed). CI now runs `composer audit --locked` after install. B-053 marked done (PR #59, `2c95ed6`).
 - **How it was verified:** `composer audit --locked`: 9 advisories before, none after. `composer validate --strict` passed. The sandbox could not download packages (its proxy refuses Composer's GitHub downloads), so tests, Pint and PHPStan were not run locally; CI is authoritative for them.
 
+### 2026-11-26: B-056 Note pin, color and tags
+
+- **Branch:** `claude/happy-faraday-y2jsqe` from `origin/v2-rebuild` (`65f7475`).
+- **What changed:** See TASKS B-056. The import reuses `NoteRequest::fields`, so imported guest notes get the same rules. `NoteService::prepare` normalizes tags before every create, edit and import row, so dirty checks and replay comparisons see the stored form.
+- **How it was verified:** `php -l` on every changed PHP file; Redocly valid with the four existing warnings. New `NotesOrganizeTest` covers defaults, normalization, validation, list order, revision bumps, identical/changed replays and import diagnostics. The sandbox cannot install Composer packages (its proxy refuses Composer's GitHub downloads), so Pest, Pint and PHPStan run in CI.
+- **Questions:** None.
