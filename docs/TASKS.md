@@ -600,7 +600,8 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-056: Note pin, color and tags
 
-- **Status:** review
+- **Status:** done
+- **Merge:** [PR #62](https://github.com/danishsary8/loomora_back/pull/62) at `97b5e5a`.
 - **Owner:** claude
 - **Scope:** docs/02 R4 "Notes: tags, pin, color, search" (Should); search already exists in the frontend. Owner-approved defaults (2026-11-26): colors are the six category pastels; up to 5 tags per note, 1 to 24 characters, case-insensitive. Adds `pinned`, `color` and `tags` to create, edit, import and the Note resource; lists pinned notes first. The frontend follows in F-R4-06.
 - **Done when:**
@@ -608,5 +609,5 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
   - [x] Tags are normalized (trim, leading "#", lowercase, no duplicates); validation rejects unknown colors, more than 5 tags, tags over 24 characters and blank tags.
   - [x] Changing a field bumps the revision; identical create replays and import diagnostics include the new fields.
   - [x] `openapi.yaml` and docs/08 updated; Redocly valid (four existing warnings).
-  - [ ] CI: Pest (SQLite and PostgreSQL), Pint, PHPStan pass.
+  - [x] CI: Pest (SQLite and PostgreSQL), Pint, PHPStan pass.
 - **Files:** `database/migrations/2026_11_29_000000_add_pin_color_tags_to_notes_table.php`, `app/Models/Note.php`, `app/Http/Requests/NoteRequest.php`, `app/Http/Resources/NoteResource.php`, `app/Http/Controllers/Api/V1/NoteController.php`, `app/Services/NoteService.php`, `tests/Feature/NotesOrganizeTest.php`, `docs/openapi.yaml`, `docs/08-data-model.md`
