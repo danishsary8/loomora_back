@@ -70,4 +70,4 @@ Guest Focus history is imported through POST /import in batches of up to 500 fin
 
 ### Notes
 
-The authenticated notes API supports standalone notes and notes linked to an owned schedule block or a dated occurrence. See /notes and /notes/{note} in OpenAPI for the resource contract. Guest imports can include up to 500 notes per request, with any referenced schedule item sent in the same request or earlier. Successful retries skip note UUIDs already owned by the account, including deleted notes.
+The authenticated notes API supports standalone notes and notes linked to an owned schedule block or a dated occurrence. See /notes and /notes/{note} in OpenAPI for the resource contract. Guest imports can include up to 500 notes per request, with any referenced schedule item sent in the same request or earlier. Successful retries skip note UUIDs already owned by the account, including deleted notes. Each skipped note is listed in the response's `notes.skipped_details` as `identical`, `different` or `deleted` (B-052); a skipped note is never changed.
