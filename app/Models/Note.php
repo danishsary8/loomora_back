@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $local_date
  * @property string|null $title
  * @property string|null $body
+ * @property int $revision
  * @property Carbon|null $deleted_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -37,5 +38,14 @@ class Note extends Model
 
     public const IMPORT_DELETED = 'deleted';
 
+    /** The server sets `revision` (B-053); it is never fillable. */
     protected $fillable = ['title', 'body', 'schedule_item_id', 'local_date'];
+
+    protected $attributes = ['revision' => 1];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['revision' => 'integer'];
+    }
 }

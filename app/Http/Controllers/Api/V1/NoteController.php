@@ -5,13 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\NoteRequest;
 use App\Http\Resources\NoteResource;
-use App\Models\Note;
 use App\Services\NoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 
 class NoteController extends Controller
 {
@@ -24,10 +22,13 @@ class NoteController extends Controller
         );
     }
 
+    /** 201 for a new note, 200 for an identical replay of an active one. */
     public function store(NoteRequest $request, NoteService $notes): JsonResponse
     {
-        return (new NoteResource($notes->create($request->user(), $request->validated())))
-            ->response()->setStatusCode(Response::HTTP_CREATED);
+        [$note, $created] = $notes->create($request->user(), $request->validated());
+
+        return (new NoteResource($note))->response()
+            ->setStatusCode($created ? Response::HTTP_CREATED : Response::HTTP_OK);
     }
 
     public function show(Request $request, string $note): NoteResource
@@ -37,34 +38,21 @@ class NoteController extends Controller
 
     public function update(NoteRequest $request, string $note, NoteService $notes): NoteResource
     {
-        return new NoteResource($notes->update($request->user(), $note, $request->validated()));
+        return new NoteResource($notes->update(
+            $request->user(), $note, $request->noteFields(), NoteRequest::expectedRevision($request),
+        ));
     }
 
-    public function destroy(Request $request, string $note): Response
+    public function destroy(Request $request, string $note, NoteService $notes): Response
     {
-        DB::transaction(function () use ($request, $note) {
-            $stored = $request->user()->notes()->withTrashed()->lockForUpdate()->findOrFail($note);
-            if (! $stored->trashed()) {
-                $stored->delete();
-            }
-        });
+        $request->validate(NoteRequest::expectedRevisionRules());
+        $notes->delete($request->user(), $note, NoteRequest::expectedRevision($request));
 
         return response()->noContent();
     }
 
-    public function restore(Request $request, string $note): NoteResource
+    public function restore(Request $request, string $note, NoteService $notes): NoteResource
     {
-        $stored = DB::transaction(function () use ($request, $note) {
-            $stored = $request->user()->notes()->withTrashed()->lockForUpdate()->findOrFail($note);
-            if ($stored->deleted_at !== null) {
-                abort_unless($stored->deleted_at->gt(now()->subDays(Note::RESTORE_WITHIN_DAYS)),
-                    Response::HTTP_GONE, __('notes.restore_expired'));
-                $stored->restore();
-            }
-
-            return $stored;
-        });
-
-        return new NoteResource($stored);
+        return new NoteResource($notes->restore($request->user(), $note));
     }
 }

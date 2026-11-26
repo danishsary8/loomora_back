@@ -3,42 +3,105 @@
 namespace App\Services;
 
 use App\Models\Note;
+use App\Models\ScheduleItem;
 use App\Models\User;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
+/**
+ * Every account note write. The server owns `revision` (B-053): it starts at 1 and moves by one on
+ * each real change, so a client's `expected_revision` can reject a stale edit or delete.
+ */
 class NoteService
 {
-    /** @param array<string, mixed> $attributes */
-    public function create(User $user, array $attributes): Note
+    /**
+     * An identical replay of an active note returns it unchanged; any other existing UUID is a conflict,
+     * and a deleted note is never restored by a create.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array{Note, bool} the note and whether it was created
+     */
+    public function create(User $user, array $attributes): array
     {
         return DB::transaction(function () use ($user, $attributes) {
             [$note, $created] = $this->insert($user, $attributes, '');
-            if (! $created) {
+            if (! $created && ($note->trashed() || ! $this->sameVisibleFields($note, $attributes))) {
                 throw new ConflictHttpException(__('notes.conflict'));
+            }
+
+            return [$note, $created];
+        });
+    }
+
+    /**
+     * A null `$expectedRevision` keeps last-write-wins. An edit that changes nothing keeps the revision.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function update(User $user, string $id, array $attributes, ?int $expectedRevision): Note
+    {
+        return DB::transaction(function () use ($user, $id, $attributes, $expectedRevision) {
+            $note = $user->notes()->lockForUpdate()->findOrFail($id);
+            $this->assertRevision($note, $expectedRevision);
+            $note->fill($attributes);
+            if (! array_key_exists('local_date', $attributes)
+                && ($note->schedule_item_id === null || $note->isDirty('schedule_item_id'))) {
+                $note->local_date = null;
+            }
+            if (! $note->isDirty()) {
+                return $note;
+            }
+            $this->validate($user, $note, '');
+            $note->revision++;
+            $note->save();
+
+            return $note;
+        });
+    }
+
+    /** Deleting a deleted note succeeds again without a revision check, as before B-053. */
+    public function delete(User $user, string $id, ?int $expectedRevision): void
+    {
+        DB::transaction(function () use ($user, $id, $expectedRevision) {
+            $note = $user->notes()->withTrashed()->lockForUpdate()->findOrFail($id);
+            if ($note->trashed()) {
+                return;
+            }
+            $this->assertRevision($note, $expectedRevision);
+            $note->forceFill(['revision' => $note->revision + 1, 'deleted_at' => $note->freshTimestamp()])->save();
+        });
+    }
+
+    /** Restoring an active note returns it unchanged. */
+    public function restore(User $user, string $id): Note
+    {
+        return DB::transaction(function () use ($user, $id) {
+            $note = $user->notes()->withTrashed()->lockForUpdate()->findOrFail($id);
+            if ($note->deleted_at !== null) {
+                abort_unless($note->deleted_at->gt(now()->subDays(Note::RESTORE_WITHIN_DAYS)),
+                    Response::HTTP_GONE, __('notes.restore_expired'));
+                $note->revision++;
+                $note->restore();
             }
 
             return $note;
         });
     }
 
-    /** @param array<string, mixed> $attributes */
-    public function update(User $user, string $id, array $attributes): Note
+    /**
+     * Call inside the schedule item's delete transaction: its notes, deleted ones included, become
+     * standalone with a new revision. The foreign key's set-null stays as a backstop.
+     */
+    public function detachFromBlock(ScheduleItem $item): void
     {
-        return DB::transaction(function () use ($user, $id, $attributes) {
-            $note = $user->notes()->lockForUpdate()->findOrFail($id);
-            $note->fill($attributes);
-            if (! array_key_exists('local_date', $attributes)
-                && ($note->schedule_item_id === null || $note->isDirty('schedule_item_id'))) {
-                $note->local_date = null;
-            }
-            $this->validate($user, $note, '');
-            $note->save();
-
-            return $note;
-        });
+        Note::withTrashed()->where('schedule_item_id', $item->id)->update([
+            'schedule_item_id' => null,
+            'local_date' => null,
+            'revision' => DB::raw('revision + 1'),
+        ]);
     }
 
     /**
@@ -65,6 +128,13 @@ class NoteService
         ];
     }
 
+    private function assertRevision(Note $note, ?int $expectedRevision): void
+    {
+        if ($expectedRevision !== null && $expectedRevision !== $note->revision) {
+            throw new ConflictHttpException(__('notes.stale_revision'));
+        }
+    }
+
     /** @param array<string, mixed> $attributes */
     private function skipStatus(Note $stored, array $attributes): string
     {
@@ -72,9 +142,13 @@ class NoteService
             return Note::IMPORT_DELETED;
         }
 
-        return $this->visibleFields($stored->getAttributes()) === $this->visibleFields($attributes)
-            ? Note::IMPORT_IDENTICAL
-            : Note::IMPORT_DIFFERENT;
+        return $this->sameVisibleFields($stored, $attributes) ? Note::IMPORT_IDENTICAL : Note::IMPORT_DIFFERENT;
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function sameVisibleFields(Note $stored, array $attributes): bool
+    {
+        return $this->visibleFields($stored->getAttributes()) === $this->visibleFields($attributes);
     }
 
     /**

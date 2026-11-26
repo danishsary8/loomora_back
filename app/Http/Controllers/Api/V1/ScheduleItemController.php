@@ -7,9 +7,11 @@ use App\Http\Requests\Schedule\StoreScheduleItemRequest;
 use App\Http\Requests\Schedule\UpdateScheduleItemRequest;
 use App\Http\Resources\ScheduleItemResource;
 use App\Models\ScheduleItem;
+use App\Services\NoteService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class ScheduleItemController extends Controller
@@ -47,12 +49,15 @@ class ScheduleItemController extends Controller
         return new ScheduleItemResource($item->refresh());
     }
 
-    /** "Delete all": removes the item; its exceptions and check-ins cascade (B-011). */
-    public function destroy(ScheduleItem $item): Response
+    /** "Delete all": removes the item; its exceptions and check-ins cascade (B-011), its notes become standalone (B-053). */
+    public function destroy(ScheduleItem $item, NoteService $notes): Response
     {
         Gate::authorize('manage', $item);
 
-        $item->delete();
+        DB::transaction(function () use ($item, $notes) {
+            $notes->detachFromBlock($item);
+            $item->delete();
+        });
 
         return response()->noContent();
     }

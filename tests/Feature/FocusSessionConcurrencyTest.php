@@ -7,7 +7,7 @@ use App\Support\FocusSessionPayload;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\Process\Process;
+use Tests\Support\RowLockRace;
 
 uses(DatabaseMigrations::class);
 
@@ -34,62 +34,11 @@ function racingFocusSession(string $label): array
     ];
 }
 
-/**
- * Holds the winning insert uncommitted in this connection, sends the same UUID from a second PHP
- * process, waits until PostgreSQL reports that process blocked on this one, then commits.
- */
+/** Holds the winning insert uncommitted while the same UUID arrives from a second process. */
 function raceFocusSession(User $user, array $winner, array $contender): array
 {
-    $database = DB::connection()->getConfig();
-    $process = new Process([PHP_BINARY, 'tests/Support/credential-request.php', json_encode([
-        'method' => 'POST',
-        'path' => '/api/v1/focus-sessions',
-        'bearer' => $user->createToken('race')->plainTextToken,
-        'body' => $contender,
-    ], JSON_THROW_ON_ERROR)], dirname(__DIR__, 2), [
-        'APP_ENV' => 'testing',
-        'APP_DEBUG' => 'false',
-        'APP_KEY' => config('app.key'),
-        'CACHE_STORE' => 'array',
-        'DB_CONNECTION' => 'pgsql',
-        'DB_URL' => $database['url'] ?? '',
-        'DB_HOST' => $database['host'],
-        'DB_PORT' => (string) $database['port'],
-        'DB_DATABASE' => $database['database'],
-        'DB_USERNAME' => $database['username'],
-        'DB_PASSWORD' => $database['password'],
-        'SESSION_DRIVER' => 'array',
-    ], timeout: 45);
-
-    DB::beginTransaction();
-    try {
-        app(FocusSessionService::class)->record($user, FocusSessionPayload::fromInput($winner));
-        $coordinator = DB::selectOne('select pg_backend_pid() as pid')->pid;
-
-        $process->start();
-        $deadline = microtime(true) + 30;
-        do {
-            usleep(20_000);
-            $pid = (int) strtok($process->getOutput(), "\n");
-            $blocked = $pid && DB::selectOne('select ? = any(pg_blocking_pids(?)) as blocked', [$coordinator, $pid])->blocked;
-            if (! $blocked && ! $process->isRunning()) {
-                throw new RuntimeException('The second request finished before it reached the conflicting insert.');
-            }
-        } while (! $blocked && microtime(true) < $deadline);
-
-        expect($blocked)->toBeTrue();
-        DB::commit();
-        $process->wait();
-    } finally {
-        if (DB::transactionLevel() > 0) {
-            DB::rollBack();
-        }
-        $process->stop(0);
-    }
-
-    [, $response] = explode("\n", trim($process->getOutput()), 2);
-
-    return json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+    return RowLockRace::run($user, 'POST', '/api/v1/focus-sessions', $contender,
+        fn () => app(FocusSessionService::class)->record($user, FocusSessionPayload::fromInput($winner)));
 }
 
 it('turns a concurrent identical retry into one session and a 200', function () {

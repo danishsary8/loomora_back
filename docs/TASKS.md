@@ -552,7 +552,7 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 
 ### B-054: Backend documentation reconciliation
 
-- **Status:** review ([PR #58](https://github.com/danishsary8/loomora_back/pull/58))
+- **Status:** done ([PR #58](https://github.com/danishsary8/loomora_back/pull/58), merged at `c2a09c2bcf991b549fb579c128ff2e68525fbbce`)
 - **Owner:** claude
 - **Scope:** Planner-approved 2026-11-26, docs only. Mark B-045, B-046, B-047, B-049, B-050, B-051 and B-052 `done` with their merged PRs. Replace B-048's unsupported "D8 and D9" reference. Bring `docs/08-data-model.md` in line with the implemented schema: missing `users` and `todos` columns, the `daily_intentions`, `focus_sessions` and `notes` tables, rule 9 (guest import, including the B-052 note diagnostics and client verification), and rules for Focus sessions, notes and account deletion. Record the approved B-053 planning decisions in PROGRESS as future behavior. No application code, migration, test, configuration, dependency or `openapi.yaml` change.
 - **Plan:**
@@ -565,3 +565,21 @@ Source: `docs/research/daycraft-gap-analysis.md` and `docs/research/daycraft-tas
 - [x] docs/08 documents only implemented columns and behavior; `notes.revision` and other B-053 behavior are not described as existing.
 - [x] Only `docs/TASKS.md`, `docs/PROGRESS.md` and `docs/08-data-model.md` changed.
 - **Out of scope:** B-053 implementation, `openapi.yaml`, recording the unsupplied R3/R4 owner specification.
+
+### B-053: Revision-aware Notes and conditional writes
+
+- **Status:** review
+- **Owner:** claude
+- **Scope:** Planner-approved 2026-11-26 (decisions in PROGRESS, "B-053 planner decisions"). Add a server-controlled `notes.revision` (integer, at least 1, default 1). It goes up by one on a real edit, a delete, a restore and a schedule block delete that detaches the note. `PATCH /notes/{note}` takes an optional `expected_revision` body field and `DELETE /notes/{note}` an optional `expected_revision` query parameter: a stale value is a 409 with no write, an invalid one a 422, and an omitted one keeps the old behavior. An identical `POST /notes` replay of an active note returns 200; a changed one, a deleted note or another account's UUID is 409. `revision` is in every Note response. Import and the B-052 diagnostics are unchanged. No automatic overwrite or restore, no bulk conflict action, no frontend change.
+- **Plan:**
+  1. Pest tests first, plus a PostgreSQL race test through a shared `Tests\Support\RowLockRace` helper (also used by the Focus race test).
+  2. Migration with a PostgreSQL CHECK, model default and cast, revision in `NoteResource`.
+  3. `NoteService` owns create, conditional update and delete, restore and block detach, all under the existing row lock.
+  4. Update `openapi.yaml`, docs/08 and PROGRESS, then verify both databases and the static checks.
+- [x] Revision starts at 1 (create, import, backfill) and the client cannot set it.
+- [x] Conditional PATCH and DELETE: matching applies, stale is 409 with no write, invalid is 422, omitted is legacy; no-op PATCH keeps the revision.
+- [x] Restore and schedule block delete bump the revision (deleted notes included) in one transaction.
+- [x] Identical POST replay is 200, changed or deleted is 409, another account stays 409.
+- [x] Two PATCHes with the same revision on PostgreSQL give one 200 and one 409.
+- [x] B-052 import diagnostics unchanged.
+- **Out of scope:** frontend use (F-R4-04), a required `expected_revision`, revisions in import diagnostics, deploy.
