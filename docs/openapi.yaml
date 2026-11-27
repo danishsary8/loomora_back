@@ -18,6 +18,8 @@ info:
     name: Proprietary
     identifier: LicenseRef-Proprietary
 servers:
+  - url: https://loomora-api.onrender.com/api/v1
+    description: Production
   - url: http://localhost:8000/api/v1
     description: Local
 tags:
