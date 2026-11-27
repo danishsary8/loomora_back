@@ -14,3 +14,6 @@ storage/framework/sessions/*
 storage/framework/views/*
 bootstrap/cache/*.php
 .phpunit.result.cache
+
+# The live API reference (/docs) serves the contract.
+!docs/openapi.yaml

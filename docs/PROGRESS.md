@@ -871,3 +871,9 @@ The owner approved these rules for B-053 revision-aware Notes. None of this is i
 
 - **Why:** On the live site, "Sign in with Google" with a new address returned `account_not_found`. The owner asked for one button that signs in existing users and creates accounts for new ones.
 - **How it was verified:** `php -l` on changed files; Redocly. Pest, Pint and PHPStan run in CI (the sandbox cannot install Composer packages).
+
+### 2026-11-27: Live API reference at /docs
+
+- **Why:** The owner asked for clean, live API docs.
+- **What changed:** `GET /docs` renders `docs/openapi.yaml` with Scalar 1.78.0 (pinned on jsDelivr, SRI hash, Loomora colours, light only, no developer toolbar or AI agent); `GET /docs/openapi.yaml` serves the contract. `SecurityHeaders` sends a CSP scoped to the docs page (pinned Scalar path, inline styles, same-origin requests); every other response keeps `default-src 'none'`. `.dockerignore` now lets `docs/openapi.yaml` into the image. The spec lists the production server (`https://loomora-api.onrender.com/api/v1`) first.
+- **How it was verified:** `php -l` on changed files; the spec parses (OpenAPI 3.1.0, 41 paths, 56 operations). The page was rendered in Chromium at 1440 and 375 px under the exact CSP, with the npm 1.78.0 bundle: no console errors, no CSP violations. Pest (`tests/Feature/ApiDocsTest.php`), Pint and PHPStan run in CI (the sandbox cannot install Composer packages). Redocly was not run (not pinned in the repo, and an unpinned `npx` fetch was not allowed).
